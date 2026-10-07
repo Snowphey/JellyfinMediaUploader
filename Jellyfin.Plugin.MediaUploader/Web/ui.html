@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media Uploader</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 1.2em; background: #101010; color: #eee; font-family: "Noto Sans", system-ui, sans-serif; font-size: 15px; }
+  h2 { margin: 0 0 .3em; font-weight: 500; }
+  .muted { color: #9a9a9a; font-size: .9em; }
+  .warn { color: #e57373; margin: .8em 0; }
+  .row { display: flex; align-items: center; gap: .8em; margin: 1em 0; flex-wrap: wrap; }
+  select { background: #1c1c1c; color: #eee; border: 1px solid #444; border-radius: 4px; padding: .45em .6em; font: inherit; }
+  #drop { border: 2px dashed #666; border-radius: 10px; padding: 2.2em 1em; text-align: center; cursor: pointer; margin: 1em 0; transition: background .15s, border-color .15s; }
+  #drop.over { background: #1b2a33; border-color: #00a4dc; }
+  .item { padding: .55em 0; border-bottom: 1px solid #2c2c2c; }
+  .head { display: flex; justify-content: space-between; gap: 1em; }
+  .name { word-break: break-all; }
+  .state { white-space: nowrap; color: #9a9a9a; }
+  .state.done { color: #6fcf97; } .state.error { color: #e57373; } .state.skipped { color: #f2c94c; }
+  .dest { color: #9a9a9a; font-size: .85em; margin-top: .15em; word-break: break-all; }
+  progress { width: 100%; height: 8px; margin-top: .3em; }
+  button { background: #00a4dc; color: #fff; border: 0; border-radius: 4px; padding: .6em 1.3em; font: inherit; cursor: pointer; }
+  button.secondary { background: #333; }
+  button:disabled { opacity: .5; cursor: default; }
+  a.rm { color: #9a9a9a; text-decoration: none; margin-left: .4em; }
+</style>
+</head>
+<body>
+<h2>Envoyer des médias</h2>
+<div class="muted">Déposez vos fichiers : artiste, album, titre et année sont lus dans les tags (musique) ou le nom du fichier (films, ex. « Titre (2019).mkv »). Sans information, le fichier va à la racine de la bibliothèque.</div>
+<div id="warn" class="warn" style="display:none"></div>
+
+<div class="row">
+  <label for="type">Type</label>
+  <select id="type">
+    <option value="">Auto (selon l'extension)</option>
+    <option value="music">Musique</option>
+    <option value="movie">Film</option>
+  </select>
+</div>
+
+<div id="drop">
+  <div>Glissez fichiers ou dossiers ici, ou cliquez pour choisir</div>
+  <div class="muted" style="margin-top:.4em">Les fichiers partent un par un ; en cas d'échec, « Envoyer » ne renvoie que les échecs.</div>
+  <input id="files" type="file" multiple style="display:none">
+</div>
+
+<div id="queue"></div>
+<div id="summary" class="muted" style="margin:1em 0"></div>
+<button id="send" type="button">Envoyer</button>
+<button id="clear" type="button" class="secondary">Vider la liste</button>
+
+<script>
+(function () {
+  'use strict';
+  var BASE = location.pathname.replace(/\/MediaUploader\/Ui.*$/i, '');
+  var queue = [];
+  var running = false;
+  var status = null;
+  var LABELS = { pending: 'En attente', uploading: 'Envoi…', done: 'Enregistré', skipped: 'Ignoré', error: 'Échec' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function token() {
+    try {
+      var c = JSON.parse(localStorage.getItem('jellyfin_credentials') || '{}');
+      var servers = (c.Servers || []).filter(function (s) { return s.AccessToken; });
+      if (!servers.length) { return null; }
+      var here = servers.filter(function (s) {
+        return [s.ManualAddress, s.LocalAddress, s.RemoteAddress].some(function (a) { return a && a.indexOf(location.origin) === 0; });
+      });
+      return (here[0] || servers[0]).AccessToken;
+    } catch (e) { return null; }
+  }
+
+  function api(method, path, formData, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var t = token();
+      if (!t) { reject(new Error('Session Jellyfin introuvable : connectez-vous puis rechargez.')); return; }
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BASE + '/' + path);
+      xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
+      if (onProgress) {
+        xhr.upload.onprogress = function (ev) { if (ev.lengthComputable) { onProgress(Math.round(ev.loaded / ev.total * 100)); } };
+      }
+      xhr.onload = function () {
+        var body = null;
+        try { body = JSON.parse(xhr.responseText); } catch (e) { body = null; }
+        resolve({ status: xhr.status, body: body, text: xhr.responseText });
+      };
+      xhr.onerror = function () { reject(new Error('Erreur réseau')); };
+      xhr.send(formData || null);
+    });
+  }
+
+  function pick(o, n) { return o ? (o[n] !== undefined ? o[n] : o[n.charAt(0).toLowerCase() + n.slice(1)]) : undefined; }
+  function extOf(name) { var i = name.lastIndexOf('.'); return i < 0 ? '' : name.slice(i).toLowerCase(); }
+  function list(s) { return (s || '').split(',').map(function (x) { x = x.trim().toLowerCase(); return x && x[0] !== '.' ? '.' + x : x; }).filter(Boolean); }
+
+  function render() {
+    var box = $('queue');
+    box.textContent = '';
+    queue.forEach(function (item, index) {
+      var row = document.createElement('div'); row.className = 'item';
+      var head = document.createElement('div'); head.className = 'head';
+      var name = document.createElement('span'); name.className = 'name';
+      name.textContent = item.file.name + ' (' + (item.file.size / 1048576).toFixed(1) + ' Mo)';
+      var st = document.createElement('span'); st.className = 'state ' + item.status;
+      st.textContent = LABELS[item.status] + (item.status === 'uploading' ? ' ' + item.pct + ' %' : '');
+      if (item.status === 'pending' && !running) {
+        var rm = document.createElement('a'); rm.href = '#'; rm.className = 'rm'; rm.textContent = '✕'; rm.title = 'Retirer';
+        rm.addEventListener('click', function (e) { e.preventDefault(); queue.splice(index, 1); render(); });
+        st.appendChild(rm);
+      }
+      head.appendChild(name); head.appendChild(st); row.appendChild(head);
+      if (item.status === 'uploading') {
+        var bar = document.createElement('progress'); bar.max = 100; bar.value = item.pct; row.appendChild(bar);
+      }
+      if (item.dest) {
+        var d = document.createElement('div'); d.className = 'dest'; d.textContent = '→ ' + item.dest; row.appendChild(d);
+      }
+      if (item.message) {
+        var m = document.createElement('div'); m.className = 'dest'; m.textContent = item.message; row.appendChild(m);
+      }
+      box.appendChild(row);
+    });
+    var done = queue.filter(function (i) { return i.status === 'done'; }).length;
+    var bad = queue.filter(function (i) { return i.status === 'error' || i.status === 'skipped'; }).length;
+    $('summary').textContent = queue.length ? done + ' / ' + queue.length + ' enregistré(s)' + (bad ? ', ' + bad + ' à revoir' : '') : '';
+    $('send').disabled = running || !(status && pick(status, 'CanUpload'));
+    $('clear').disabled = running;
+  }
+
+  function addFiles(files) {
+    for (var i = 0; i < files.length; i++) {
+      queue.push({ file: files[i], status: 'pending', pct: 0, message: '', dest: '' });
+    }
+    render();
+  }
+
+  // Dossiers déposés : on descend récursivement (API webkitGetAsEntry).
+  function walk(entry, out) {
+    return new Promise(function (resolve) {
+      if (entry.isFile) {
+        entry.file(function (f) { out.push(f); resolve(); }, function () { resolve(); });
+      } else if (entry.isDirectory) {
+        var reader = entry.createReader(), all = [];
+        (function next() {
+          reader.readEntries(function (batch) {
+            if (!batch.length) {
+              Promise.all(all.map(function (e) { return walk(e, out); })).then(resolve);
+            } else { all = all.concat(Array.prototype.slice.call(batch)); next(); }
+          }, function () { resolve(); });
+        })();
+      } else { resolve(); }
+    });
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    $('drop').classList.remove('over');
+    var items = e.dataTransfer.items;
+    if (items && items.length && items[0].webkitGetAsEntry) {
+      var out = [], jobs = [];
+      for (var i = 0; i < items.length; i++) {
+        var entry = items[i].webkitGetAsEntry();
+        if (entry) { jobs.push(walk(entry, out)); }
+      }
+      Promise.all(jobs).then(function () { addFiles(out); });
+    } else {
+      addFiles(e.dataTransfer.files);
+    }
+  }
+
+  // Type envoyé : choix manuel, sinon rien (le serveur déduit de l'extension)
+  // sauf pour les annexes ambiguës (.jpg, .png, .nfo) qui suivent la majorité du lot.
+  function typeFor(item, mode, majority) {
+    if (mode) { return mode; }
+    var ext = extOf(item.file.name);
+    var audio = list(pick(status, 'AudioExtensions')), video = list(pick(status, 'VideoExtensions'));
+    var known = audio.indexOf(ext) >= 0 || video.indexOf(ext) >= 0 || ['.lrc', '.srt', '.ass', '.ssa', '.sub', '.vtt', '.sup'].indexOf(ext) >= 0;
+    return known ? '' : majority;
+  }
+
+  function uploadOne(item, type) {
+    var fd = new FormData();
+    if (type) { fd.append('type', type); }
+    fd.append('scan', 'false');
+    fd.append('files', item.file, item.file.name);
+    item.status = 'uploading'; item.pct = 0; item.message = ''; item.dest = '';
+    render();
+    return api('POST', 'MediaUploader/Upload', fd, function (p) { item.pct = p; render(); }).then(function (res) {
+      if (res.status >= 200 && res.status < 300 && res.body) {
+        var r = (pick(res.body, 'Files') || [])[0];
+        var st = r ? pick(r, 'Status') : 'error';
+        item.status = st === 'saved' ? 'done' : (st === 'skipped' ? 'skipped' : 'error');
+        item.message = (r && pick(r, 'Message')) || (r ? '' : 'Réponse vide');
+        item.dest = (r && pick(r, 'Destination')) || '';
+      } else if (res.status === 403) {
+        item.status = 'error'; item.message = 'Envoi non autorisé pour ce compte.';
+      } else {
+        item.status = 'error';
+        item.message = 'Erreur ' + res.status + ' : ' + ((res.body && (res.body.error || res.body.title)) || res.text || 'inconnue');
+      }
+    }).catch(function (err) { item.status = 'error'; item.message = err.message; });
+  }
+
+  function run() {
+    var todo = queue.filter(function (i) { return i.status === 'pending' || i.status === 'error'; });
+    if (!todo.length) { $('summary').textContent = 'Aucun fichier à envoyer.'; return; }
+    var mode = $('type').value;
+
+    var audio = list(pick(status, 'AudioExtensions')), video = list(pick(status, 'VideoExtensions'));
+    var nA = 0, nV = 0;
+    todo.forEach(function (i) { var e = extOf(i.file.name); if (audio.indexOf(e) >= 0) { nA++; } else if (video.indexOf(e) >= 0) { nV++; } });
+    var majority = nV > nA ? 'movie' : 'music';
+
+    running = true;
+    var saved = false, chain = Promise.resolve();
+    todo.forEach(function (item) {
+      chain = chain.then(function () {
+        return uploadOne(item, typeFor(item, mode, majority)).then(function () { if (item.status === 'done') { saved = true; } render(); });
+      });
+    });
+    chain.then(function () {
+      if (saved && pick(status, 'AutoScan')) { return api('POST', 'MediaUploader/Scan').catch(function () {}); }
+    }).then(function () { running = false; render(); });
+    render();
+  }
+
+  function init() {
+    api('GET', 'MediaUploader/Status').then(function (res) {
+      if (res.status === 401) { $('warn').textContent = 'Session expirée : reconnectez-vous à Jellyfin.'; $('warn').style.display = ''; return; }
+      status = res.body;
+      var msgs = [];
+      if (status && !pick(status, 'CanUpload')) { msgs.push("L'envoi est réservé aux administrateurs sur ce serveur."); }
+      var missing = [];
+      if (status && !pick(status, 'MusicConfigured')) { missing.push('musique'); }
+      if (status && !pick(status, 'MoviesConfigured')) { missing.push('films'); }
+      if (missing.length) { msgs.push('Dossier non configuré (' + missing.join(', ') + ') : un administrateur doit le régler dans Tableau de bord > Extensions > Media Uploader.'); }
+      if (msgs.length) { $('warn').textContent = msgs.join(' '); $('warn').style.display = ''; }
+      render();
+    }).catch(function (e) { $('warn').textContent = e.message; $('warn').style.display = ''; });
+  }
+
+  $('drop').addEventListener('click', function () { $('files').click(); });
+  $('files').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
+  $('drop').addEventListener('dragover', function (e) { e.preventDefault(); $('drop').classList.add('over'); });
+  $('drop').addEventListener('dragleave', function () { $('drop').classList.remove('over'); });
+  $('drop').addEventListener('drop', handleDrop);
+  $('send').addEventListener('click', function () { if (!running) { run(); } });
+  $('clear').addEventListener('click', function () { if (!running) { queue = []; render(); } });
+  render();
+  init();
+})();
+</script>
+</body>
+</html>

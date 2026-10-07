@@ -1,0 +1,10 @@
+bin/
+obj/
+out/
+.vs/
+.idea/
+*.user
+*.dll
+*.zip
+/jellyfin/
+/media/

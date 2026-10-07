@@ -1,0 +1,11 @@
+[
+  {
+    "guid": "7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41",
+    "name": "Media Uploader",
+    "description": "Ajoute une page d'upload et une API REST (POST /MediaUploader/Upload) pour envoyer des fichiers dans les bibliothèques musique et films, avec rangement automatique (Artiste/Album, Titre (Année)).",
+    "overview": "Upload de musiques et de films via interface web ou API.",
+    "owner": "Snowphey",
+    "category": "General",
+    "versions": []
+  }
+]

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Media Uploader</title>
+</head>
+<body>
+<div id="MediaUploaderSettingsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <h2>Media Uploader : paramètres</h2>
+            <p class="fieldDescription">L'envoi de fichiers se fait sur la page /MediaUploader/Ui (ouverte à tous les utilisateurs connectés), pas depuis cette page. Ici : réglages réservés aux administrateurs.</p>
+            <p id="muWarning" class="fieldDescription" style="display:none; color:#e57373;"></p>
+
+            <form id="muSettingsForm">
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muMusicPath">Dossier musique (chemin vu par Jellyfin, ex. /media/music)</label>
+                    <input id="muMusicPath" type="text" is="emby-input" placeholder="/media/music" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muMoviesPath">Dossier films (ex. /media/movies)</label>
+                    <input id="muMoviesPath" type="text" is="emby-input" placeholder="/media/movies" />
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="muMusicLayout">Rangement musique</label>
+                    <select is="emby-select" id="muMusicLayout">
+                        <option value="auto">Auto : Artiste/Album d'après les tags, sinon à la racine</option>
+                        <option value="flat">Plat : toujours à la racine du dossier</option>
+                    </select>
+                </div>
+                <div class="selectContainer">
+                    <label class="selectLabel" for="muMoviesLayout">Rangement films</label>
+                    <select is="emby-select" id="muMoviesLayout">
+                        <option value="auto">Auto : Titre (Année)/ d'après le nom du fichier, sinon à la racine</option>
+                        <option value="flat">Plat : toujours à la racine du dossier</option>
+                    </select>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muAudioExt">Extensions audio</label>
+                    <input id="muAudioExt" type="text" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muVideoExt">Extensions vidéo</label>
+                    <input id="muVideoExt" type="text" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muExtraExt">Extensions annexes (pochettes, sous-titres, paroles)</label>
+                    <input id="muExtraExt" type="text" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muMaxSize">Taille max par fichier (Mo, 0 = illimitée)</label>
+                    <input id="muMaxSize" type="number" min="0" is="emby-input" />
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muAllowAll" type="checkbox" is="emby-checkbox" />
+                        <span>Autoriser tous les utilisateurs à envoyer des fichiers (sinon administrateurs seulement)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muCover" type="checkbox" is="emby-checkbox" />
+                        <span>Extraire la pochette intégrée aux tags (cover.jpg dans le dossier de l'album)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muAutoScan" type="checkbox" is="emby-checkbox" />
+                        <span>Lancer un scan de la bibliothèque après les uploads</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muOverwrite" type="checkbox" is="emby-checkbox" />
+                        <span>Écraser les fichiers existants (sinon un suffixe (2) est ajouté)</span>
+                    </label>
+                </div>
+
+                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                    <span>Enregistrer les paramètres</span>
+                </button>
+            </form>
+
+            <h3 style="margin-top:2em;">Utiliser l'API (scripts, yt-dlp…)</h3>
+            <p class="fieldDescription">Créez une clé API dans Tableau de bord &gt; Clés API, puis : Tous les champs hormis <code>files</code> sont optionnels ; <code>artist</code>, <code>album</code>, <code>title</code>, <code>year</code> remplacent ce qui est déduit du fichier.</p>
+            <pre class="fieldDescription" style="white-space:pre-wrap;">curl -X POST "http://SERVEUR:8096/MediaUploader/Upload" \
+  -H "X-Emby-Token: VOTRE_CLE_API" \
+  -F files=@"Titre.opus"</pre>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var page = document.querySelector('#MediaUploaderSettingsPage');
+            var $ = function (id) { return page.querySelector('#' + id); };
+            var PLUGIN_ID = '7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41';
+            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt' };
+            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll' };
+
+            function pick(obj, name) {
+                if (!obj) { return undefined; }
+                return obj[name] !== undefined ? obj[name] : obj[name.charAt(0).toLowerCase() + name.slice(1)];
+            }
+
+            function refreshStatus() {
+                return ApiClient.fetch({ url: ApiClient.getUrl('MediaUploader/Status'), type: 'GET', dataType: 'json' }).then(function (s) {
+                    var missing = [];
+                    if (!pick(s, 'MusicConfigured')) { missing.push('musique'); }
+                    if (!pick(s, 'MoviesConfigured')) { missing.push('films'); }
+                    $('muWarning').textContent = missing.length ? 'Dossier non configuré : ' + missing.join(', ') + '.' : '';
+                    $('muWarning').style.display = missing.length ? '' : 'none';
+                });
+            }
+
+            function loadSettings() {
+                return ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
+                    Object.keys(TEXT).forEach(function (key) {
+                        var def = (key === 'MusicLayout' || key === 'MoviesLayout') ? 'auto' : '';
+                        $(TEXT[key]).value = config[key] || def;
+                    });
+                    $('muMaxSize').value = config.MaxFileSizeMb || 0;
+                    Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
+                });
+            }
+
+            $('muSettingsForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
+                    Object.keys(TEXT).forEach(function (key) { config[key] = $(TEXT[key]).value.trim(); });
+                    config.MaxFileSizeMb = parseInt($('muMaxSize').value, 10) || 0;
+                    Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
+                    return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
+                }).then(function (result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                    return refreshStatus();
+                }).catch(function () {
+                    Dashboard.hideLoadingMsg();
+                    $('muWarning').textContent = 'Impossible d\'enregistrer les paramètres.';
+                    $('muWarning').style.display = '';
+                });
+                return false;
+            });
+
+            page.addEventListener('pageshow', function () {
+                loadSettings().then(refreshStatus);
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>

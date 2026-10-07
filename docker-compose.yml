@@ -1,0 +1,35 @@
+# Exemple : Jellyfin 12.1 + compilation du plugin depuis les sources (voir TUTO.md).
+# Si vous installez le plugin via le dépôt Jellyfin (manifest.json), vous n'avez besoin que du service "jellyfin".
+services:
+  # Compile le plugin puis le copie dans le dossier plugins de Jellyfin, et s'arrête.
+  plugin-builder:
+    build: ./Jellyfin.Plugin.MediaUploader
+    volumes:
+      - ./jellyfin/config/plugins/MediaUploader_1.0.0.0:/plugin-out
+    restart: "no"
+
+  jellyfin:
+    # Le plugin est compilé pour Jellyfin 12.1 (.NET 10). Les plugins compilés pour 10.11 ne se chargent pas en 12.x.
+    # Évitez "latest" : une mise à jour majeure pourrait désactiver le plugin (et la base ne se rétrograde pas).
+    image: jellyfin/jellyfin:12.1
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    environment:
+      - TZ=Europe/Paris
+      # Les gros uploads sont d'abord bufferisés dans le dossier temporaire :
+      # on le place sur le volume cache (sur le disque de l'hôte) plutôt que dans le conteneur.
+      - TMPDIR=/cache
+    # Décommentez pour ne pas tourner en root (le dossier ./jellyfin et ./media
+    # doivent alors appartenir à cet utilisateur : chown -R 1000:1000 jellyfin media)
+    # user: "1000:1000"
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      # Pas de ":ro" ici : le plugin doit pouvoir écrire dans ces dossiers.
+      - ./media/music:/media/music
+      - ./media/movies:/media/movies
+    depends_on:
+      plugin-builder:
+        condition: service_completed_successfully
