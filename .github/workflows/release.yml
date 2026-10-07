@@ -1,0 +1,60 @@
+name: Release
+
+# Pousser un tag "v1.0.0.0" compile le plugin, crée la Release GitHub avec le zip
+# et ajoute la version à manifest.json (sur la branche main).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Version et ABI
+        id: meta
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "abi=$(grep '^targetAbi:' Jellyfin.Plugin.MediaUploader/build.yaml | sed -E 's/.*"([^"]+)".*/\1/')" >> "$GITHUB_OUTPUT"
+
+      - name: Compiler
+        run: dotnet publish Jellyfin.Plugin.MediaUploader -c Release -o out -p:Version=${{ steps.meta.outputs.version }} -p:AssemblyVersion=${{ steps.meta.outputs.version }} -p:FileVersion=${{ steps.meta.outputs.version }}
+
+      - name: Zip
+        id: zip
+        run: |
+          ZIP="Jellyfin.Plugin.MediaUploader_${{ steps.meta.outputs.version }}.zip"
+          (cd out && zip -j "../$ZIP" Jellyfin.Plugin.MediaUploader.dll TagLibSharp.dll)
+          echo "name=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.name }}
+          generate_release_notes: true
+
+      - name: Mettre à jour manifest.json
+        run: |
+          python3 .github/scripts/update_manifest.py \
+            "${{ steps.meta.outputs.version }}" \
+            "${{ steps.meta.outputs.abi }}" \
+            "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.zip.outputs.name }}" \
+            "${{ steps.zip.outputs.md5 }}" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "Version ${{ steps.meta.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Manifest : version ${{ steps.meta.outputs.version }}"
+          git push origin main
