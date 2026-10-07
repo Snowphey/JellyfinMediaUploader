@@ -20,6 +20,7 @@ public class PluginConfiguration : BasePluginConfiguration
         MusicLayout = "auto";
         MoviesLayout = "auto";
         MaxFileSizeMb = 0;
+        ChunkSizeMb = 8;
         AutoScan = true;
         OverwriteExisting = false;
         ExtractCover = true;
@@ -65,6 +66,11 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Obtient ou définit la taille maximale par fichier en Mo (0 = illimitée).
     /// </summary>
     public int MaxFileSizeMb { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit la taille des morceaux envoyés par l'interface web en Mo (1 à 90). À réduire si un proxy limite la taille des requêtes.
+    /// </summary>
+    public int ChunkSizeMb { get; set; }
 
     /// <summary>
     /// Obtient ou définit une valeur indiquant si un scan de bibliothèque est lancé après upload.

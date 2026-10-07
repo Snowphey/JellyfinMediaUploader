@@ -44,7 +44,7 @@
 
 <div id="drop">
   <div>Glissez fichiers ou dossiers ici, ou cliquez pour choisir</div>
-  <div class="muted" style="margin-top:.4em">Les fichiers partent un par un ; en cas d'échec, « Envoyer » ne renvoie que les échecs.</div>
+  <div class="muted" style="margin-top:.4em">Les fichiers partent un par un, découpés en morceaux (reprise automatique en cas de coupure) ; en cas d'échec, « Envoyer » ne renvoie que les échecs.</div>
   <input id="files" type="file" multiple style="display:none">
 </div>
 
@@ -75,13 +75,14 @@
     } catch (e) { return null; }
   }
 
-  function api(method, path, formData, onProgress) {
+  function api(method, path, formData, onProgress, headers) {
     return new Promise(function (resolve, reject) {
       var t = token();
       if (!t) { reject(new Error('Session Jellyfin introuvable : connectez-vous puis rechargez.')); return; }
       var xhr = new XMLHttpRequest();
       xhr.open(method, BASE + '/' + path);
       xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
+      if (headers) { Object.keys(headers).forEach(function (h) { xhr.setRequestHeader(h, headers[h]); }); }
       if (onProgress) {
         xhr.upload.onprogress = function (ev) { if (ev.lengthComputable) { onProgress(Math.round(ev.loaded / ev.total * 100)); } };
       }
@@ -184,27 +185,85 @@
     return known ? '' : majority;
   }
 
+  var MAX_RETRIES = 4;
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function errText(res) { return 'Erreur ' + res.status + ' : ' + ((res.body && (res.body.error || res.body.title)) || res.text || 'inconnue'); }
+
+  // Envoi d'un morceau avec reprises : en cas d'erreur réseau ou 5xx, on redemande au serveur où il en est.
+  function sendChunk(item, id, offset, end) {
+    var attempt = 0;
+    function once() {
+      var blob = item.file.slice(offset, end);
+      return api('PUT', 'MediaUploader/Upload/' + id + '/Chunk?offset=' + offset, blob, function (p) {
+        item.pct = Math.min(99, Math.round((offset + (end - offset) * p / 100) / item.file.size * 100));
+        render();
+      }, { 'Content-Type': 'application/octet-stream' }).then(function (res) {
+        if (res.status >= 200 && res.status < 300) { return; }
+        if (res.status === 409 && res.body && pick(res.body, 'received') === end) { return; } // le morceau était déjà arrivé
+        if (res.status >= 500 && attempt < MAX_RETRIES) { return retry(); }
+        throw new Error(errText(res));
+      }, function (err) {
+        if (attempt < MAX_RETRIES) { return retry(); }
+        throw err;
+      });
+    }
+    function retry() {
+      attempt++;
+      item.message = 'Connexion instable, nouvelle tentative (' + attempt + '/' + MAX_RETRIES + ')…';
+      render();
+      return sleep(1000 * attempt).then(function () {
+        return api('GET', 'MediaUploader/Upload/' + id).then(function (st) {
+          if (st.status === 200 && pick(st.body, 'Received') === end) { return; }
+          if (st.status === 200 && pick(st.body, 'Received') !== offset) { throw new Error('Reprise impossible (offset serveur inattendu).'); }
+          return once();
+        }, function () { return once(); });
+      });
+    }
+    return once();
+  }
+
   function uploadOne(item, type) {
-    var fd = new FormData();
-    if (type) { fd.append('type', type); }
-    fd.append('scan', 'false');
-    fd.append('files', item.file, item.file.name);
     item.status = 'uploading'; item.pct = 0; item.message = ''; item.dest = '';
     render();
-    return api('POST', 'MediaUploader/Upload', fd, function (p) { item.pct = p; render(); }).then(function (res) {
+    var id = null;
+    var chunk = (parseInt(pick(status, 'ChunkSizeMb'), 10) || 8) * 1048576;
+    var start = { fileName: item.file.name, size: item.file.size, type: type || null, scan: false };
+
+    return api('POST', 'MediaUploader/Upload/Start', JSON.stringify(start), null, { 'Content-Type': 'application/json' }).then(function (res) {
+      if (res.status === 403) { throw new Error('Envoi non autorisé pour ce compte.'); }
+      if (res.status !== 200 || !res.body) {
+        var e = new Error(errText(res));
+        e.skipped = res.status === 400 && res.body && res.body.status === 'skipped';
+        if (e.skipped && res.body.error) { e.message = res.body.error; }
+        throw e;
+      }
+      id = pick(res.body, 'UploadId');
+      chunk = pick(res.body, 'ChunkSize') || chunk;
+      var offsets = [];
+      for (var o = 0; o < item.file.size; o += chunk) { offsets.push(o); }
+      var chain = Promise.resolve();
+      offsets.forEach(function (o) {
+        chain = chain.then(function () { return sendChunk(item, id, o, Math.min(o + chunk, item.file.size)); });
+      });
+      return chain;
+    }).then(function () {
+      item.message = '';
+      return api('POST', 'MediaUploader/Upload/' + id + '/Complete');
+    }).then(function (res) {
       if (res.status >= 200 && res.status < 300 && res.body) {
         var r = (pick(res.body, 'Files') || [])[0];
         var st = r ? pick(r, 'Status') : 'error';
         item.status = st === 'saved' ? 'done' : (st === 'skipped' ? 'skipped' : 'error');
         item.message = (r && pick(r, 'Message')) || (r ? '' : 'Réponse vide');
         item.dest = (r && pick(r, 'Destination')) || '';
-      } else if (res.status === 403) {
-        item.status = 'error'; item.message = 'Envoi non autorisé pour ce compte.';
       } else {
-        item.status = 'error';
-        item.message = 'Erreur ' + res.status + ' : ' + ((res.body && (res.body.error || res.body.title)) || res.text || 'inconnue');
+        throw new Error(errText(res));
       }
-    }).catch(function (err) { item.status = 'error'; item.message = err.message; });
+    }).catch(function (err) {
+      item.status = err.skipped ? 'skipped' : 'error';
+      item.message = err.message;
+      if (id) { api('DELETE', 'MediaUploader/Upload/' + id).catch(function () {}); }
+    });
   }
 
   function run() {

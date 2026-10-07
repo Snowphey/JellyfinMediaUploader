@@ -53,6 +53,11 @@
                     <label class="inputLabel inputLabelUnfocused" for="muMaxSize">Taille max par fichier (Mo, 0 = illimitée)</label>
                     <input id="muMaxSize" type="number" min="0" is="emby-input" />
                 </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muChunkSize">Taille des morceaux d'envoi (Mo, 1 à 90)</label>
+                    <input id="muChunkSize" type="number" min="1" max="90" is="emby-input" />
+                    <div class="fieldDescription">L'interface web découpe chaque fichier en morceaux de cette taille. À réduire si un proxy ou un tunnel limite la taille des requêtes (ex. 100 Mo chez Cloudflare gratuit).</div>
+                </div>
 
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label class="emby-checkbox-label">
@@ -122,6 +127,7 @@
                         $(TEXT[key]).value = config[key] || def;
                     });
                     $('muMaxSize').value = config.MaxFileSizeMb || 0;
+                    $('muChunkSize').value = config.ChunkSizeMb || 8;
                     Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
                 });
             }
@@ -132,6 +138,7 @@
                 ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
                     Object.keys(TEXT).forEach(function (key) { config[key] = $(TEXT[key]).value.trim(); });
                     config.MaxFileSizeMb = parseInt($('muMaxSize').value, 10) || 0;
+                    config.ChunkSizeMb = Math.min(90, Math.max(1, parseInt($('muChunkSize').value, 10) || 8));
                     Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
                     return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
                 }).then(function (result) {
