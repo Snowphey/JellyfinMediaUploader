@@ -5,7 +5,7 @@ services:
   plugin-builder:
     build: ./Jellyfin.Plugin.MediaUploader
     volumes:
-      - ./jellyfin/config/plugins/MediaUploader_1.0.0.0:/plugin-out
+      - ./jellyfin/config/plugins/MediaUploader_1.1.0.0:/plugin-out
     restart: "no"
 
   jellyfin:
@@ -30,6 +30,7 @@ services:
       # Pas de ":ro" ici : le plugin doit pouvoir écrire dans ces dossiers.
       - ./media/music:/media/music
       - ./media/movies:/media/movies
+      - ./media/shows:/media/shows
     depends_on:
       plugin-builder:
         condition: service_completed_successfully

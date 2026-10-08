@@ -14,7 +14,8 @@ Jellyfin.Plugin.MediaUploader/        # racine du dépôt cloné
 ├── jellyfin/                           # config et cache de Jellyfin (créés au lancement)
 └── media/
     ├── music/                          # bibliothèque musique
-    └── movies/                         # bibliothèque films
+    ├── movies/                         # bibliothèque films
+    └── shows/                          # bibliothèque séries et animés
 ```
 
 ## 1. Lancer
@@ -24,7 +25,7 @@ cd Jellyfin.Plugin.MediaUploader   # racine du dépôt cloné
 docker compose up -d --build
 ```
 
-Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.0.0.0/`,
+Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.1.0.0/`,
 puis démarre Jellyfin. Suivre les logs : `docker compose logs -f jellyfin`.
 
 Si le build du plugin échoue lancez
@@ -33,9 +34,10 @@ Si le build du plugin échoue lancez
 ## 2. Configurer Jellyfin (première fois)
 
 1. Ouvrez `http://IP_DU_SERVEUR:8096` et passez l'assistant de démarrage.
-2. Ajoutez deux bibliothèques :
+2. Ajoutez vos bibliothèques :
    - Musique : dossier `/media/music`
    - Films : dossier `/media/movies`
+   - Séries et animés : dossier `/media/shows`
 3. Tableau de bord > Extensions : « Media Uploader » doit apparaître.
    Sinon : `docker compose restart jellyfin`.
 
@@ -45,6 +47,7 @@ Tableau de bord > Extensions > **Media Uploader** (clic sur la fiche du plugin) 
 
 - Dossier musique : `/media/music`
 - Dossier films : `/media/movies`
+- Dossier séries et animés : `/media/shows`
 
 Ce sont des chemins vus depuis le conteneur, pas ceux de l'hôte. Cliquez sur « Enregistrer les paramètres ».
 Le reste (rangement `auto`/`flat`, extraction de pochette, autorisation des non-admins, extensions,
@@ -58,6 +61,7 @@ Si la page ne s'ouvre pas, vous pouvez écrire la config à la main dans
 <PluginConfiguration>
   <MusicPath>/media/music</MusicPath>
   <MoviesPath>/media/movies</MoviesPath>
+  <ShowsPath>/media/shows</ShowsPath>
 </PluginConfiguration>
 ```
 
@@ -69,16 +73,27 @@ normale : le plugin est installé à la main, il n'est dans aucun dépôt.
 ## 3 bis. Envoyer des fichiers (tous les utilisateurs)
 
 La page d'upload est sur `http://IP_DU_SERVEUR:8096/MediaUploader/Ui` : tout utilisateur connecté à Jellyfin
-(dans le même navigateur) peut l'utiliser, sans accès au tableau de bord. Glissez des fichiers ou des dossiers,
-tout part un par un avec progression et destination affichée.
+(dans le même navigateur) peut l'utiliser, sans accès au tableau de bord. Glissez des fichiers ou des dossiers (ou « Choisir un dossier »), choisissez le type si besoin, puis **Analyser**.
+
+1. Le serveur reçoit les fichiers (progression, reprise automatique en cas de coupure) et les analyse. **Rien n'entre encore dans la bibliothèque.**
+2. L'**aperçu** regroupe les fichiers : un groupe par album, par film (avec ses sous-titres) et par série (avec ses saisons), chacun avec son dossier de destination
+   et l'état *Prêt* ou *À vérifier*. Les groupes *Prêt* sont cochés d'office ; ceux à vérifier attendent que vous les corrigiez (**Modifier** pour tout le groupe,
+   ✎ pour un fichier) puis les cochiez.
+3. Pour les **sous-titres**, l'aperçu dit à quelle vidéo chacun est associé et sous quel nom il sera enregistré (Jellyfin exige qu'il commence par le nom de la vidéo).
+4. **Confirmer et envoyer** range les fichiers cochés ; **Tout annuler** supprime le lot sans rien ranger.
 
 Comment le plugin range les fichiers (sans que vous saisissiez quoi que ce soit) :
 
 - **Musique** : artiste, album et pochette sont lus dans les tags du fichier → `Artiste/Album/fichier` et `cover.jpg`.
-  Sans artiste ni album dans les tags, le fichier va à la racine du dossier musique.
+  Sans tags, les deux dossiers parents d'un dossier déposé (`Artiste/Album/01.flac`) servent ; sinon le fichier va à la racine.
 - **Films** : titre et année sont lus dans le nom du fichier (`Titre (2019).mkv`, `Titre.2019.1080p.BluRay-GRP.mkv`,
-  `Titre [2019]`…) → `Titre (2019)/fichier`. Si l'année n'est pas trouvée, le fichier va à la racine du dossier films.
-  Les sous-titres (`Titre (2019).fr.srt`) suivent le film.
+  `Titre [2019]`…) → `Titre (2019)/fichier`. Sinon le dossier parent `Titre (2019)/` est essayé, puis la racine du dossier films.
+- **Séries et animés** : `S01E02`, `1x02`, `Season 1 Episode 2` dans le nom, ou les dossiers `Série (2019)/Season 2/05 - Titre.mkv` d'un dossier déposé →
+  `Série (2019)/Season 02/fichier`. Les animés numérotés sans saison (`[Groupe] Titre - 05 [1080p].mkv`) ne sont reconnus que si vous choisissez
+  « Série / animé » (saison 1 supposée, signalée), pour ne pas prendre un film pour un épisode.
+- **Sous-titres** (`.srt .ass .ssa .vtt .sub .sup`) : rattachés à la vidéo du même film ou du même épisode et renommés pour la suivre.
+
+Tout cela est réglable : voir « Règles de détection » dans le README (Tableau de bord > Extensions > Media Uploader).
 
 ### Mettre la page dans l'accueil (plugins communautaires)
 
@@ -107,7 +122,8 @@ Ces plugins sont tiers : ils suivent chacun leur propre rythme de compatibilité
 ## 4. Utiliser l'API
 
 1. Tableau de bord > Clés API > créer une clé.
-2. Tester (le type, l'artiste, l'album, le titre et l'année sont déduits du fichier ; ajoutez `-F artist=... -F album=...` pour les forcer) :
+2. Tester (le type, l'artiste, l'album, le titre, l'année, la saison sont déduits du fichier ; ajoutez `-F artist=... -F album=...`, `-F type=series -F title=... -F season=2` pour les forcer).
+   L'API range tout de suite, sans aperçu :
 
 ```bash
 curl -X POST "http://localhost:8096/MediaUploader/Upload" \
@@ -131,9 +147,13 @@ docker compose restart jellyfin
 |---|---|
 | Le plugin n'apparaît pas | Mauvaise version de Jellyfin (le plugin est compilé pour 12.1) ou pas de redémarrage. Regardez `docker compose logs jellyfin`. |
 | Erreur 500 / « read-only file system » à l'upload | Volume média monté avec `:ro`, ou dossier non inscriptible pour l'utilisateur du conteneur. |
+| « Le dossier séries et animés n'est pas configuré » | Renseignez le dossier séries (`/media/shows`) dans les paramètres du plugin. |
 | Erreur 400 « dossier non configuré » | Chemins du plugin non renseignés (utilisez `/media/music` et `/media/movies`). |
+| Un épisode est pris pour un film (ou l'inverse) | Choisissez le type « Série / animé » ou « Film » dans la page, ou corrigez le groupe dans l'aperçu ; ou ajustez les règles de détection. |
+| Un sous-titre n'apparaît pas dans le lecteur | Son nom ne commence pas par celui de la vidéo : l'aperçu montre l'association proposée. Vérifiez aussi le scan de la bibliothèque. |
+| « Lot inconnu ou expiré » | Le lot a dépassé sa durée de conservation ou Jellyfin a redémarré : recommencez l'analyse. |
 | Envoi coupé sur un gros fichier derrière un reverse proxy | Augmentez `client_max_body_size` et les timeouts (nginx), ou les limites de votre tunnel. |
-| Un film atterrit à la racine | Le nom ne contient pas d'année reconnaissable (`Titre (2019).mkv`). Renommez-le ou passez `-F title=... -F year=...` à l'API. |
+| Un film atterrit à la racine | Le nom ne contient pas d'année reconnaissable (`Titre (2019).mkv`). Corrigez-le dans l'aperçu, ajoutez une règle, ou passez `-F title=... -F year=...` à l'API. |
 | Une musique atterrit à la racine | Le fichier n'a ni artiste ni album dans ses tags. Normal : Jellyfin la reconnaîtra quand même via le nom du fichier. |
 | Les médias n'apparaissent pas | Lancez un scan : Tableau de bord > Bibliothèques > Scanner, ou `POST /MediaUploader/Scan`. |
 

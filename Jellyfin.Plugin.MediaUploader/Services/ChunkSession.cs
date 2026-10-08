@@ -17,8 +17,8 @@ public sealed class ChunkSession
     /// <summary>Gets le dossier racine de destination.</summary>
     public required string Root { get; init; }
 
-    /// <summary>Gets a value indicating whether il s'agit de musique (sinon film).</summary>
-    public required bool IsMusic { get; init; }
+    /// <summary>Gets le type demandé : "auto", "music", "movie" ou "series".</summary>
+    public required string Mode { get; init; }
 
     /// <summary>Gets le nom d'origine du fichier.</summary>
     public required string OriginalName { get; init; }
@@ -32,11 +32,17 @@ public sealed class ChunkSession
     /// <summary>Gets l'album imposé.</summary>
     public string? Album { get; init; }
 
-    /// <summary>Gets le titre de film imposé.</summary>
+    /// <summary>Gets le titre imposé (film ou série).</summary>
     public string? Title { get; init; }
 
-    /// <summary>Gets l'année de film imposée.</summary>
+    /// <summary>Gets l'année imposée.</summary>
     public int? Year { get; init; }
+
+    /// <summary>Gets la saison imposée.</summary>
+    public int? Season { get; init; }
+
+    /// <summary>Gets a value indicating whether un doublon de musique est enregistré quand même.</summary>
+    public bool? Force { get; init; }
 
     /// <summary>Gets le scan demandé après envoi (null = valeur de la config).</summary>
     public bool? Scan { get; init; }

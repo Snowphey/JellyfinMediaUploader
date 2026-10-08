@@ -60,6 +60,36 @@ public static class PathBuilder
     }
 
     /// <summary>
+    /// Dossier d'un morceau : Artiste/Album (ou la racine si on ne sait rien).
+    /// </summary>
+    /// <param name="root">Racine musique.</param>
+    /// <param name="artist">Artiste.</param>
+    /// <param name="album">Album.</param>
+    /// <returns>Dossier.</returns>
+    public static string MusicDir(string root, string? artist, string? album)
+    {
+        var hasArtist = !string.IsNullOrWhiteSpace(artist);
+        var hasAlbum = !string.IsNullOrWhiteSpace(album);
+
+        if (!hasArtist && !hasAlbum)
+        {
+            return root;
+        }
+
+        if (!hasAlbum)
+        {
+            return Path.Combine(root, SanitizeSegment(artist, "Unknown Artist"));
+        }
+
+        if (!hasArtist)
+        {
+            return Path.Combine(root, SanitizeSegment(album, "Unknown Album"));
+        }
+
+        return Path.Combine(root, SanitizeSegment(artist, "Unknown Artist"), SanitizeSegment(album, "Unknown Album"));
+    }
+
+    /// <summary>
     /// Chemin d'un morceau : Artiste/Album/fichier.
     /// </summary>
     /// <param name="root">Racine musique.</param>
@@ -69,30 +99,32 @@ public static class PathBuilder
     /// <returns>Chemin complet.</returns>
     public static string Music(string root, string? artist, string? album, string fileName)
     {
-        var file = SanitizeSegment(fileName, "file");
-        var hasArtist = !string.IsNullOrWhiteSpace(artist);
-        var hasAlbum = !string.IsNullOrWhiteSpace(album);
+        return Path.Combine(MusicDir(root, artist, album), SanitizeSegment(fileName, "file"));
+    }
 
-        if (!hasArtist && !hasAlbum)
-        {
-            return Path.Combine(root, file);
-        }
+    /// <summary>
+    /// Nom de dossier « Titre (Année) » (ou « Titre » sans année plausible).
+    /// </summary>
+    /// <param name="title">Titre.</param>
+    /// <param name="year">Année.</param>
+    /// <param name="fallback">Valeur si le titre est vide.</param>
+    /// <returns>Nom de dossier.</returns>
+    public static string TitleFolder(string? title, int? year, string fallback)
+    {
+        var safeTitle = SanitizeSegment(title, fallback);
+        return year is > 1800 and < 2200 ? $"{safeTitle} ({year})" : safeTitle;
+    }
 
-        if (!hasAlbum)
-        {
-            return Path.Combine(root, SanitizeSegment(artist, "Unknown Artist"), file);
-        }
-
-        if (!hasArtist)
-        {
-            return Path.Combine(root, SanitizeSegment(album, "Unknown Album"), file);
-        }
-
-        return Path.Combine(
-            root,
-            SanitizeSegment(artist, "Unknown Artist"),
-            SanitizeSegment(album, "Unknown Album"),
-            file);
+    /// <summary>
+    /// Dossier d'un film : Titre (Année).
+    /// </summary>
+    /// <param name="root">Racine films.</param>
+    /// <param name="title">Titre.</param>
+    /// <param name="year">Année (optionnelle).</param>
+    /// <returns>Dossier.</returns>
+    public static string MovieDir(string root, string title, int? year)
+    {
+        return Path.Combine(root, TitleFolder(title, year, "Unknown Movie"));
     }
 
     /// <summary>
@@ -105,8 +137,34 @@ public static class PathBuilder
     /// <returns>Chemin complet.</returns>
     public static string Movie(string root, string title, int? year, string fileName)
     {
-        var safeTitle = SanitizeSegment(title, "Unknown Movie");
-        var folder = year is > 1800 and < 2200 ? $"{safeTitle} ({year})" : safeTitle;
-        return Path.Combine(root, folder, SanitizeSegment(fileName, "file"));
+        return Path.Combine(MovieDir(root, title, year), SanitizeSegment(fileName, "file"));
+    }
+
+    /// <summary>
+    /// Dossier d'une saison : Série (Année)/Season 01 (« Season 00 » pour les épisodes spéciaux).
+    /// </summary>
+    /// <param name="root">Racine séries.</param>
+    /// <param name="title">Titre de la série.</param>
+    /// <param name="year">Année (optionnelle).</param>
+    /// <param name="season">Saison (0 = spéciaux).</param>
+    /// <returns>Dossier.</returns>
+    public static string SeriesDir(string root, string title, int? year, int? season)
+    {
+        var show = Path.Combine(root, TitleFolder(title, year, "Unknown Series"));
+        return season is null ? show : Path.Combine(show, $"Season {season.Value:00}");
+    }
+
+    /// <summary>
+    /// Chemin d'un épisode : Série (Année)/Season 01/fichier (nom d'origine conservé).
+    /// </summary>
+    /// <param name="root">Racine séries.</param>
+    /// <param name="title">Titre de la série.</param>
+    /// <param name="year">Année (optionnelle).</param>
+    /// <param name="season">Saison.</param>
+    /// <param name="fileName">Nom du fichier.</param>
+    /// <returns>Chemin complet.</returns>
+    public static string Series(string root, string title, int? year, int? season, string fileName)
+    {
+        return Path.Combine(SeriesDir(root, title, year, season), SanitizeSegment(fileName, "file"));
     }
 }

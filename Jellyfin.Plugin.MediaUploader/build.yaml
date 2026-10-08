@@ -1,15 +1,16 @@
 ---
 name: "Media Uploader"
 guid: "7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41"
-version: "1.0.0.0"
+version: "1.1.0.0"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
 owner: "Snowphey"
-overview: "Upload de musiques et de films via interface web ou API."
+overview: "Upload de musiques, films et séries avec aperçu du rangement et règles configurables."
 description: >
-  Ajoute une page d'upload au tableau de bord et une API REST
-  (POST /MediaUploader/Upload) pour envoyer des fichiers dans les
-  bibliothèques musique et films, avec rangement automatique.
+  Ajoute une page d'upload (analyse des fichiers, aperçu groupé du rangement à
+  confirmer avant l'envoi) et une API REST pour envoyer des fichiers dans les
+  bibliothèques musique, films et séries/animés. La détection par nom de fichier
+  est configurable (expressions régulières).
 category: "General"
 artifacts:
   - "Jellyfin.Plugin.MediaUploader.dll"

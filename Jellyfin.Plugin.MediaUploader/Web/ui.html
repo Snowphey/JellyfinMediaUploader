@@ -12,56 +12,147 @@
   .muted { color: #9a9a9a; font-size: .9em; }
   .warn { color: #e57373; margin: .8em 0; }
   .row { display: flex; align-items: center; gap: .8em; margin: 1em 0; flex-wrap: wrap; }
-  select { background: #1c1c1c; color: #eee; border: 1px solid #444; border-radius: 4px; padding: .45em .6em; font: inherit; }
-  #drop { border: 2px dashed #666; border-radius: 10px; padding: 2.2em 1em; text-align: center; cursor: pointer; margin: 1em 0; transition: background .15s, border-color .15s; }
+  select, input[type=text], input[type=number] { background: #1c1c1c; color: #eee; border: 1px solid #444; border-radius: 4px; padding: .4em .55em; font: inherit; max-width: 100%; }
+  input[type=number] { width: 6em; }
+  #drop { border: 2px dashed #666; border-radius: 10px; padding: 2em 1em; text-align: center; cursor: pointer; margin: 1em 0; transition: background .15s, border-color .15s; }
   #drop.over { background: #1b2a33; border-color: #00a4dc; }
-  .item { padding: .55em 0; border-bottom: 1px solid #2c2c2c; }
-  .head { display: flex; justify-content: space-between; gap: 1em; }
-  .name { word-break: break-all; }
-  .state { white-space: nowrap; color: #9a9a9a; }
-  .state.done { color: #6fcf97; } .state.error { color: #e57373; } .state.skipped { color: #f2c94c; }
-  .dest { color: #9a9a9a; font-size: .85em; margin-top: .15em; word-break: break-all; }
-  progress { width: 100%; height: 8px; margin-top: .3em; }
-  button { background: #00a4dc; color: #fff; border: 0; border-radius: 4px; padding: .6em 1.3em; font: inherit; cursor: pointer; }
+  button { background: #00a4dc; color: #fff; border: 0; border-radius: 4px; padding: .55em 1.2em; font: inherit; cursor: pointer; }
   button.secondary { background: #333; }
-  button:disabled { opacity: .5; cursor: default; }
-  a.rm { color: #9a9a9a; text-decoration: none; margin-left: .4em; }
+  button.danger { background: #8e2f2f; }
+  button.small { padding: .25em .7em; font-size: .85em; }
+  button:disabled { opacity: .45; cursor: default; }
+  progress { width: 100%; height: 8px; }
+  .bar { position: sticky; top: 0; z-index: 5; background: #101010ee; padding: .7em 0; border-bottom: 1px solid #2c2c2c; margin-bottom: .8em; }
+  .bar .line { display: flex; gap: .7em; align-items: center; flex-wrap: wrap; }
+  .bar .grow { flex: 1; min-width: 12em; }
+  .group { border: 1px solid #2c2c2c; border-radius: 8px; margin: .7em 0; background: #161616; }
+  .group.review { border-color: #8a6d1d; }
+  .group.off { opacity: .6; }
+  .ghead { display: flex; gap: .7em; align-items: center; padding: .65em .8em; flex-wrap: wrap; }
+  .ghead input[type=checkbox] { width: 1.15em; height: 1.15em; }
+  .gtitle { font-weight: 500; flex: 1; min-width: 10em; word-break: break-word; cursor: pointer; }
+  .chip { font-size: .75em; padding: .15em .55em; border-radius: 99px; background: #2a2a2a; color: #bbb; white-space: nowrap; }
+  .chip.ready { background: #1d3a2a; color: #6fcf97; } .chip.review { background: #403517; color: #f2c94c; }
+  .chip.ignored { background: #3a2323; color: #e57373; } .chip.kind { background: #1f2d38; color: #7cc4e8; }
+  .gfolder { padding: 0 .8em .5em 2.7em; color: #9a9a9a; font-size: .85em; word-break: break-all; }
+  .gbody { border-top: 1px solid #2c2c2c; padding: .3em .8em .6em; }
+  .season { margin: .7em 0 .2em; color: #7cc4e8; font-size: .85em; text-transform: uppercase; letter-spacing: .04em; }
+  .item { padding: .45em 0; border-bottom: 1px solid #222; }
+  .item:last-child { border-bottom: 0; }
+  .item.sub { margin-left: 1.4em; }
+  .ihead { display: flex; justify-content: space-between; gap: .8em; align-items: baseline; }
+  .name { word-break: break-all; }
+  .state { white-space: nowrap; color: #9a9a9a; font-size: .85em; }
+  .state.done { color: #6fcf97; } .state.error, .state.skipped { color: #e57373; }
+  .dest { color: #9a9a9a; font-size: .85em; word-break: break-all; margin-top: .1em; }
+  .dest.new { color: #7cc4e8; }
+  .note { color: #f2c94c; font-size: .82em; margin-top: .1em; }
+  .pair { color: #b9a6e8; font-size: .85em; margin-top: .1em; word-break: break-all; }
+  .edit { background: #1d1d1d; border: 1px solid #333; border-radius: 6px; padding: .6em .8em; margin: .5em 0; display: flex; gap: .8em; flex-wrap: wrap; align-items: end; }
+  .edit label { display: flex; flex-direction: column; gap: .2em; font-size: .8em; color: #9a9a9a; }
+  .edit label.wide { flex: 1; min-width: 12em; }
+  .edit label.check { flex-direction: row; align-items: center; gap: .4em; }
+  a.act { color: #9a9a9a; text-decoration: none; margin-left: .5em; cursor: pointer; }
+  a.act:hover { color: #fff; }
+  .result.saved { color: #6fcf97; } .result.error, .result.skipped { color: #e57373; }
 </style>
 </head>
 <body>
 <h2>Envoyer des médias</h2>
-<div class="muted">Déposez vos fichiers : artiste, album, titre et année sont lus dans les tags (musique) ou le nom du fichier (films, ex. « Titre (2019).mkv »). Sans information, le fichier va à la racine de la bibliothèque.</div>
+<div class="muted">Déposez vos fichiers : le serveur les reçoit, lit les tags (musique) et les noms (films, séries, animés), puis vous montre où chaque fichier sera rangé. Rien n'entre dans la bibliothèque avant votre confirmation.</div>
 <div id="warn" class="warn" style="display:none"></div>
 
-<div class="row">
-  <label for="type">Type</label>
-  <select id="type">
-    <option value="">Auto (selon l'extension)</option>
-    <option value="music">Musique</option>
-    <option value="movie">Film</option>
-  </select>
+<datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist>
+
+<div id="pick">
+  <div class="row">
+    <label for="mode">Type</label>
+    <select id="mode">
+      <option value="auto">Auto (selon l'extension et le nom)</option>
+      <option value="music">Musique</option>
+      <option value="movie">Film</option>
+      <option value="series">Série / animé</option>
+    </select>
+    <span class="muted" id="modehint"></span>
+  </div>
+
+  <div id="drop">
+    <div>Glissez fichiers ou dossiers ici, ou cliquez pour choisir</div>
+    <div class="muted" style="margin-top:.4em">Un dossier déposé (ex. « Série/Season 2/ ») aide à reconnaître la série, la saison, l'artiste ou l'album.</div>
+    <input id="files" type="file" multiple style="display:none">
+    <input id="folder" type="file" webkitdirectory multiple style="display:none">
+  </div>
+  <div class="row"><button id="pickfolder" type="button" class="secondary small">Choisir un dossier…</button></div>
+
+  <div id="entries"></div>
+  <div class="row">
+    <button id="analyze" type="button">Analyser</button>
+    <button id="clear" type="button" class="secondary">Vider la liste</button>
+    <span id="pickinfo" class="muted"></span>
+  </div>
 </div>
 
-<div id="drop">
-  <div>Glissez fichiers ou dossiers ici, ou cliquez pour choisir</div>
-  <div class="muted" style="margin-top:.4em">Les fichiers partent un par un, découpés en morceaux (reprise automatique en cas de coupure) ; en cas d'échec, « Envoyer » ne renvoie que les échecs.</div>
-  <input id="files" type="file" multiple style="display:none">
+<div id="review" style="display:none">
+  <div class="bar">
+    <div class="line">
+      <strong id="sumtext"></strong>
+      <span class="grow"><progress id="recvbar" max="100" value="0"></progress><div class="muted" id="recvtext"></div></span>
+    </div>
+    <div class="line" style="margin-top:.5em">
+      <button id="commit" type="button">Confirmer et envoyer</button>
+      <button id="checkall" type="button" class="secondary small">Tout cocher</button>
+      <button id="uncheckall" type="button" class="secondary small">Tout décocher</button>
+      <button id="cancel" type="button" class="danger small">Tout annuler</button>
+      <span class="muted" id="ttlnote"></span>
+    </div>
+  </div>
+  <div id="groups"></div>
 </div>
 
-<div id="queue"></div>
-<div id="summary" class="muted" style="margin:1em 0"></div>
-<button id="send" type="button">Envoyer</button>
-<button id="clear" type="button" class="secondary">Vider la liste</button>
+<div id="done" style="display:none">
+  <div id="doneSummary" style="margin:1em 0"></div>
+  <div id="results"></div>
+  <div class="row"><button id="again" type="button">Nouveau lot</button></div>
+</div>
 
 <script>
 (function () {
   'use strict';
   var BASE = location.pathname.replace(/\/MediaUploader\/Ui.*$/i, '');
-  var queue = [];
-  var running = false;
-  var status = null;
-  var LABELS = { pending: 'En attente', uploading: 'Envoi…', done: 'Enregistré', skipped: 'Ignoré', error: 'Échec' };
   var $ = function (id) { return document.getElementById(id); };
+  var KINDS = { music: 'Musique', movie: 'Film', series: 'Série / animé', root: 'Racine', ignored: 'Ignoré' };
+  var STORE_KEY = 'mediauploader.batch';
+  var MAX_RETRIES = 4;
+
+  var S = {
+    status: null, entries: [],
+    batch: null, files: {}, plan: null, progress: {}, ups: {},
+    overrides: {}, include: {}, open: {}, edit: null, sel: {}, sugg: { artists: [], albums: {}, loaded: false, titles: {} },
+    phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, mode: 'auto'
+  };
+
+  // ---------- Utilitaires ----------
+  function pick(o, n) { return o ? (o[n] !== undefined ? o[n] : o[n.charAt(0).toLowerCase() + n.slice(1)]) : undefined; }
+  function list(o) { return o || []; }
+  function mb(n) { return (n / 1048576).toFixed(n >= 104857600 ? 0 : 1) + ' Mo'; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function errText(res) { return 'Erreur ' + res.status + ' : ' + ((res.body && (pick(res.body, 'error') || res.body.title)) || res.text || 'inconnue'); }
+
+  function h(tag, attrs, children) {
+    var el = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k];
+      if (v === null || v === undefined || v === false) { return; }
+      if (k === 'class') { el.className = v; }
+      else if (k === 'text') { el.textContent = v; }
+      else if (k.slice(0, 2) === 'on') { el.addEventListener(k.slice(2), v); }
+      else if (k === 'value') { el.value = v; }
+      else if (k === 'checked' || k === 'disabled' || k === 'selected') { el[k] = !!v; }
+      else { el.setAttribute(k, v === true ? '' : v); }
+    });
+    (children || []).forEach(function (c) { if (c) { el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } });
+    return el;
+  }
 
   function token() {
     try {
@@ -75,84 +166,62 @@
     } catch (e) { return null; }
   }
 
-  function api(method, path, formData, onProgress, headers) {
+  function api(method, path, body, onProgress, headers) {
     return new Promise(function (resolve, reject) {
       var t = token();
       if (!t) { reject(new Error('Session Jellyfin introuvable : connectez-vous puis rechargez.')); return; }
       var xhr = new XMLHttpRequest();
       xhr.open(method, BASE + '/' + path);
       xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
-      if (headers) { Object.keys(headers).forEach(function (h) { xhr.setRequestHeader(h, headers[h]); }); }
+      var payload = body || null;
+      if (body && typeof body === 'object' && !(body instanceof Blob)) {
+        payload = JSON.stringify(body);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+      }
+      if (headers) { Object.keys(headers).forEach(function (k) { xhr.setRequestHeader(k, headers[k]); }); }
       if (onProgress) {
         xhr.upload.onprogress = function (ev) { if (ev.lengthComputable) { onProgress(Math.round(ev.loaded / ev.total * 100)); } };
       }
       xhr.onload = function () {
-        var body = null;
-        try { body = JSON.parse(xhr.responseText); } catch (e) { body = null; }
-        resolve({ status: xhr.status, body: body, text: xhr.responseText });
+        var parsed = null;
+        try { parsed = JSON.parse(xhr.responseText); } catch (e) { parsed = null; }
+        resolve({ status: xhr.status, body: parsed, text: xhr.responseText });
       };
       xhr.onerror = function () { reject(new Error('Erreur réseau')); };
-      xhr.send(formData || null);
+      xhr.send(payload);
     });
   }
 
-  function pick(o, n) { return o ? (o[n] !== undefined ? o[n] : o[n.charAt(0).toLowerCase() + n.slice(1)]) : undefined; }
-  function extOf(name) { var i = name.lastIndexOf('.'); return i < 0 ? '' : name.slice(i).toLowerCase(); }
-  function list(s) { return (s || '').split(',').map(function (x) { x = x.trim().toLowerCase(); return x && x[0] !== '.' ? '.' + x : x; }).filter(Boolean); }
-
-  function render() {
-    var box = $('queue');
-    box.textContent = '';
-    queue.forEach(function (item, index) {
-      var row = document.createElement('div'); row.className = 'item';
-      var head = document.createElement('div'); head.className = 'head';
-      var name = document.createElement('span'); name.className = 'name';
-      name.textContent = item.file.name + ' (' + (item.file.size / 1048576).toFixed(1) + ' Mo)';
-      var st = document.createElement('span'); st.className = 'state ' + item.status;
-      st.textContent = LABELS[item.status] + (item.status === 'uploading' ? ' ' + item.pct + ' %' : '');
-      if (item.status === 'pending' && !running) {
-        var rm = document.createElement('a'); rm.href = '#'; rm.className = 'rm'; rm.textContent = '✕'; rm.title = 'Retirer';
-        rm.addEventListener('click', function (e) { e.preventDefault(); queue.splice(index, 1); render(); });
-        st.appendChild(rm);
-      }
-      head.appendChild(name); head.appendChild(st); row.appendChild(head);
-      if (item.status === 'uploading') {
-        var bar = document.createElement('progress'); bar.max = 100; bar.value = item.pct; row.appendChild(bar);
-      }
-      if (item.dest) {
-        var d = document.createElement('div'); d.className = 'dest'; d.textContent = '→ ' + item.dest; row.appendChild(d);
-      }
-      if (item.message) {
-        var m = document.createElement('div'); m.className = 'dest'; m.textContent = item.message; row.appendChild(m);
-      }
-      box.appendChild(row);
-    });
-    var done = queue.filter(function (i) { return i.status === 'done'; }).length;
-    var bad = queue.filter(function (i) { return i.status === 'error' || i.status === 'skipped'; }).length;
-    $('summary').textContent = queue.length ? done + ' / ' + queue.length + ' enregistré(s)' + (bad ? ', ' + bad + ' à revoir' : '') : '';
-    $('send').disabled = running || !(status && pick(status, 'CanUpload'));
-    $('clear').disabled = running;
+  // Rendu regroupé : au plus un rendu à la fois, et pas pendant la saisie dans un formulaire.
+  var renderTimer = null;
+  function scheduleRender() {
+    if (renderTimer) { return; }
+    renderTimer = setTimeout(function () {
+      renderTimer = null;
+      var a = document.activeElement;
+      if (a && a.closest && a.closest('.edit') && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) { scheduleRender(); return; }
+      render();
+    }, 120);
   }
 
-  function addFiles(files) {
-    for (var i = 0; i < files.length; i++) {
-      queue.push({ file: files[i], status: 'pending', pct: 0, message: '', dest: '' });
-    }
+  // ---------- Étape 1 : sélection ----------
+  function entryPath(file) { return (file.webkitRelativePath || '').replace(/^\/+/, '') || file.name; }
+
+  function addEntries(items) {
+    items.forEach(function (it) { S.entries.push(it); });
     render();
   }
 
-  // Dossiers déposés : on descend récursivement (API webkitGetAsEntry).
   function walk(entry, out) {
     return new Promise(function (resolve) {
       if (entry.isFile) {
-        entry.file(function (f) { out.push(f); resolve(); }, function () { resolve(); });
+        entry.file(function (f) { out.push({ file: f, path: (entry.fullPath || f.name).replace(/^\/+/, '') }); resolve(); }, function () { resolve(); });
       } else if (entry.isDirectory) {
         var reader = entry.createReader(), all = [];
         (function next() {
           reader.readEntries(function (batch) {
-            if (!batch.length) {
-              Promise.all(all.map(function (e) { return walk(e, out); })).then(resolve);
-            } else { all = all.concat(Array.prototype.slice.call(batch)); next(); }
+            if (!batch.length) { Promise.all(all.map(function (e) { return walk(e, out); })).then(resolve); }
+            else { all = all.concat(Array.prototype.slice.call(batch)); next(); }
           }, function () { resolve(); });
         })();
       } else { resolve(); }
@@ -169,50 +238,114 @@
         var entry = items[i].webkitGetAsEntry();
         if (entry) { jobs.push(walk(entry, out)); }
       }
-      Promise.all(jobs).then(function () { addFiles(out); });
+      Promise.all(jobs).then(function () { addEntries(out); });
     } else {
-      addFiles(e.dataTransfer.files);
+      addEntries(Array.prototype.slice.call(e.dataTransfer.files).map(function (f) { return { file: f, path: entryPath(f) }; }));
     }
   }
 
-  // Type envoyé : choix manuel, sinon rien (le serveur déduit de l'extension)
-  // sauf pour les annexes ambiguës (.jpg, .png, .nfo) qui suivent la majorité du lot.
-  function typeFor(item, mode, majority) {
-    if (mode) { return mode; }
-    var ext = extOf(item.file.name);
-    var audio = list(pick(status, 'AudioExtensions')), video = list(pick(status, 'VideoExtensions'));
-    var known = audio.indexOf(ext) >= 0 || video.indexOf(ext) >= 0 || ['.lrc', '.srt', '.ass', '.ssa', '.sub', '.vtt', '.sup'].indexOf(ext) >= 0;
-    return known ? '' : majority;
+  function renderPick() {
+    var box = $('entries');
+    box.textContent = '';
+    var total = 0;
+    S.entries.slice(0, 200).forEach(function (en, i) {
+      total += en.file.size;
+      box.appendChild(h('div', { class: 'item' }, [
+        h('div', { class: 'ihead' }, [
+          h('span', { class: 'name', text: en.path + ' (' + mb(en.file.size) + ')' }),
+          h('span', { class: 'state' }, [h('a', { class: 'act', title: 'Retirer', text: '✕', onclick: function (e) { e.preventDefault(); S.entries.splice(i, 1); render(); } })])
+        ])
+      ]));
+    });
+    if (S.entries.length > 200) { box.appendChild(h('div', { class: 'muted', text: '… et ' + (S.entries.length - 200) + ' autres fichiers.' })); }
+    $('pickinfo').textContent = S.entries.length ? S.entries.length + ' fichier(s) · ' + mb(S.entries.reduce(function (a, e) { return a + e.file.size; }, 0)) : '';
+    $('analyze').disabled = !S.entries.length || !(S.status && pick(S.status, 'CanUpload'));
+    $('clear').disabled = !S.entries.length;
+    var hint = '';
+    if (S.status && !pick(S.status, 'ShowsConfigured')) { hint = 'Séries/animés : dossier non configuré.'; }
+    $('modehint').textContent = hint;
   }
 
-  var MAX_RETRIES = 4;
-  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function errText(res) { return 'Erreur ' + res.status + ' : ' + ((res.body && (res.body.error || res.body.title)) || res.text || 'inconnue'); }
+  // ---------- Étape 2 : lot, réception, plan ----------
+  function applyBatch(body) {
+    S.plan = pick(body, 'Plan');
+    S.progress = pick(body, 'Progress') || {};
+  }
+
+  function planItems() {
+    var out = [];
+    list(S.plan && pick(S.plan, 'Groups')).forEach(function (g) { list(pick(g, 'Items')).forEach(function (i) { out.push(i); }); });
+    return out;
+  }
+  function itemById(id) { return planItems().filter(function (i) { return pick(i, 'Id') === id; })[0]; }
+  function rejected(item) { var s = pick(item, 'Status'); return s === 'skipped' || s === 'error'; }
+  function complete(id) { var p = S.progress[id]; return !!(p && pick(p, 'Complete')); }
+
+  function startBatch() {
+    var files = S.entries.slice();
+    var mode = $('mode').value;
+    S.mode = mode;
+    $('analyze').disabled = true;
+    return api('POST', 'MediaUploader/Batch', { mode: mode, files: files.map(function (e) { return { path: e.path, size: e.file.size }; }) }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      var ids = pick(res.body, 'Ids') || [];
+      S.batch = { id: pick(res.body, 'BatchId'), chunk: pick(res.body, 'ChunkSize') };
+      S.files = {}; S.ups = {}; S.overrides = {}; S.include = {}; S.open = {}; S.sel = {}; S.results = []; S.autoDone = false; S.edit = null;
+      ids.forEach(function (id, i) { S.files[id] = files[i]; S.ups[id] = { status: 'waiting', pct: 0, message: '' }; });
+      applyBatch(res.body);
+      S.entries = [];
+      S.phase = 'review';
+      try { localStorage.setItem(STORE_KEY, S.batch.id); } catch (e) { /* stockage indisponible */ }
+      render();
+      pump();
+    }).catch(function (err) {
+      $('analyze').disabled = false;
+      showWarn(err.message);
+    });
+  }
+
+  function showWarn(text) { $('warn').textContent = text || ''; $('warn').style.display = text ? '' : 'none'; }
+
+  function refreshBatch() {
+    if (!S.batch) { return Promise.resolve(); }
+    return api('GET', 'MediaUploader/Batch/' + S.batch.id).then(function (res) {
+      if (res.status === 404) { throw new Error('Lot expiré ou introuvable : recommencez.'); }
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      applyBatch(res.body);
+      scheduleRender();
+      pump();
+      maybeAutoCommit();
+    }).catch(function (err) { showWarn(err.message); });
+  }
+
+  var refreshTimer = null;
+  function scheduleRefresh() {
+    if (refreshTimer) { return; }
+    refreshTimer = setTimeout(function () { refreshTimer = null; refreshBatch(); }, 500);
+  }
 
   // Envoi d'un morceau avec reprises : en cas d'erreur réseau ou 5xx, on redemande au serveur où il en est.
-  function sendChunk(item, id, offset, end) {
-    var attempt = 0;
+  function sendChunk(id, item, offset, end) {
+    var up = S.ups[id], attempt = 0, base = 'MediaUploader/Batch/' + S.batch.id + '/Items/' + id;
     function once() {
-      var blob = item.file.slice(offset, end);
-      return api('PUT', 'MediaUploader/Upload/' + id + '/Chunk?offset=' + offset, blob, function (p) {
-        item.pct = Math.min(99, Math.round((offset + (end - offset) * p / 100) / item.file.size * 100));
-        render();
+      return api('PUT', base + '/Chunk?offset=' + offset, item.file.slice(offset, end), function (p) {
+        up.pct = Math.min(99, Math.round((offset + (end - offset) * p / 100) / Math.max(1, item.file.size) * 100));
+        scheduleRender();
       }, { 'Content-Type': 'application/octet-stream' }).then(function (res) {
         if (res.status >= 200 && res.status < 300) { return; }
-        if (res.status === 409 && res.body && pick(res.body, 'received') === end) { return; } // le morceau était déjà arrivé
+        if (res.status === 409 && res.body && pick(res.body, 'received') === end) { return; }
         if (res.status >= 500 && attempt < MAX_RETRIES) { return retry(); }
-        throw new Error(errText(res));
-      }, function (err) {
-        if (attempt < MAX_RETRIES) { return retry(); }
-        throw err;
-      });
+        var e = new Error(errText(res));
+        e.ignored = res.status === 409 && /ignoré/.test((res.body && pick(res.body, 'error')) || '');
+        throw e;
+      }, function (err) { if (attempt < MAX_RETRIES) { return retry(); } throw err; });
     }
     function retry() {
       attempt++;
-      item.message = 'Connexion instable, nouvelle tentative (' + attempt + '/' + MAX_RETRIES + ')…';
-      render();
+      up.message = 'Connexion instable, nouvelle tentative (' + attempt + '/' + MAX_RETRIES + ')…';
+      scheduleRender();
       return sleep(1000 * attempt).then(function () {
-        return api('GET', 'MediaUploader/Upload/' + id).then(function (st) {
+        return api('GET', base).then(function (st) {
           if (st.status === 200 && pick(st.body, 'Received') === end) { return; }
           if (st.status === 200 && pick(st.body, 'Received') !== offset) { throw new Error('Reprise impossible (offset serveur inattendu).'); }
           return once();
@@ -222,95 +355,548 @@
     return once();
   }
 
-  function uploadOne(item, type) {
-    item.status = 'uploading'; item.pct = 0; item.message = ''; item.dest = '';
-    render();
-    var id = null;
-    var chunk = (parseInt(pick(status, 'ChunkSizeMb'), 10) || 8) * 1048576;
-    var start = { fileName: item.file.name, size: item.file.size, type: type || null, scan: false };
-
-    return api('POST', 'MediaUploader/Upload/Start', JSON.stringify(start), null, { 'Content-Type': 'application/json' }).then(function (res) {
-      if (res.status === 403) { throw new Error('Envoi non autorisé pour ce compte.'); }
-      if (res.status !== 200 || !res.body) {
-        var e = new Error(errText(res));
-        e.skipped = res.status === 400 && res.body && res.body.status === 'skipped';
-        if (e.skipped && res.body.error) { e.message = res.body.error; }
-        throw e;
-      }
-      id = pick(res.body, 'UploadId');
-      chunk = pick(res.body, 'ChunkSize') || chunk;
-      var offsets = [];
-      for (var o = 0; o < item.file.size; o += chunk) { offsets.push(o); }
-      var chain = Promise.resolve();
-      offsets.forEach(function (o) {
-        chain = chain.then(function () { return sendChunk(item, id, o, Math.min(o + chunk, item.file.size)); });
-      });
-      return chain;
-    }).then(function () {
-      item.message = '';
-      return api('POST', 'MediaUploader/Upload/' + id + '/Complete');
+  function uploadItem(id) {
+    var item = S.files[id], up = S.ups[id];
+    up.status = 'uploading'; up.pct = 0; up.message = '';
+    scheduleRender();
+    var chunk = S.batch.chunk || 8 * 1048576;
+    var chain = Promise.resolve();
+    for (var o = 0; o < item.file.size; o += chunk) {
+      (function (off) { chain = chain.then(function () { return sendChunk(id, item, off, Math.min(off + chunk, item.file.size)); }); })(o);
+    }
+    return chain.then(function () {
+      return api('POST', 'MediaUploader/Batch/' + S.batch.id + '/Items/' + id + '/Complete');
     }).then(function (res) {
-      if (res.status >= 200 && res.status < 300 && res.body) {
-        var r = (pick(res.body, 'Files') || [])[0];
-        var st = r ? pick(r, 'Status') : 'error';
-        item.status = st === 'saved' ? 'done' : (st === 'skipped' ? 'skipped' : 'error');
-        item.message = (r && pick(r, 'Message')) || (r ? '' : 'Réponse vide');
-        item.dest = (r && pick(r, 'Destination')) || '';
-      } else {
-        throw new Error(errText(res));
-      }
+      if (res.status !== 200) { throw new Error(errText(res)); }
+      up.status = 'done'; up.pct = 100; up.message = '';
+      S.progress[id] = { Received: item.file.size, Size: item.file.size, Complete: true };
+      scheduleRefresh();
     }).catch(function (err) {
-      item.status = err.skipped ? 'skipped' : 'error';
-      item.message = err.message;
-      if (id) { api('DELETE', 'MediaUploader/Upload/' + id).catch(function () {}); }
+      up.status = err.ignored ? 'ignored' : 'error';
+      up.message = err.message;
     });
   }
 
-  function run() {
-    var todo = queue.filter(function (i) { return i.status === 'pending' || i.status === 'error'; });
-    if (!todo.length) { $('summary').textContent = 'Aucun fichier à envoyer.'; return; }
-    var mode = $('type').value;
+  function nextToUpload() {
+    var ids = Object.keys(S.files);
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i], up = S.ups[id], item = itemById(id);
+      if (up && up.status === 'waiting' && item && !rejected(item)) { return id; }
+    }
+    return null;
+  }
 
-    var audio = list(pick(status, 'AudioExtensions')), video = list(pick(status, 'VideoExtensions'));
-    var nA = 0, nV = 0;
-    todo.forEach(function (i) { var e = extOf(i.file.name); if (audio.indexOf(e) >= 0) { nA++; } else if (video.indexOf(e) >= 0) { nV++; } });
-    var majority = nV > nA ? 'movie' : 'music';
+  function pump() {
+    if (S.pumping || !S.batch) { return; }
+    S.pumping = true;
+    (function next() {
+      var id = S.batch && nextToUpload();
+      if (!id) { S.pumping = false; render(); maybeAutoCommit(); return; }
+      uploadItem(id).then(function () { render(); next(); });
+    })();
+  }
 
-    running = true;
-    var saved = false, chain = Promise.resolve();
-    todo.forEach(function (item) {
-      chain = chain.then(function () {
-        return uploadOne(item, typeFor(item, mode, majority)).then(function () { if (item.status === 'done') { saved = true; } render(); });
-      });
+  // ---------- Autocomplétion : artistes et albums déjà présents (bibliothèque + lot) ----------
+  function fillList(id, values) {
+    var dl = $(id), seen = {}, out = [];
+    values.forEach(function (v) { var k = (v || '').trim().toLowerCase(); if (k && !seen[k]) { seen[k] = true; out.push(v.trim()); } });
+    dl.textContent = '';
+    out.sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; }).slice(0, 800).forEach(function (v) { dl.appendChild(h('option', { value: v })); });
+  }
+  function planValues(field, artist) {
+    var out = [], a = (artist || '').trim().toLowerCase();
+    planItems().forEach(function (i) {
+      var v = pick(i, field);
+      if (!v || (field === 'Album' && a && (pick(i, 'Artist') || '').toLowerCase() !== a)) { return; }
+      out.push(v);
     });
-    chain.then(function () {
-      if (saved && pick(status, 'AutoScan')) { return api('POST', 'MediaUploader/Scan').catch(function () {}); }
-    }).then(function () { running = false; render(); });
+    return out;
+  }
+  function refreshAlbumList(artist) {
+    var key = (artist || '').trim().toLowerCase();
+    fillList('dl-albums', (S.sugg.albums[key] || []).concat(planValues('Album', artist)));
+  }
+  function loadAlbums(artist) {
+    var key = (artist || '').trim().toLowerCase();
+    if (!key || S.sugg.albums[key] !== undefined) { refreshAlbumList(artist); return; }
+    S.sugg.albums[key] = [];
+    api('GET', 'MediaUploader/Music/Suggestions?artist=' + encodeURIComponent(artist.trim())).then(function (res) {
+      if (res.status === 200 && res.body) { S.sugg.albums[key] = pick(res.body, 'Albums') || []; }
+      refreshAlbumList(artist);
+    }).catch(function () { refreshAlbumList(artist); });
+  }
+  function prepareSuggestions(artist) {
+    fillList('dl-artists', S.sugg.artists.concat(planValues('Artist')));
+    if (!S.sugg.loaded) {
+      S.sugg.loaded = true;
+      api('GET', 'MediaUploader/Music/Suggestions').then(function (res) {
+        if (res.status === 200 && res.body) { S.sugg.artists = pick(res.body, 'Artists') || []; fillList('dl-artists', S.sugg.artists.concat(planValues('Artist'))); }
+      }).catch(function () {});
+    }
+    loadAlbums(artist);
+  }
+  // Titres de films / séries déjà présents (noms de dossiers de la bibliothèque) et du lot.
+  function loadTitles(kind) {
+    kind = kind === 'series' ? 'series' : 'movie';
+    var fromPlan = planItems().filter(function (i) { return pick(i, 'Kind') === kind && pick(i, 'Title'); }).map(function (i) { return { Title: pick(i, 'Title'), Year: pick(i, 'Year') }; });
+    function show() { fillList('dl-titles', (S.sugg.titles[kind] || []).concat(fromPlan).map(function (t) { return pick(t, 'Title'); })); }
+    if (S.sugg.titles[kind] !== undefined) { show(); return; }
+    S.sugg.titles[kind] = [];
+    api('GET', 'MediaUploader/Library/Titles?kind=' + kind).then(function (res) {
+      if (res.status === 200 && res.body) { S.sugg.titles[kind] = pick(res.body, 'Titles') || []; }
+      show();
+    }).catch(show);
+  }
+  function knownYear(kind, title) {
+    var t = (title || '').trim().toLowerCase(), list2 = (S.sugg.titles[kind === 'series' ? 'series' : 'movie'] || []);
+    var hit = list2.filter(function (x) { return (pick(x, 'Title') || '').toLowerCase() === t && pick(x, 'Year'); })[0];
+    return hit ? pick(hit, 'Year') : null;
+  }
+  // Champs titre + année avec suggestions ; choisir un titre connu renseigne son année.
+  function titleYearFields(v, label) {
+    loadTitles(v.kind);
+    var yearIn = h('input', { type: 'number', value: v.year, oninput: function (e) { v.year = e.target.value; } });
+    var titleIn = h('input', { type: 'text', list: 'dl-titles', value: v.title, autocomplete: 'off', oninput: function (e) { v.title = e.target.value; }, onchange: function (e) {
+      var y = knownYear(v.kind, e.target.value);
+      if (y && !v.year) { v.year = y; yearIn.value = y; }
+    } });
+    return [field(label, titleIn, true), field('Année', yearIn)];
+  }
+
+  // Champs artiste + album avec suggestions (les noms existants évitent de créer des variantes : « Daft punk » / « Daft Punk »).
+  function artistAlbumFields(v) {
+    prepareSuggestions(v.artist);
+    var artist = h('input', { type: 'text', list: 'dl-artists', value: v.artist, autocomplete: 'off', oninput: function (e) { v.artist = e.target.value; }, onchange: function (e) { loadAlbums(e.target.value); } });
+    var album = h('input', { type: 'text', list: 'dl-albums', value: v.album, autocomplete: 'off', oninput: function (e) { v.album = e.target.value; } });
+    return [field('Artiste', artist, true), field('Album', album, true)];
+  }
+
+  // ---------- Corrections ----------
+  var ovTimer = null;
+  function setOverride(id, patch) {
+    S.overrides[id] = Object.assign({}, S.overrides[id] || {}, patch);
+    scheduleOverrides();
+  }
+  function scheduleOverrides() {
+    clearTimeout(ovTimer);
+    ovTimer = setTimeout(function () {
+      if (!S.batch) { return; }
+      api('PUT', 'MediaUploader/Batch/' + S.batch.id + '/Overrides', { overrides: S.overrides }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        applyBatch(res.body);
+        scheduleRender();
+        pump();
+      }).catch(function (err) { showWarn(err.message); });
+    }, 250);
+  }
+
+  // Renseigne artiste et/ou album pour les morceaux sélectionnés ; une valeur vide laisse le champ tel quel.
+  function applySelection(values) {
+    var ids = Object.keys(S.sel).filter(function (id) { return S.sel[id]; });
+    ids.forEach(function (id) {
+      var patch = {};
+      if ((values.artist || '').trim()) { patch.artist = values.artist.trim(); }
+      if ((values.album || '').trim()) { patch.album = values.album.trim(); }
+      if (Object.keys(patch).length) { setOverride(id, patch); }
+    });
+    S.sel = {}; S.edit = null;
     render();
+  }
+
+  function selectionEditor(n) {
+    var v = S.edit.values;
+    var kids = [h('span', { class: 'muted', text: n + ' morceau(x) sélectionné(s)' })];
+    artistAlbumFields(v).forEach(function (f) { kids.push(f); });
+    kids.push(h('button', { type: 'button', class: 'small', text: 'Appliquer à la sélection', onclick: function () { applySelection(v); } }));
+    kids.push(h('button', { type: 'button', class: 'secondary small', text: 'Annuler', onclick: function () { S.edit = null; render(); } }));
+    return h('div', { class: 'edit' }, kids);
+  }
+
+  function removeItem(id) {
+    api('DELETE', 'MediaUploader/Batch/' + S.batch.id + '/Items/' + id).then(function (res) {
+      if (res.status === 200 && res.body) { delete S.files[id]; delete S.overrides[id]; applyBatch(res.body); render(); }
+      else { showWarn(errText(res)); }
+    }).catch(function (err) { showWarn(err.message); });
+  }
+
+  function applyGroupEdit(group, values) {
+    var kind = pick(group, 'Kind');
+    list(pick(group, 'Items')).forEach(function (it) {
+      if (pick(it, 'Role') === 'extra' || rejected(it)) { return; }
+      var patch = {};
+      if (kind === 'music') { patch.artist = values.artist; patch.album = values.album; }
+      else {
+        patch.title = values.title;
+        patch.year = values.year === '' ? 0 : parseInt(values.year, 10) || 0;
+        if (values.kind) { patch.kind = values.kind; }
+      }
+      setOverride(pick(it, 'Id'), patch);
+    });
+    S.edit = null;
+    render();
+  }
+
+  // ---------- Rendu de l'aperçu ----------
+  function isIncluded(g) {
+    var key = pick(g, 'Key');
+    if (S.include[key] === undefined) { return pick(g, 'Status') === 'ready'; }
+    return S.include[key];
+  }
+
+  function itemState(item) {
+    var id = pick(item, 'Id'), up = S.ups[id], st = pick(item, 'Status');
+    if (st === 'skipped') { return { text: 'Ignoré', cls: 'skipped' }; }
+    if (st === 'error') { return { text: 'Erreur', cls: 'error' }; }
+    if (st === 'duplicate') { return { text: 'Doublon', cls: 'skipped' }; }
+    if (!up && !complete(id)) { return { text: 'À renvoyer', cls: 'error' }; }
+    if (up && up.status === 'uploading') { return { text: 'Réception ' + up.pct + ' %', cls: '' }; }
+    if (up && up.status === 'error') { return { text: 'Échec', cls: 'error' }; }
+    if (complete(id) || (up && up.status === 'done')) { return { text: 'Reçu', cls: 'done' }; }
+    return { text: 'En attente', cls: '' };
+  }
+
+  function field(label, input, wide) { return h('label', { class: wide ? 'wide' : '' }, [label, input]); }
+
+  function groupEditor(group) {
+    var kind = pick(group, 'Kind'), v = S.edit.values;
+    var kids = [];
+    if (kind === 'music') {
+      artistAlbumFields(v).forEach(function (f) { kids.push(f); });
+    } else {
+      titleYearFields(v, kind === 'series' ? 'Titre de la série' : 'Titre du film').forEach(function (f) { kids.push(f); });
+      var sel = h('select', { onchange: function (e) { v.kind = e.target.value; loadTitles(v.kind); } }, [
+        h('option', { value: 'movie', text: 'Film', selected: v.kind === 'movie' }),
+        h('option', { value: 'series', text: 'Série / animé', selected: v.kind === 'series' })
+      ]);
+      kids.push(field('Type', sel));
+    }
+    kids.push(h('button', { type: 'button', class: 'small', text: 'Appliquer à tout le groupe', onclick: function () { applyGroupEdit(group, v); } }));
+    kids.push(h('button', { type: 'button', class: 'secondary small', text: 'Annuler', onclick: function () { S.edit = null; render(); } }));
+    return h('div', { class: 'edit' }, kids);
+  }
+
+  function itemEditor(item) {
+    var v = S.edit.values, kind = pick(item, 'Kind'), role = pick(item, 'Role'), kids = [];
+    function num(label, key) { return field(label, h('input', { type: 'number', value: v[key], oninput: function (e) { v[key] = e.target.value; } })); }
+    function txt(label, key) { return field(label, h('input', { type: 'text', value: v[key], oninput: function (e) { v[key] = e.target.value; } }), true); }
+
+    if (role === 'subtitle') {
+      var videos = planItems().filter(function (i) { return pick(i, 'Role') === 'main' && pick(i, 'Kind') !== 'music' && !rejected(i); });
+      var sel = h('select', { onchange: function (e) { v.pairWith = e.target.value; } }, [h('option', { value: '', text: '(automatique)', selected: !v.pairWith })].concat(
+        videos.map(function (vi) { return h('option', { value: pick(vi, 'Id'), text: pick(vi, 'Name'), selected: v.pairWith === pick(vi, 'Id') }); })));
+      kids.push(field('Associer à la vidéo', sel, true));
+      kids.push(h('label', { class: 'check' }, [h('input', { type: 'checkbox', checked: v.keepName, onchange: function (e) { v.keepName = e.target.checked; } }), 'Garder le nom d\'origine']));
+    } else if (role === 'extra') {
+      var ksel = h('select', { onchange: function (e) { v.kind = e.target.value; } }, ['', 'music', 'movie', 'series'].map(function (k) {
+        return h('option', { value: k, text: k ? KINDS[k] : '(automatique)', selected: v.kind === k });
+      }));
+      kids.push(field('Type de bibliothèque', ksel));
+    } else if (kind === 'music') {
+      artistAlbumFields(v).forEach(function (f) { kids.push(f); });
+      kids.push(txt('Titre (sert à détecter les doublons)', 'title'));
+    } else {
+      var tsel = h('select', { onchange: function (e) { v.kind = e.target.value; loadTitles(v.kind); } }, [
+        h('option', { value: 'movie', text: 'Film', selected: v.kind === 'movie' }),
+        h('option', { value: 'series', text: 'Série / animé', selected: v.kind === 'series' })
+      ]);
+      kids.push(field('Type', tsel));
+      titleYearFields(v, v.kind === 'series' ? 'Titre de la série' : 'Titre du film').forEach(function (f) { kids.push(f); });
+      if (v.kind === 'series') { kids.push(num('Saison', 'season')); kids.push(num('Épisode', 'episode')); }
+    }
+    kids.push(h('button', { type: 'button', class: 'small', text: 'Appliquer', onclick: function () {
+      var patch = {};
+      if (role === 'subtitle') { patch.pairWith = v.pairWith || null; patch.keepName = !!v.keepName; }
+      else if (role === 'extra') { patch.kind = v.kind || null; }
+      else if (kind === 'music') { patch.artist = v.artist; patch.album = v.album; patch.title = v.title; }
+      else {
+        patch.kind = v.kind; patch.title = v.title;
+        patch.year = v.year === '' ? 0 : parseInt(v.year, 10) || 0;
+        if (v.kind === 'series') { patch.season = v.season === '' ? null : parseInt(v.season, 10); patch.episode = v.episode === '' ? null : parseInt(v.episode, 10); }
+      }
+      setOverride(pick(item, 'Id'), patch);
+      S.edit = null; render();
+    } }));
+    kids.push(h('button', { type: 'button', class: 'secondary small', text: 'Annuler', onclick: function () { S.edit = null; render(); } }));
+    return h('div', { class: 'edit' }, kids);
+  }
+
+  function openItemEditor(item) {
+    var ov = S.overrides[pick(item, 'Id')] || {};
+    S.edit = {
+      type: 'item', id: pick(item, 'Id'),
+      values: {
+        kind: ov.kind || pick(item, 'Kind') || '', title: pick(item, 'Title') || '', year: pick(item, 'Year') || '',
+        season: pick(item, 'Season') === null || pick(item, 'Season') === undefined ? '' : pick(item, 'Season'),
+        episode: pick(item, 'Episode') === null || pick(item, 'Episode') === undefined ? '' : pick(item, 'Episode'),
+        artist: pick(item, 'Artist') || '', album: pick(item, 'Album') || '',
+        pairWith: ov.pairWith || '', keepName: !!ov.keepName
+      }
+    };
+    render();
+  }
+
+  function renderItem(item, selectable) {
+    var st = itemState(item), id = pick(item, 'Id'), role = pick(item, 'Role'), pair = pick(item, 'Pair');
+    var row = h('div', { class: 'item' + (role === 'subtitle' ? ' sub' : '') });
+    var actions = [h('span', { class: 'state ' + st.cls, text: st.text })];
+    if (!S.committing) {
+      actions.push(h('a', { class: 'act', title: 'Corriger', text: '✎', onclick: function () { openItemEditor(item); } }));
+      actions.push(h('a', { class: 'act', title: 'Retirer du lot', text: '✕', onclick: function () { removeItem(id); } }));
+    }
+    var nameBits = [];
+    if (selectable) { nameBits.push(h('input', { type: 'checkbox', checked: !!S.sel[id], style: 'margin-right:.5em', onchange: function (e) { S.sel[id] = e.target.checked; render(); } })); }
+    nameBits.push(h('span', { text: pick(item, 'Name') + ' (' + mb(pick(item, 'Size') || 0) + ')' }));
+    list(pick(item, 'Missing')).forEach(function (m) { nameBits.push(h('span', { class: 'chip review', style: 'margin-left:.5em', text: m === 'artist' ? 'sans artiste' : 'sans album' })); });
+    row.appendChild(h('div', { class: 'ihead' }, [h('span', { class: 'name' }, nameBits), h('span', {}, actions)]));
+
+    var up = S.ups[id];
+    if (up && up.status === 'uploading') { row.appendChild(h('progress', { max: '100', value: String(up.pct) })); }
+
+    var dest = pick(item, 'Dest');
+    if (dest) {
+      var renamed = pick(item, 'NewName') && pick(item, 'NewName') !== pick(item, 'Name');
+      row.appendChild(h('div', { class: 'dest' + (renamed ? ' new' : ''), text: '→ ' + dest }));
+    }
+    if (pair) {
+      var src = { batch: 'dans ce lot', library: 'déjà dans la bibliothèque', manual: 'choisie par vous' }[pick(pair, 'Source')] || '';
+      var txt = '↳ associé à « ' + pick(pair, 'WithName') + ' » (' + src + ')' + (pick(pair, 'Renamed') ? ' · renommé pour suivre la vidéo' : '');
+      row.appendChild(h('div', { class: 'pair', text: txt }));
+    }
+    var rule = pick(item, 'RuleName');
+    if (rule && pick(item, 'Manual')) { row.appendChild(h('div', { class: 'muted', text: 'Corrigé à la main' })); }
+    if (pick(item, 'TagsPending') && !complete(id)) { row.appendChild(h('div', { class: 'muted', text: 'Artiste et album seront lus dans les tags à la réception.' })); }
+    list(pick(item, 'Notes')).forEach(function (n) { row.appendChild(h('div', { class: 'note', text: n })); });
+    if (up && up.message) { row.appendChild(h('div', { class: 'note', text: up.message })); }
+    var dup = pick(item, 'Duplicate');
+    if (dup && !S.committing) {
+      row.appendChild(h('label', { class: 'note' }, [
+        h('input', { type: 'checkbox', checked: !!pick(dup, 'Forced'), onchange: function (e) { setOverride(id, { force: e.target.checked }); } }),
+        ' Forcer l\'enregistrement malgré le doublon'
+      ]));
+    }
+    if (S.edit && S.edit.type === 'item' && S.edit.id === id) { row.appendChild(itemEditor(item)); }
+    return row;
+  }
+
+  function renderGroup(g) {
+    var key = pick(g, 'Key'), kind = pick(g, 'Kind'), status = pick(g, 'Status'), items = list(pick(g, 'Items')), missing = !!pick(g, 'Missing');
+    var inc = isIncluded(g), open = S.open[key] !== undefined ? S.open[key] : (status === 'review' || items.length <= 6);
+    var box = h('div', { class: 'group ' + (status === 'review' ? 'review ' : '') + (inc ? '' : 'off') });
+    var head = h('div', { class: 'ghead' });
+    var check = h('input', { type: 'checkbox', checked: inc, disabled: kind === 'ignored' || S.committing, onchange: function (e) { S.include[key] = e.target.checked; render(); } });
+    if (kind !== 'ignored') { head.appendChild(check); }
+    head.appendChild(h('span', { class: 'gtitle', text: pick(g, 'Label'), onclick: function () { S.open[key] = !open; render(); } }));
+    head.appendChild(h('span', { class: 'chip kind', text: kind === 'ignored' ? 'Ignoré' : (KINDS[pick(items[0] || {}, 'Kind')] || KINDS[kind] || kind) }));
+    head.appendChild(h('span', { class: 'chip ' + (status === 'review' ? 'review' : status === 'ignored' ? 'ignored' : 'ready'), text: status === 'review' ? 'À vérifier' : status === 'ignored' ? 'Ignoré' : 'Prêt' }));
+    head.appendChild(h('span', { class: 'chip', text: items.length + ' fichier' + (items.length > 1 ? 's' : '') }));
+    var dups = items.filter(function (i) { return pick(i, 'Status') === 'duplicate'; });
+    if (dups.length && !S.committing) {
+      head.appendChild(h('button', { type: 'button', class: 'secondary small', text: 'Forcer les ' + dups.length + ' doublon(s)', onclick: function () {
+        dups.forEach(function (i) { setOverride(pick(i, 'Id'), { force: true }); });
+      } }));
+    }
+    if (kind !== 'ignored' && pick(g, 'Folder') && !S.committing) {
+      head.appendChild(h('button', { type: 'button', class: 'secondary small', text: 'Modifier', onclick: function () {
+        var first = items[0] || {};
+        S.edit = { type: 'group', key: key, values: { title: pick(g, 'Title') || '', year: pick(g, 'Year') || '', artist: pick(g, 'Artist') || '', album: pick(g, 'Album') || '', kind: pick(first, 'Kind') === 'series' ? 'series' : 'movie' } };
+        S.open[key] = true; render();
+      } }));
+    }
+    box.appendChild(head);
+    if (missing) {
+      var mains = items.filter(function (i) { return pick(i, 'Role') === 'main'; });
+      var chosen = mains.filter(function (i) { return S.sel[pick(i, 'Id')]; });
+      Object.keys(S.sel).forEach(function (id) { if (!mains.some(function (i) { return pick(i, 'Id') === id; })) { delete S.sel[id]; } });
+      box.appendChild(h('div', { class: 'gfolder', text: 'Ces morceaux n\'ont pas d\'artiste et/ou d\'album : cochez ceux qui vont ensemble (par dossier d\'origine ou un par un), puis renseignez-les. Ils quittent ce groupe et rejoignent leur album.' }));
+      if (!S.committing) {
+        box.appendChild(h('div', { class: 'edit', style: 'margin:0 .8em .5em' }, [
+          h('button', { type: 'button', class: 'secondary small', text: 'Tout sélectionner', onclick: function () { mains.forEach(function (i) { S.sel[pick(i, 'Id')] = true; }); render(); } }),
+          h('button', { type: 'button', class: 'secondary small', text: 'Aucun', onclick: function () { S.sel = {}; render(); } }),
+          h('button', { type: 'button', class: 'small', disabled: !chosen.length, text: 'Renseigner la sélection (' + chosen.length + ')…', onclick: function () {
+            var first = chosen[0];
+            S.edit = { type: 'selection', values: { artist: pick(first, 'Artist') || '', album: pick(first, 'Album') || '' } }; render();
+          } })
+        ]));
+        if (S.edit && S.edit.type === 'selection') { box.appendChild(h('div', { style: 'padding:0 .8em' }, [selectionEditor(chosen.length)])); }
+      }
+    } else if (kind !== 'ignored') { box.appendChild(h('div', { class: 'gfolder', text: pick(g, 'Folder') ? '→ ' + pick(g, 'Folder') : '→ racine de la bibliothèque' })); }
+    if (S.edit && S.edit.type === 'group' && S.edit.key === key) { box.appendChild(h('div', { style: 'padding:0 .8em' }, [groupEditor(g)])); }
+    if (open) {
+      var body = h('div', { class: 'gbody' }), lastSeason = null, lastDir = null;
+      items.forEach(function (it) {
+        if (missing) {
+          var cp = pick(it, 'ClientPath') || '', dir = cp.indexOf('/') < 0 ? '' : cp.slice(0, cp.lastIndexOf('/'));
+          if (dir !== lastDir) {
+            lastDir = dir;
+            var members = items.filter(function (x) { var p = pick(x, 'ClientPath') || ''; return pick(x, 'Role') === 'main' && (p.indexOf('/') < 0 ? '' : p.slice(0, p.lastIndexOf('/'))) === dir; });
+            var all = members.length && members.every(function (x) { return S.sel[pick(x, 'Id')]; });
+            body.appendChild(h('div', { class: 'season' }, [
+              h('input', { type: 'checkbox', checked: all, style: 'margin-right:.5em', onchange: function (e) { members.forEach(function (x) { S.sel[pick(x, 'Id')] = e.target.checked; }); render(); } }),
+              (dir || '(fichiers déposés sans dossier)') + ' · ' + members.length
+            ]));
+          }
+        }
+        var s = pick(it, 'Season');
+        if (kind === 'series' && s !== undefined && s !== null && s !== lastSeason) {
+          lastSeason = s;
+          body.appendChild(h('div', { class: 'season', text: s === 0 ? 'Épisodes spéciaux' : 'Saison ' + s }));
+        }
+        body.appendChild(renderItem(it, missing && pick(it, 'Role') === 'main'));
+      });
+      box.appendChild(body);
+    }
+    return box;
+  }
+
+  function selectedItems() {
+    var out = [];
+    list(S.plan && pick(S.plan, 'Groups')).forEach(function (g) {
+      if (pick(g, 'Kind') === 'ignored' || !isIncluded(g)) { return; }
+      list(pick(g, 'Items')).forEach(function (i) { if (!rejected(i) && pick(i, 'Status') !== 'duplicate') { out.push(i); } });
+    });
+    return out;
+  }
+
+  function renderReview() {
+    var groups = list(S.plan && pick(S.plan, 'Groups')), sum = (S.plan && pick(S.plan, 'Summary')) || {};
+    var all = planItems(), receivable = all.filter(function (i) { return !rejected(i); });
+    var got = receivable.filter(function (i) { return complete(pick(i, 'Id')); }).length;
+    var pct = receivable.length ? Math.round(got * 100 / receivable.length) : 100;
+    var sel = selectedItems(), ready = sel.every(function (i) { return complete(pick(i, 'Id')); });
+    var doubts = groups.filter(function (g) { return pick(g, 'Status') === 'review'; }).length;
+
+    $('sumtext').textContent = (pick(sum, 'Groups') || 0) + ' groupe(s), ' + (pick(sum, 'Files') || 0) + ' fichier(s)' + (doubts ? ' · ' + doubts + ' à vérifier' : '') + (pick(sum, 'Rejected') ? ' · ' + pick(sum, 'Rejected') + ' ignoré(s)' : '');
+    $('recvbar').value = pct;
+    $('recvbar').style.display = got === receivable.length ? 'none' : '';
+    $('recvtext').textContent = got === receivable.length ? 'Tous les fichiers sont reçus et analysés.' : 'Réception : ' + got + ' / ' + receivable.length + ' fichier(s)';
+    var commit = $('commit');
+    commit.disabled = S.committing || !sel.length || !ready;
+    commit.textContent = S.committing ? 'Rangement en cours…' : (!ready && sel.length ? 'En attente de la réception…' : 'Confirmer et envoyer (' + sel.length + ')');
+    $('checkall').disabled = $('uncheckall').disabled = $('cancel').disabled = S.committing;
+    $('ttlnote').textContent = 'Le lot est conservé ' + ((S.status && pick(S.status, 'BatchTtlHours')) || 6) + ' h sur le serveur.';
+
+    var box = $('groups');
+    box.textContent = '';
+    groups.forEach(function (g) { box.appendChild(renderGroup(g)); });
+  }
+
+  function renderDone() {
+    var saved = S.results.filter(function (r) { return pick(r, 'Status') === 'saved'; }).length;
+    $('doneSummary').textContent = saved + ' / ' + S.results.length + ' fichier(s) enregistré(s) dans la bibliothèque.' + (saved ? ' Un scan de bibliothèque a été demandé selon vos réglages.' : '');
+    var box = $('results');
+    box.textContent = '';
+    S.results.forEach(function (r) {
+      var st = pick(r, 'Status');
+      box.appendChild(h('div', { class: 'item' }, [
+        h('div', { class: 'ihead' }, [h('span', { class: 'name', text: pick(r, 'Name') }), h('span', { class: 'result ' + st, text: { saved: 'Enregistré', skipped: 'Ignoré', error: 'Échec' }[st] || st })]),
+        pick(r, 'Destination') ? h('div', { class: 'dest', text: '→ ' + pick(r, 'Destination') }) : null,
+        pick(r, 'Message') ? h('div', { class: 'note', text: pick(r, 'Message') }) : null
+      ]));
+    });
+  }
+
+  function render() {
+    $('pick').style.display = S.phase === 'pick' ? '' : 'none';
+    $('review').style.display = S.phase === 'review' ? '' : 'none';
+    $('done').style.display = S.phase === 'done' ? '' : 'none';
+    if (S.phase === 'pick') { renderPick(); }
+    else if (S.phase === 'review') { renderReview(); }
+    else { renderDone(); }
+  }
+
+  // ---------- Confirmation, annulation ----------
+  function commit(ids) {
+    if (S.committing || !S.batch) { return Promise.resolve(); }
+    S.committing = true; render();
+    return api('POST', 'MediaUploader/Batch/' + S.batch.id + '/Commit', { itemIds: ids }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      S.results = S.results.concat(list(pick(res.body, 'Files')));
+      S.committing = false;
+      return api('GET', 'MediaUploader/Batch/' + S.batch.id).then(function (b) {
+        if (b.status === 200 && b.body && list(pick(pick(b.body, 'Plan'), 'Groups')).length) {
+          applyBatch(b.body);
+          Object.keys(S.files).forEach(function (id) { if (!itemById(id)) { delete S.files[id]; } });
+          render();
+        } else { finish(); }
+      });
+    }).catch(function (err) { S.committing = false; showWarn(err.message); render(); });
+  }
+
+  function finish() {
+    S.phase = 'done'; S.batch = null; S.plan = null;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ }
+    render();
+  }
+
+  function maybeAutoCommit() {
+    if (S.autoDone || S.committing || !S.status || S.phase !== 'review') { return; }
+    var mode = pick(S.status, 'ConfirmationMode');
+    if (mode !== 'never' && mode !== 'doubtful') { return; }
+    var receivable = planItems().filter(function (i) { return !rejected(i); });
+    if (!receivable.length || !receivable.every(function (i) { return complete(pick(i, 'Id')); })) { return; }
+    var groups = list(pick(S.plan, 'Groups'));
+    if (mode === 'doubtful' && groups.some(function (g) { return pick(g, 'Status') === 'review'; })) { return; }
+    S.autoDone = true;
+    commit(receivable.map(function (i) { return pick(i, 'Id'); }));
+  }
+
+  function cancelAll() {
+    if (!S.batch) { return; }
+    if (!window.confirm('Annuler ce lot ? Les fichiers reçus par le serveur seront supprimés (rien n\'est entré dans la bibliothèque).')) { return; }
+    var id = S.batch.id;
+    api('DELETE', 'MediaUploader/Batch/' + id).catch(function () {}).then(function () { reset(); });
+  }
+
+  function reset() {
+    S = Object.assign(S, { entries: [], batch: null, files: {}, plan: null, progress: {}, ups: {}, overrides: {}, include: {}, open: {}, edit: null, sel: {}, phase: 'pick', results: [], pumping: false, committing: false, autoDone: false });
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ }
+    showWarn('');
+    render();
+  }
+
+  // Reprise après rechargement : les fichiers déjà reçus sont conservés côté serveur, les autres doivent être renvoyés.
+  function resume() {
+    var id = null;
+    try { id = localStorage.getItem(STORE_KEY); } catch (e) { id = null; }
+    if (!id) { return Promise.resolve(); }
+    return api('GET', 'MediaUploader/Batch/' + id).then(function (res) {
+      if (res.status !== 200 || !res.body) { try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ } return; }
+      S.batch = { id: id, chunk: pick(res.body, 'ChunkSize') };
+      applyBatch(res.body);
+      S.phase = 'review';
+      showWarn('Lot repris après rechargement de la page : les fichiers incomplets ne peuvent plus être envoyés, retirez-les ou annulez le lot.');
+    }).catch(function () { /* pas de lot à reprendre */ });
   }
 
   function init() {
-    api('GET', 'MediaUploader/Status').then(function (res) {
-      if (res.status === 401) { $('warn').textContent = 'Session expirée : reconnectez-vous à Jellyfin.'; $('warn').style.display = ''; return; }
-      status = res.body;
+    return api('GET', 'MediaUploader/Status').then(function (res) {
+      if (res.status === 401) { showWarn('Session expirée : reconnectez-vous à Jellyfin.'); return; }
+      S.status = res.body;
       var msgs = [];
-      if (status && !pick(status, 'CanUpload')) { msgs.push("L'envoi est réservé aux administrateurs sur ce serveur."); }
+      if (S.status && !pick(S.status, 'CanUpload')) { msgs.push("L'envoi est réservé aux administrateurs sur ce serveur."); }
       var missing = [];
-      if (status && !pick(status, 'MusicConfigured')) { missing.push('musique'); }
-      if (status && !pick(status, 'MoviesConfigured')) { missing.push('films'); }
+      if (S.status && !pick(S.status, 'MusicConfigured')) { missing.push('musique'); }
+      if (S.status && !pick(S.status, 'MoviesConfigured')) { missing.push('films'); }
       if (missing.length) { msgs.push('Dossier non configuré (' + missing.join(', ') + ') : un administrateur doit le régler dans Tableau de bord > Extensions > Media Uploader.'); }
-      if (msgs.length) { $('warn').textContent = msgs.join(' '); $('warn').style.display = ''; }
-      render();
-    }).catch(function (e) { $('warn').textContent = e.message; $('warn').style.display = ''; });
+      if (msgs.length) { showWarn(msgs.join(' ')); }
+      return resume();
+    }).catch(function (e) { showWarn(e.message); }).then(render);
   }
 
   $('drop').addEventListener('click', function () { $('files').click(); });
-  $('files').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
+  $('pickfolder').addEventListener('click', function () { $('folder').click(); });
+  $('files').addEventListener('change', function (e) { addEntries(Array.prototype.slice.call(e.target.files).map(function (f) { return { file: f, path: f.name }; })); e.target.value = ''; });
+  $('folder').addEventListener('change', function (e) { addEntries(Array.prototype.slice.call(e.target.files).map(function (f) { return { file: f, path: entryPath(f) }; })); e.target.value = ''; });
   $('drop').addEventListener('dragover', function (e) { e.preventDefault(); $('drop').classList.add('over'); });
   $('drop').addEventListener('dragleave', function () { $('drop').classList.remove('over'); });
   $('drop').addEventListener('drop', handleDrop);
-  $('send').addEventListener('click', function () { if (!running) { run(); } });
-  $('clear').addEventListener('click', function () { if (!running) { queue = []; render(); } });
+  $('clear').addEventListener('click', function () { S.entries = []; render(); });
+  $('analyze').addEventListener('click', function () { if (S.entries.length) { showWarn(''); startBatch(); } });
+  $('commit').addEventListener('click', function () { commit(selectedItems().map(function (i) { return pick(i, 'Id'); })); });
+  $('checkall').addEventListener('click', function () { list(pick(S.plan, 'Groups')).forEach(function (g) { S.include[pick(g, 'Key')] = true; }); render(); });
+  $('uncheckall').addEventListener('click', function () { list(pick(S.plan, 'Groups')).forEach(function (g) { S.include[pick(g, 'Key')] = false; }); render(); });
+  $('cancel').addEventListener('click', cancelAll);
+  $('again').addEventListener('click', reset);
   render();
   init();
 })();

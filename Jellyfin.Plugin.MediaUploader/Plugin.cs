@@ -7,7 +7,7 @@ using MediaBrowser.Model.Serialization;
 namespace Jellyfin.Plugin.MediaUploader;
 
 /// <summary>
-/// Plugin MediaUploader : upload de musiques et de films via une interface utilisateur ou une API.
+/// Plugin MediaUploader : upload de musiques, films et séries via une interface utilisateur ou une API.
 /// </summary>
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
@@ -34,7 +34,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override Guid Id => Guid.Parse("7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41");
 
     /// <inheritdoc />
-    public override string Description => "Upload de musiques et de films dans les bibliothèques, via une page web utilisable par tous les utilisateurs, ou via l'API.";
+    public override string Description => "Upload de musiques, films, séries et animés dans les bibliothèques : analyse des noms et tags, aperçu du rangement à confirmer, règles de détection configurables, API pour scripts.";
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()

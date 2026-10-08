@@ -60,6 +60,18 @@ public static class AudioTagReader
         }
     }
 
+    /// <summary>
+    /// Lit seulement artiste, album et titre (sans la pochette).
+    /// </summary>
+    /// <param name="path">Chemin du fichier.</param>
+    /// <param name="originalExtension">Extension d'origine.</param>
+    /// <returns>Tags, ou null si illisibles.</returns>
+    public static TagInfo? ReadInfo(string path, string originalExtension)
+    {
+        var tags = Read(path, originalExtension);
+        return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title);
+    }
+
     private static string? Clean(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();

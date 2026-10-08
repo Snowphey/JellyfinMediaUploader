@@ -1,6 +1,4 @@
-using System.Collections.Concurrent;
 using System.Net.Mime;
-using Jellyfin.Plugin.MediaUploader.Configuration;
 using Jellyfin.Plugin.MediaUploader.Services;
 using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
@@ -11,112 +9,17 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.MediaUploader.Api;
 
 /// <summary>
-/// Formulaire d'upload (multipart/form-data). Tous les champs sauf <c>files</c> sont optionnels.
-/// </summary>
-public class UploadRequest
-{
-    /// <summary>Gets or sets le type de média : "music" ou "movie". Vide = déduit de l'extension.</summary>
-    public string? Type { get; set; }
-
-    /// <summary>Gets or sets l'artiste (remplace celui des tags).</summary>
-    public string? Artist { get; set; }
-
-    /// <summary>Gets or sets l'album (remplace celui des tags).</summary>
-    public string? Album { get; set; }
-
-    /// <summary>Gets or sets le titre du film (remplace celui déduit du nom de fichier).</summary>
-    public string? Title { get; set; }
-
-    /// <summary>Gets or sets l'année du film (remplace celle déduite du nom de fichier).</summary>
-    public int? Year { get; set; }
-
-    /// <summary>Gets or sets une valeur forçant ou désactivant le scan après upload (null = valeur de la config).</summary>
-    public bool? Scan { get; set; }
-
-    /// <summary>Gets or sets les fichiers envoyés.</summary>
-    public List<IFormFile> Files { get; set; } = new();
-}
-
-/// <summary>
-/// Résultat d'un fichier uploadé.
-/// </summary>
-/// <param name="Name">Nom d'origine.</param>
-/// <param name="Status">"saved", "skipped" ou "error".</param>
-/// <param name="Path">Chemin final (si enregistré).</param>
-/// <param name="Message">Détail éventuel.</param>
-/// <param name="Destination">Emplacement relatif au dossier de la bibliothèque (ex. « Artiste/Album/fichier.m4a »).</param>
-public record UploadFileResult(string Name, string Status, string? Path, string? Message, string? Destination = null);
-
-/// <summary>
-/// Réponse de l'upload.
-/// </summary>
-/// <param name="Saved">Nombre de fichiers enregistrés.</param>
-/// <param name="ScanQueued">Vrai si un scan de bibliothèque a été lancé.</param>
-/// <param name="Files">Détail par fichier.</param>
-public record UploadResponse(int Saved, bool ScanQueued, IReadOnlyList<UploadFileResult> Files);
-
-/// <summary>
-/// État exposé à l'interface.
-/// </summary>
-/// <param name="MusicConfigured">Dossier musique défini.</param>
-/// <param name="MoviesConfigured">Dossier films défini.</param>
-/// <param name="AudioExtensions">Extensions audio.</param>
-/// <param name="VideoExtensions">Extensions vidéo.</param>
-/// <param name="ExtraExtensions">Extensions annexes.</param>
-/// <param name="MaxFileSizeMb">Taille max par fichier (Mo, 0 = illimitée).</param>
-/// <param name="AutoScan">Scan automatique activé.</param>
-/// <param name="CanUpload">L'utilisateur courant a le droit d'uploader.</param>
-/// <param name="ChunkSizeMb">Taille des morceaux conseillée à l'interface (Mo).</param>
-public record StatusResponse(
-    bool MusicConfigured,
-    bool MoviesConfigured,
-    string AudioExtensions,
-    string VideoExtensions,
-    string ExtraExtensions,
-    int MaxFileSizeMb,
-    bool AutoScan,
-    bool CanUpload,
-    int ChunkSizeMb);
-
-/// <summary>
-/// Démarrage d'un envoi par morceaux.
-/// </summary>
-/// <param name="FileName">Nom du fichier.</param>
-/// <param name="Size">Taille totale en octets.</param>
-/// <param name="Type">"music" ou "movie" (vide = déduit de l'extension).</param>
-/// <param name="Artist">Artiste (remplace celui des tags).</param>
-/// <param name="Album">Album (remplace celui des tags).</param>
-/// <param name="Title">Titre du film.</param>
-/// <param name="Year">Année du film.</param>
-/// <param name="Scan">Scan après envoi (null = valeur de la config).</param>
-public record StartUploadRequest(string FileName, long Size, string? Type, string? Artist, string? Album, string? Title, int? Year, bool? Scan);
-
-/// <summary>
-/// Réponse au démarrage ou à la reprise d'un envoi par morceaux.
-/// </summary>
-/// <param name="UploadId">Identifiant de l'envoi.</param>
-/// <param name="Received">Octets déjà reçus (prochain offset attendu).</param>
-/// <param name="Size">Taille totale annoncée.</param>
-/// <param name="ChunkSize">Taille de morceau conseillée en octets.</param>
-public record ChunkUploadState(string UploadId, long Received, long Size, int ChunkSize);
-
-/// <summary>
-/// API d'upload. Authentification : session d'un utilisateur (tout le monde si autorisé dans les paramètres)
+/// API d'upload direct (scripts, yt-dlp...) : le fichier est analysé puis rangé tout de suite, sans confirmation.
+/// La page web, elle, passe par les lots (<see cref="BatchController"/>) pour montrer le rangement avant d'envoyer.
+/// Authentification : session d'un utilisateur (tout le monde si autorisé dans les paramètres)
 /// ou clé API Jellyfin (<c>X-Emby-Token: CLE</c> ou <c>Authorization: MediaBrowser Token="CLE"</c>).
 /// </summary>
 [ApiController]
 [Route("MediaUploader")]
 [Authorize]
 [Produces(MediaTypeNames.Application.Json)]
-public class UploadController : ControllerBase
+public class UploadController : MediaUploaderControllerBase
 {
-    private static readonly HashSet<string> MovieOnlyExtras = new() { ".srt", ".ass", ".ssa", ".sub", ".vtt", ".sup" };
-    private static readonly HashSet<string> MusicOnlyExtras = new() { ".lrc" };
-
-    private static readonly ConcurrentDictionary<string, ChunkSession> Sessions = new();
-    private static readonly TimeSpan SessionTimeout = TimeSpan.FromHours(2);
-    private static readonly TimeSpan OrphanAge = TimeSpan.FromHours(24);
-
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<UploadController> _logger;
 
@@ -131,10 +34,6 @@ public class UploadController : ControllerBase
         _logger = logger;
     }
 
-    private static PluginConfiguration Config => Plugin.Instance!.Configuration;
-
-    private bool CanUpload => Config.AllowNonAdminUploads || User.IsInRole("Administrator");
-
     /// <summary>
     /// Page d'upload (ouverte directement ou intégrée dans un onglet par un plugin tiers).
     /// </summary>
@@ -142,7 +41,19 @@ public class UploadController : ControllerBase
     [HttpGet("Ui")]
     [AllowAnonymous]
     [Produces("text/html")]
-    public ActionResult GetUi() => Resource("ui.html", "text/html; charset=utf-8");
+    public ActionResult GetUi()
+    {
+        var assembly = typeof(Plugin).Assembly;
+        using var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Web.ui.html");
+        if (stream is null)
+        {
+            return new ContentResult { StatusCode = StatusCodes.Status404NotFound, Content = "Ressource introuvable" };
+        }
+
+        using var reader = new StreamReader(stream);
+        Response.Headers["Cache-Control"] = "no-cache";
+        return new ContentResult { Content = reader.ReadToEnd(), ContentType = "text/html; charset=utf-8", StatusCode = StatusCodes.Status200OK };
+    }
 
     /// <summary>
     /// Retourne l'état de la configuration.
@@ -152,6 +63,7 @@ public class UploadController : ControllerBase
     public ActionResult<StatusResponse> GetStatus()
     {
         var c = Config;
+        var mode = (c.ConfirmationMode ?? "always").Trim().ToLowerInvariant();
         return new StatusResponse(
             !string.IsNullOrWhiteSpace(c.MusicPath),
             !string.IsNullOrWhiteSpace(c.MoviesPath),
@@ -161,7 +73,86 @@ public class UploadController : ControllerBase
             c.MaxFileSizeMb,
             c.AutoScan,
             CanUpload,
-            ChunkMb(c));
+            ChunkMb(c),
+            !string.IsNullOrWhiteSpace(c.ShowsPath),
+            mode is "doubtful" or "never" ? mode : "always",
+            Math.Clamp(c.BatchTtlHours <= 0 ? 6 : c.BatchTtlHours, 1, 72));
+    }
+
+    /// <summary>
+    /// Artistes (dossiers de premier niveau) et, si un artiste est donné, albums existants dans la bibliothèque musique :
+    /// sert à l'autocomplétion pour réutiliser un nom déjà présent plutôt que d'en créer une variante.
+    /// </summary>
+    /// <param name="artist">Artiste dont on veut les albums (facultatif).</param>
+    /// <returns>Artistes et albums.</returns>
+    [HttpGet("Music/Suggestions")]
+    public ActionResult GetMusicSuggestions([FromQuery] string? artist)
+    {
+        if (!CanUpload)
+        {
+            return Forbid();
+        }
+
+        var root = Config.MusicPath?.Trim();
+        var artists = new List<string>();
+        var albums = new List<string>();
+        if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+        {
+            try
+            {
+                artists = Directory.EnumerateDirectories(root).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n) && !n.StartsWith('.'))
+                    .Select(n => n!).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Take(5000).ToList();
+
+                // Le nom saisi n'est jamais utilisé comme chemin : on le compare aux dossiers existants.
+                var match = string.IsNullOrWhiteSpace(artist) ? null : artists.FirstOrDefault(a => string.Equals(a, PathBuilder.SanitizeSegment(artist, string.Empty), StringComparison.OrdinalIgnoreCase));
+                if (match is not null)
+                {
+                    albums = Directory.EnumerateDirectories(Path.Combine(root, match)).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n))
+                        .Select(n => n!).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Take(2000).ToList();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Suggestions facultatives : on renvoie ce qu'on a.
+            }
+        }
+
+        return Ok(new { Artists = artists, Albums = albums });
+    }
+
+    /// <summary>
+    /// Titres déjà présents dans la bibliothèque films ou séries (noms de dossiers « Titre (Année) »), pour l'autocomplétion.
+    /// </summary>
+    /// <param name="kind">"movie" ou "series".</param>
+    /// <returns>Titres et années.</returns>
+    [HttpGet("Library/Titles")]
+    public ActionResult GetLibraryTitles([FromQuery] string? kind)
+    {
+        if (!CanUpload)
+        {
+            return Forbid();
+        }
+
+        var root = (PlanFactory.NormalizeMode(kind) == "series" ? Config.ShowsPath : Config.MoviesPath)?.Trim();
+        var titles = new List<object>();
+        if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+        {
+            try
+            {
+                var maxYear = DateTime.UtcNow.Year + 2;
+                foreach (var name in Directory.EnumerateDirectories(root).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n) && !n!.StartsWith('.')).Take(5000))
+                {
+                    var (title, year) = NameTools.SplitYear(name!, maxYear);
+                    titles.Add(new { Title = title, Year = year });
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Suggestions facultatives.
+            }
+        }
+
+        return Ok(new { Titles = titles });
     }
 
     /// <summary>
@@ -182,8 +173,9 @@ public class UploadController : ControllerBase
     }
 
     /// <summary>
-    /// Envoie un ou plusieurs fichiers vers la bibliothèque musique ou films.
-    /// Artiste/album (musique) et titre/année (film) sont déduits du fichier ; les champs du formulaire les remplacent si fournis.
+    /// Envoie un ou plusieurs fichiers vers la bibliothèque musique, films ou séries, sans confirmation.
+    /// Les fichiers d'une même requête sont analysés ensemble (un sous-titre est rattaché à sa vidéo). Artiste/album (musique),
+    /// titre/année (film), titre/année/saison (série) sont déduits des tags et des noms ; les champs du formulaire les remplacent si fournis.
     /// </summary>
     /// <param name="request">Formulaire.</param>
     /// <returns>Résultat par fichier.</returns>
@@ -201,291 +193,112 @@ public class UploadController : ControllerBase
         }
 
         var config = Config;
-
         if (request.Files.Count == 0)
         {
             return BadRequest(new { error = "Aucun fichier reçu (champ 'files')." });
         }
 
-        var forcedType = NormalizeType(request.Type);
-        if (!string.IsNullOrWhiteSpace(request.Type) && forcedType is null)
+        var mode = PlanFactory.NormalizeMode(request.Type);
+        if (mode is null)
         {
-            return BadRequest(new { error = "Le champ 'type' doit valoir 'music' ou 'movie' (ou être omis)." });
+            return BadRequest(new { error = "Le champ 'type' doit valoir 'music', 'movie' ou 'series' (ou être omis)." });
         }
 
-        var audio = ParseExtensions(config.AudioExtensions);
-        var video = ParseExtensions(config.VideoExtensions);
-        var extra = ParseExtensions(config.ExtraExtensions);
+        var options = PlanFactory.Options(config);
+        var engine = PlanFactory.Engine(config);
+        var fs = PlanFactory.Probe();
+        var planFiles = request.Files
+            .Select((f, i) => new PlanFile { Id = "u" + i, ClientPath = Path.GetFileName(f.FileName ?? string.Empty), Size = f.Length })
+            .ToList();
+        var overrides = BuildOverrides(planFiles.Select(p => p.Id), request.Title, request.Year, request.Season, request.Artist, request.Album, request.Force);
 
-        var results = new List<UploadFileResult>();
-        var saved = 0;
+        // 1. Premier calcul sur les noms : quels fichiers sont acceptés, et dans quel dossier les stocker en attendant.
+        var pre = Planner.Build(planFiles, overrides, mode, options, engine, fs);
+        var rejected = new Dictionary<string, UploadFileResult>();
+        var temps = new Dictionary<string, string>();
 
-        foreach (var file in request.Files)
+        try
         {
-            var originalName = Path.GetFileName(file.FileName ?? string.Empty);
-            var ext = Path.GetExtension(originalName).ToLowerInvariant();
-
-            var rejected = CheckFile(originalName, file.Length, forcedType, config, audio, video, extra, out var type);
-            if (rejected is not null)
+            foreach (var item in pre.Groups.SelectMany(g => g.Items))
             {
-                results.Add(rejected);
-                continue;
-            }
-
-            var isMusic = type == "music";
-            var root = isMusic ? config.MusicPath : config.MoviesPath;
-
-            // Fichier temporaire dans le dossier de la bibliothèque (même disque : le déplacement final est instantané).
-            // Le nom ne finit pas par une extension média, donc Jellyfin ne l'indexe pas pendant l'écriture.
-            var tmp = Path.Combine(root, ".mu-" + Guid.NewGuid().ToString("N") + ".part");
-
-            try
-            {
-                Directory.CreateDirectory(root);
-                await using (var output = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                if (item.Status is "skipped" or "error")
                 {
-                    await file.CopyToAsync(output, HttpContext.RequestAborted).ConfigureAwait(false);
+                    rejected[item.Id] = new UploadFileResult(item.Name, item.Status, null, string.Join(" · ", item.Notes));
+                    continue;
                 }
 
-                var placed = Place(tmp, root, isMusic, originalName, ext, request.Artist, request.Album, request.Title, request.Year, audio, config);
-                if (placed.Status == "saved")
+                var file = request.Files[int.Parse(item.Id[1..], System.Globalization.CultureInfo.InvariantCulture)];
+                var tmp = Path.Combine(item.Root!, ".mu-" + Guid.NewGuid().ToString("N") + ".part");
+                try
                 {
-                    saved++;
-                }
-
-                results.Add(placed);
-            }
-            catch (OperationCanceledException)
-            {
-                TryDelete(tmp);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                TryDelete(tmp);
-                _logger.LogError(ex, "MediaUploader: échec d'enregistrement de {Name}", originalName);
-                results.Add(new UploadFileResult(originalName, "error", null, ex.Message));
-            }
-        }
-
-        var scan = request.Scan ?? config.AutoScan;
-        var scanQueued = false;
-        if (saved > 0 && scan)
-        {
-            _libraryManager.QueueLibraryScan();
-            scanQueued = true;
-        }
-
-        return new UploadResponse(saved, scanQueued, results);
-    }
-
-    // Déduit le type, vérifie extension, configuration et taille. Retourne null si le fichier est accepté.
-    private static UploadFileResult? CheckFile(
-        string originalName,
-        long length,
-        string? forcedType,
-        PluginConfiguration config,
-        HashSet<string> audio,
-        HashSet<string> video,
-        HashSet<string> extra,
-        out string? type)
-    {
-        var ext = Path.GetExtension(originalName).ToLowerInvariant();
-        type = forcedType ?? InferType(ext, audio, video);
-        if (string.IsNullOrEmpty(originalName) || type is null)
-        {
-            return new UploadFileResult(originalName, "skipped", null, string.IsNullOrEmpty(originalName)
-                ? "Nom de fichier vide"
-                : $"Type indéterminé pour '{ext}' : précisez 'type' (music ou movie)");
-        }
-
-        var isMusic = type == "music";
-        var root = isMusic ? config.MusicPath : config.MoviesPath;
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            return new UploadFileResult(originalName, "error", null, $"Le dossier '{type}' n'est pas configuré dans les paramètres du plugin.");
-        }
-
-        var allowed = (isMusic ? audio : video).Union(extra).ToHashSet();
-        if (!allowed.Contains(ext))
-        {
-            return new UploadFileResult(originalName, "skipped", null, $"Extension non autorisée : '{ext}'");
-        }
-
-        var maxBytes = config.MaxFileSizeMb > 0 ? config.MaxFileSizeMb * 1024L * 1024L : long.MaxValue;
-        if (length > maxBytes)
-        {
-            return new UploadFileResult(originalName, "skipped", null, $"Fichier trop gros (max {config.MaxFileSizeMb} Mo)");
-        }
-
-        return null;
-    }
-
-    // Range un fichier temporaire complet à sa destination finale (tags, dossiers, nom unique, pochette).
-    private UploadFileResult Place(
-        string tmp,
-        string root,
-        bool isMusic,
-        string originalName,
-        string ext,
-        string? artistOverride,
-        string? albumOverride,
-        string? titleOverride,
-        int? yearOverride,
-        HashSet<string> audio,
-        PluginConfiguration config)
-    {
-        var layout = (isMusic ? config.MusicLayout : config.MoviesLayout) ?? "auto";
-        var structured = !string.Equals(layout, "flat", StringComparison.OrdinalIgnoreCase);
-
-        string target;
-        AudioTags? tags = null;
-        string? albumFolder = null;
-        var notes = new List<string>();
-
-        if (isMusic)
-        {
-            if (audio.Contains(ext))
-            {
-                tags = AudioTagReader.Read(tmp, ext);
-            }
-
-            var artist = structured ? Pick(artistOverride, tags?.Artist) : null;
-            var album = structured ? Pick(albumOverride, tags?.Album) : null;
-            target = PathBuilder.Music(root, artist, album, originalName);
-            albumFolder = album;
-
-            if (structured && artist is null && album is null && audio.Contains(ext))
-            {
-                notes.Add(tags is null ? "Tags illisibles : placé à la racine" : "Pas d'artiste ni d'album dans les tags : placé à la racine");
-            }
-        }
-        else
-        {
-            string? title = null;
-            int? year = null;
-            if (structured)
-            {
-                if (!string.IsNullOrWhiteSpace(titleOverride))
-                {
-                    title = titleOverride.Trim();
-                    year = yearOverride;
-                }
-                else if (MediaNameParser.ParseMovie(originalName) is { } parsed)
-                {
-                    title = parsed.Title;
-                    year = yearOverride ?? parsed.Year;
-                }
-            }
-
-            if (title is null)
-            {
-                target = Path.Combine(root, PathBuilder.SanitizeSegment(originalName, "file"));
-                if (structured)
-                {
-                    notes.Add("Titre/année non reconnus dans le nom : placé à la racine");
-                }
-            }
-            else
-            {
-                target = PathBuilder.Movie(root, title, year, originalName);
-            }
-        }
-
-        if (!PathBuilder.IsInside(root, target))
-        {
-            TryDelete(tmp);
-            return new UploadFileResult(originalName, "error", null, "Chemin de destination invalide");
-        }
-
-        if (System.IO.File.Exists(target) && !config.OverwriteExisting)
-        {
-            target = UniquePath(target);
-            notes.Add("Nom déjà pris : enregistré sous un autre nom");
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-        System.IO.File.Move(tmp, target, overwrite: config.OverwriteExisting);
-
-        if (config.ExtractCover && albumFolder is not null && tags?.CoverData is not null && tags.CoverExtension is not null)
-        {
-            if (TryWriteCover(Path.GetDirectoryName(target)!, tags))
-            {
-                notes.Add("Pochette extraite des tags");
-            }
-        }
-
-        _logger.LogInformation("MediaUploader: fichier enregistré {Path}", target);
-        return new UploadFileResult(
-            originalName,
-            "saved",
-            target,
-            notes.Count > 0 ? string.Join(" · ", notes) : null,
-            Path.GetRelativePath(root, target));
-    }
-
-    private static int ChunkMb(PluginConfiguration c) => Math.Clamp(c.ChunkSizeMb <= 0 ? 8 : c.ChunkSizeMb, 1, 90);
-
-    private string CurrentOwner =>
-        User.FindFirst("Jellyfin-UserId")?.Value ?? User.FindFirst("Jellyfin-Token")?.Value ?? string.Empty;
-
-    private ChunkSession? FindSession(string id, out ActionResult? error)
-    {
-        error = null;
-        if (!Sessions.TryGetValue(id, out var session))
-        {
-            error = NotFound(new { error = "Envoi inconnu ou expiré : recommencez." });
-            return null;
-        }
-
-        if (session.Owner != CurrentOwner && !User.IsInRole("Administrator"))
-        {
-            error = Forbid();
-            return null;
-        }
-
-        return session;
-    }
-
-    // Supprime les envois abandonnés et les .part orphelins (plus de 24 h) des dossiers de bibliothèque.
-    private void CleanupStale(PluginConfiguration config)
-    {
-        var now = DateTime.UtcNow;
-        foreach (var (id, session) in Sessions)
-        {
-            if (now - session.LastActivity > SessionTimeout && Sessions.TryRemove(id, out var removed))
-            {
-                TryDelete(removed.TempPath);
-            }
-        }
-
-        var active = Sessions.Values.Select(s => s.TempPath).ToHashSet();
-        foreach (var root in new[] { config.MusicPath, config.MoviesPath })
-        {
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
-            {
-                continue;
-            }
-
-            try
-            {
-                foreach (var file in Directory.EnumerateFiles(root, ".mu-*.part"))
-                {
-                    if (!active.Contains(file) && now - System.IO.File.GetLastWriteTimeUtc(file) > OrphanAge)
+                    // Fichier temporaire dans le dossier de la bibliothèque (même disque : le déplacement final est instantané).
+                    // Le nom ne finit pas par une extension média, donc Jellyfin ne l'indexe pas pendant l'écriture.
+                    Directory.CreateDirectory(item.Root!);
+                    await using (var output = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
                     {
-                        TryDelete(file);
+                        await file.CopyToAsync(output, HttpContext.RequestAborted).ConfigureAwait(false);
                     }
+
+                    temps[item.Id] = tmp;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    UploadStore.TryDelete(tmp);
+                    _logger.LogError(ex, "MediaUploader: échec d'enregistrement de {Name}", item.Name);
+                    rejected[item.Id] = new UploadFileResult(item.Name, "error", null, ex.Message);
                 }
             }
-            catch (IOException)
+
+            // 2. Les fichiers sont là : on lit les tags et on recalcule le plan complet (tags, sous-titres, collisions).
+            var received = planFiles.Where(p => temps.ContainsKey(p.Id)).ToList();
+            foreach (var pf in received)
             {
-                // Nettoyage best effort.
+                var ext = Path.GetExtension(pf.ClientPath).ToLowerInvariant();
+                if (options.Audio.Contains(ext))
+                {
+                    pf.Tags = AudioTagReader.ReadInfo(temps[pf.Id], ext);
+                }
+
+                pf.Analyzed = true;
             }
+
+            var plan = Planner.Build(received, overrides, mode, options, engine, fs);
+            var items = plan.Groups.SelectMany(g => g.Items).Select(i => (Item: i, Temp: (string?)temps[i.Id])).ToList();
+            var committed = UploadCommitter.Commit(items, config, _logger);
+
+            var results = new Dictionary<string, UploadFileResult>(rejected);
+            for (var i = 0; i < items.Count; i++)
+            {
+                results[items[i].Item.Id] = committed[i];
+                if (committed[i].Status != "saved")
+                {
+                    UploadStore.TryDelete(items[i].Temp);
+                }
+            }
+
+            var saved = results.Values.Count(r => r.Status == "saved");
+            var scanQueued = false;
+            if (saved > 0 && (request.Scan ?? config.AutoScan))
+            {
+                _libraryManager.QueueLibraryScan();
+                scanQueued = true;
+            }
+
+            return new UploadResponse(saved, scanQueued, planFiles.Select(p => results[p.Id]).ToList());
+        }
+        catch (OperationCanceledException)
+        {
+            foreach (var tmp in temps.Values)
+            {
+                UploadStore.TryDelete(tmp);
+            }
+
+            throw;
         }
     }
 
     /// <summary>
-    /// Démarre un envoi par morceaux (gros fichiers, proxys limitant la taille des requêtes).
+    /// Démarre un envoi direct par morceaux (gros fichiers, proxys limitant la taille des requêtes), sans confirmation.
     /// Enchaîner ensuite des <c>PUT Upload/{id}/Chunk?offset=N</c> puis <c>POST Upload/{id}/Complete</c>.
     /// </summary>
     /// <param name="request">Métadonnées du fichier.</param>
@@ -501,10 +314,10 @@ public class UploadController : ControllerBase
         }
 
         var config = Config;
-        var forcedType = NormalizeType(request.Type);
-        if (!string.IsNullOrWhiteSpace(request.Type) && forcedType is null)
+        var mode = PlanFactory.NormalizeMode(request.Type);
+        if (mode is null)
         {
-            return BadRequest(new { error = "Le champ 'type' doit valoir 'music' ou 'movie' (ou être omis)." });
+            return BadRequest(new { error = "Le champ 'type' doit valoir 'music', 'movie' ou 'series' (ou être omis)." });
         }
 
         if (request.Size < 0)
@@ -513,22 +326,17 @@ public class UploadController : ControllerBase
         }
 
         var originalName = Path.GetFileName(request.FileName ?? string.Empty);
-        var rejected = CheckFile(
-            originalName,
-            request.Size,
-            forcedType,
-            config,
-            ParseExtensions(config.AudioExtensions),
-            ParseExtensions(config.VideoExtensions),
-            ParseExtensions(config.ExtraExtensions),
-            out var type);
-        if (rejected is not null)
+        var file = new PlanFile { Id = "u0", ClientPath = originalName, Size = request.Size };
+        var overrides = BuildOverrides(new[] { file.Id }, request.Title, request.Year, request.Season, request.Artist, request.Album, request.Force);
+        var pre = Planner.Build(new[] { file }, overrides, mode, PlanFactory.Options(config), PlanFactory.Engine(config), PlanFactory.Probe());
+        var item = pre.Groups.SelectMany(g => g.Items).First();
+        if (item.Status is "skipped" or "error")
         {
-            return BadRequest(new { error = rejected.Message, status = rejected.Status });
+            return BadRequest(new { error = string.Join(" · ", item.Notes), status = item.Status });
         }
 
-        var root = type == "music" ? config.MusicPath : config.MoviesPath;
-        CleanupStale(config);
+        var root = item.Root!;
+        UploadStore.Sweep(config);
 
         var id = Guid.NewGuid().ToString("N");
         var tmp = Path.Combine(root, ".mu-" + id + ".part");
@@ -545,19 +353,21 @@ public class UploadController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = ex.Message });
         }
 
-        Sessions[id] = new ChunkSession
+        UploadStore.Sessions[id] = new ChunkSession
         {
             Id = id,
             Owner = CurrentOwner,
             TempPath = tmp,
             Root = root,
-            IsMusic = type == "music",
+            Mode = mode,
             OriginalName = originalName,
             Size = request.Size,
             Artist = request.Artist,
             Album = request.Album,
             Title = request.Title,
             Year = request.Year,
+            Season = request.Season,
+            Force = request.Force,
             Scan = request.Scan,
             LastActivity = DateTime.UtcNow
         };
@@ -621,28 +431,13 @@ public class UploadController : ControllerBase
                 return Conflict(new { error = "Offset inattendu.", received = session.Received });
             }
 
-            // Un morceau précédent interrompu a pu laisser des octets en trop : on repart de la position validée.
-            await using var output = new FileStream(session.TempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            output.SetLength(session.Received);
-            output.Seek(session.Received, SeekOrigin.Begin);
-
-            var buffer = new byte[81920];
-            long written = 0;
-            int read;
-            while ((read = await Request.Body.ReadAsync(buffer, HttpContext.RequestAborted).ConfigureAwait(false)) > 0)
+            var (ok, received, message) = await ChunkWriter.AppendAsync(session.TempPath, session.Received, session.Size, Request.Body, HttpContext.RequestAborted).ConfigureAwait(false);
+            if (!ok)
             {
-                written += read;
-                if (session.Received + written > session.Size)
-                {
-                    output.SetLength(session.Received);
-                    return BadRequest(new { error = "Le morceau dépasse la taille annoncée.", received = session.Received });
-                }
-
-                await output.WriteAsync(buffer.AsMemory(0, read), HttpContext.RequestAborted).ConfigureAwait(false);
+                return BadRequest(new { error = message, received });
             }
 
-            await output.FlushAsync(HttpContext.RequestAborted).ConfigureAwait(false);
-            session.Received += written;
+            session.Received = received;
             session.LastActivity = DateTime.UtcNow;
             return Ok(new { received = session.Received });
         }
@@ -653,7 +448,7 @@ public class UploadController : ControllerBase
     }
 
     /// <summary>
-    /// Termine l'envoi : vérifie la taille, range le fichier (tags, dossiers…) et lance éventuellement un scan.
+    /// Termine l'envoi : vérifie la taille, analyse le fichier, le range (tags, dossiers, sous-titre rattaché à sa vidéo...) et lance éventuellement un scan.
     /// </summary>
     /// <param name="id">Identifiant de l'envoi.</param>
     /// <returns>Même réponse que <c>Upload</c> (un seul fichier).</returns>
@@ -685,19 +480,19 @@ public class UploadController : ControllerBase
             UploadFileResult result;
             try
             {
+                var options = PlanFactory.Options(config);
                 var ext = Path.GetExtension(session.OriginalName).ToLowerInvariant();
-                result = Place(
-                    session.TempPath,
-                    session.Root,
-                    session.IsMusic,
-                    session.OriginalName,
-                    ext,
-                    session.Artist,
-                    session.Album,
-                    session.Title,
-                    session.Year,
-                    ParseExtensions(config.AudioExtensions),
-                    config);
+                var file = new PlanFile
+                {
+                    Id = "u0",
+                    ClientPath = session.OriginalName,
+                    Size = session.Size,
+                    Tags = options.Audio.Contains(ext) ? AudioTagReader.ReadInfo(session.TempPath, ext) : null,
+                    Analyzed = true
+                };
+                var overrides = BuildOverrides(new[] { file.Id }, session.Title, session.Year, session.Season, session.Artist, session.Album, session.Force);
+                var plan = Planner.Build(new[] { file }, overrides, session.Mode, options, PlanFactory.Engine(config), PlanFactory.Probe());
+                result = UploadCommitter.Commit(new[] { (plan.Groups.SelectMany(g => g.Items).First(), (string?)session.TempPath) }, config, _logger)[0];
             }
             catch (Exception ex)
             {
@@ -705,8 +500,8 @@ public class UploadController : ControllerBase
                 result = new UploadFileResult(session.OriginalName, "error", null, ex.Message);
             }
 
-            Sessions.TryRemove(session.Id, out _);
-            TryDelete(session.TempPath);
+            UploadStore.Sessions.TryRemove(session.Id, out _);
+            UploadStore.TryDelete(session.TempPath);
 
             var saved = result.Status == "saved" ? 1 : 0;
             var scanQueued = false;
@@ -744,121 +539,43 @@ public class UploadController : ControllerBase
             return error!;
         }
 
-        Sessions.TryRemove(session.Id, out _);
-        TryDelete(session.TempPath);
+        UploadStore.Sessions.TryRemove(session.Id, out _);
+        UploadStore.TryDelete(session.TempPath);
         return NoContent();
     }
 
-    private ContentResult Resource(string name, string contentType)
+    private static Dictionary<string, ItemOverride> BuildOverrides(IEnumerable<string> ids, string? title, int? year, int? season, string? artist, string? album, bool? force)
     {
-        var assembly = typeof(Plugin).Assembly;
-        using var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Web.{name}");
-        if (stream is null)
+        var map = new Dictionary<string, ItemOverride>();
+        if (string.IsNullOrWhiteSpace(title) && year is null && season is null && string.IsNullOrWhiteSpace(artist) && string.IsNullOrWhiteSpace(album) && force != true)
         {
-            return new ContentResult { StatusCode = StatusCodes.Status404NotFound, Content = "Ressource introuvable" };
+            return map;
         }
 
-        using var reader = new StreamReader(stream);
-        Response.Headers["Cache-Control"] = "no-cache";
-        return new ContentResult { Content = reader.ReadToEnd(), ContentType = contentType, StatusCode = StatusCodes.Status200OK };
+        var ov = new ItemOverride { Title = title, Year = year, Season = season, Artist = artist, Album = album, Force = force == true };
+        foreach (var id in ids)
+        {
+            map[id] = ov;
+        }
+
+        return map;
     }
 
-    private static string? NormalizeType(string? value)
+    private ChunkSession? FindSession(string id, out ActionResult? error)
     {
-        return (value ?? string.Empty).Trim().ToLowerInvariant() switch
+        error = null;
+        if (!UploadStore.Sessions.TryGetValue(id, out var session))
         {
-            "music" => "music",
-            "movie" or "movies" => "movie",
-            _ => null
-        };
-    }
-
-    private static string? InferType(string ext, HashSet<string> audio, HashSet<string> video)
-    {
-        if (audio.Contains(ext) || MusicOnlyExtras.Contains(ext))
-        {
-            return "music";
+            error = NotFound(new { error = "Envoi inconnu ou expiré : recommencez." });
+            return null;
         }
 
-        if (video.Contains(ext) || MovieOnlyExtras.Contains(ext))
+        if (session.Owner != CurrentOwner && !IsAdmin)
         {
-            return "movie";
+            error = Forbid();
+            return null;
         }
 
-        return null;
-    }
-
-    private static string? Pick(string? explicitValue, string? fromFile)
-    {
-        if (!string.IsNullOrWhiteSpace(explicitValue))
-        {
-            return explicitValue.Trim();
-        }
-
-        return fromFile;
-    }
-
-    // Écrit cover.jpg/png/webp dans le dossier de l'album si aucune pochette n'y est déjà.
-    private bool TryWriteCover(string folder, AudioTags tags)
-    {
-        try
-        {
-            var hasCover = Directory.EnumerateFiles(folder)
-                .Select(f => Path.GetFileNameWithoutExtension(f).ToLowerInvariant())
-                .Any(n => n is "cover" or "folder" or "poster");
-            if (hasCover)
-            {
-                return false;
-            }
-
-            System.IO.File.WriteAllBytes(Path.Combine(folder, "cover" + tags.CoverExtension), tags.CoverData!);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "MediaUploader: pochette non extraite dans {Folder}", folder);
-            return false;
-        }
-    }
-
-    private static HashSet<string> ParseExtensions(string value)
-    {
-        return value
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(e => e.StartsWith('.') ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
-            .ToHashSet();
-    }
-
-    private static string UniquePath(string path)
-    {
-        var dir = Path.GetDirectoryName(path)!;
-        var name = Path.GetFileNameWithoutExtension(path);
-        var ext = Path.GetExtension(path);
-
-        for (var i = 2; i < 10000; i++)
-        {
-            var candidate = Path.Combine(dir, $"{name} ({i}){ext}");
-            if (!System.IO.File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return Path.Combine(dir, $"{name} ({Guid.NewGuid():N}){ext}");
-    }
-
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (System.IO.File.Exists(path))
-            {
-                System.IO.File.Delete(path);
-            }
-        }
-        catch (IOException)
-        {
-            // Nettoyage best effort.
-        }
+        return session;
     }
 }

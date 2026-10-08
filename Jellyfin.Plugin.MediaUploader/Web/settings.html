@@ -6,6 +6,24 @@
 </head>
 <body>
 <div id="MediaUploaderSettingsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <style>
+        #MediaUploaderSettingsPage .mu-rule { border: 1px solid rgba(255,255,255,.18); border-radius: 6px; padding: .7em .8em; margin: .7em 0; background: rgba(255,255,255,.03); }
+        #MediaUploaderSettingsPage .mu-rule.off { opacity: .6; }
+        #MediaUploaderSettingsPage .mu-rule.bad { border-color: #e57373; }
+        #MediaUploaderSettingsPage .mu-row { display: flex; gap: .6em; align-items: center; flex-wrap: wrap; margin: .3em 0; }
+        #MediaUploaderSettingsPage .mu-row .grow { flex: 1; min-width: 10em; }
+        #MediaUploaderSettingsPage .mu-in, #MediaUploaderSettingsPage .mu-rule textarea, #MediaUploaderSettingsPage .mu-rule select, #MediaUploaderSettingsPage #muTestInput {
+            background: rgba(0,0,0,.35); color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: .4em .5em; font: inherit; box-sizing: border-box; }
+        #MediaUploaderSettingsPage .mu-rule textarea, #MediaUploaderSettingsPage #muTestInput { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9em; }
+        #MediaUploaderSettingsPage .mu-small { font-size: .85em; opacity: .8; }
+        #MediaUploaderSettingsPage .mu-err { color: #e57373; font-size: .9em; margin-top: .3em; }
+        #MediaUploaderSettingsPage .mu-btn { background: rgba(255,255,255,.12); color: inherit; border: 0; border-radius: 4px; padding: .4em .9em; font: inherit; cursor: pointer; }
+        #MediaUploaderSettingsPage .mu-btn.primary { background: #00a4dc; color: #fff; }
+        #MediaUploaderSettingsPage .mu-btn:disabled { opacity: .4; cursor: default; }
+        #MediaUploaderSettingsPage table.mu-test { width: 100%; border-collapse: collapse; margin-top: .8em; font-size: .9em; }
+        #MediaUploaderSettingsPage table.mu-test td { border-top: 1px solid rgba(255,255,255,.12); padding: .35em .4em; vertical-align: top; word-break: break-word; }
+        #MediaUploaderSettingsPage .mu-ok { color: #6fcf97; } #MediaUploaderSettingsPage .mu-guess { color: #f2c94c; } #MediaUploaderSettingsPage .mu-unknown { color: #e57373; }
+    </style>
     <div data-role="content">
         <div class="content-primary">
             <h2>Media Uploader : paramètres</h2>
@@ -20,6 +38,11 @@
                 <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="muMoviesPath">Dossier films (ex. /media/movies)</label>
                     <input id="muMoviesPath" type="text" is="emby-input" placeholder="/media/movies" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muShowsPath">Dossier séries et animés (optionnel, ex. /media/shows)</label>
+                    <input id="muShowsPath" type="text" is="emby-input" placeholder="/media/shows" />
+                    <div class="fieldDescription">Créez dans Jellyfin une bibliothèque de type « Séries » sur ce dossier. Sans dossier, les épisodes sont refusés (ils ne sont pas rangés avec les films).</div>
                 </div>
 
                 <div class="selectContainer">
@@ -36,6 +59,28 @@
                         <option value="flat">Plat : toujours à la racine du dossier</option>
                     </select>
                 </div>
+                <div class="selectContainer">
+                    <label class="selectLabel" for="muShowsLayout">Rangement séries et animés</label>
+                    <select is="emby-select" id="muShowsLayout">
+                        <option value="auto">Auto : Série (Année)/Season 01/ d'après le nom du fichier, sinon à la racine</option>
+                        <option value="flat">Plat : toujours à la racine du dossier</option>
+                    </select>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="muConfirm">Confirmation avant l'entrée dans la bibliothèque (page d'upload)</label>
+                    <select is="emby-select" id="muConfirm">
+                        <option value="always">Toujours : afficher l'aperçu et attendre la confirmation</option>
+                        <option value="doubtful">Seulement en cas de doute : envoyer directement si tout est reconnu avec certitude</option>
+                        <option value="never">Jamais : envoyer directement, sans aperçu à valider</option>
+                    </select>
+                    <div class="fieldDescription">L'API pour scripts n'a jamais de confirmation.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muTtl">Conservation d'un lot non confirmé (heures, 1 à 72)</label>
+                    <input id="muTtl" type="number" min="1" max="72" is="emby-input" />
+                    <div class="fieldDescription">Les fichiers d'un lot analysé mais pas encore confirmé occupent de la place dans le dossier de la bibliothèque (fichiers .part cachés). Ils sont supprimés après ce délai.</div>
+                </div>
 
                 <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="muAudioExt">Extensions audio</label>
@@ -48,6 +93,7 @@
                 <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="muExtraExt">Extensions annexes (pochettes, sous-titres, paroles)</label>
                     <input id="muExtraExt" type="text" is="emby-input" />
+                    <div class="fieldDescription">Sous-titres reconnus : .srt, .ass, .ssa, .vtt, .sub, .sup. Une extension absente de cette liste est refusée.</div>
                 </div>
                 <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="muMaxSize">Taille max par fichier (Mo, 0 = illimitée)</label>
@@ -63,6 +109,18 @@
                     <label class="emby-checkbox-label">
                         <input id="muAllowAll" type="checkbox" is="emby-checkbox" />
                         <span>Autoriser tous les utilisateurs à envoyer des fichiers (sinon administrateurs seulement)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muRenameSubs" type="checkbox" is="emby-checkbox" />
+                        <span>Renommer un sous-titre pour qu'il suive le nom de sa vidéo (condition pour que Jellyfin l'associe)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muFolderCtx" type="checkbox" is="emby-checkbox" />
+                        <span>Utiliser les noms de dossiers déposés pour compléter la détection (titre d'une série, film dans « Titre (2019)/ »)</span>
                     </label>
                 </div>
                 <div class="checkboxContainer checkboxContainer-withDescription">
@@ -89,8 +147,39 @@
                 </button>
             </form>
 
+            <h3 style="margin-top:2.2em;">Règles de détection</h3>
+            <p class="fieldDescription">
+                Une règle est une expression régulière .NET (sans tenir compte de la casse) qui reconnaît un nom de fichier et en extrait des <b>groupes nommés</b> :
+                <code>(?&lt;title&gt;…)</code>, <code>(?&lt;year&gt;…)</code>, <code>(?&lt;season&gt;…)</code>, <code>(?&lt;episode&gt;…)</code> pour les films et séries ;
+                <code>(?&lt;artist&gt;…)</code>, <code>(?&lt;album&gt;…)</code> pour la musique (en complément des tags).
+                Les règles sont essayées <b>dans l'ordre</b> : la première qui reconnaît le fichier l'emporte. Un film exige <code>title</code>, une série exige <code>episode</code>.
+                « Nom » s'applique au nom du fichier sans extension (et sans suffixe de langue pour un sous-titre) ; « Chemin » s'applique au chemin relatif d'un dossier déposé, avec « / » (ex. <code>Série/Season 2/05 - Titre</code>).
+            </p>
+            <p id="muRulesState" class="fieldDescription"></p>
+            <div id="muRules"></div>
+            <div class="mu-row">
+                <button type="button" class="mu-btn" id="muAddRule">+ Ajouter une règle</button>
+                <button type="button" class="mu-btn primary" id="muSaveRules">Enregistrer les règles</button>
+                <button type="button" class="mu-btn" id="muResetRules">Restaurer les règles par défaut</button>
+                <span id="muRulesMsg" class="mu-small"></span>
+            </div>
+
+            <h4 style="margin-top:1.8em;">Tester</h4>
+            <p class="fieldDescription">Un nom ou chemin par ligne (ex. <code>Breaking.Bad.S02E05.720p.mkv</code>, ou <code>Dune (2021)/Dune.fr.srt</code>). Les règles testées sont celles ci-dessus, même non enregistrées. Les fichiers listés ensemble sont analysés ensemble : un sous-titre est associé à sa vidéo.</p>
+            <textarea id="muTestInput" rows="5" spellcheck="false" placeholder="Show.Name.S01E02.1080p.mkv&#10;Show.Name.S01E02.fr.srt&#10;Film (2019).mkv"></textarea>
+            <div class="mu-row">
+                <select class="mu-in" id="muTestMode">
+                    <option value="auto">Type : auto</option>
+                    <option value="movie">Type : film</option>
+                    <option value="series">Type : série / animé</option>
+                    <option value="music">Type : musique</option>
+                </select>
+                <button type="button" class="mu-btn primary" id="muTest">Tester</button>
+            </div>
+            <div id="muTestOut"></div>
+
             <h3 style="margin-top:2em;">Utiliser l'API (scripts, yt-dlp…)</h3>
-            <p class="fieldDescription">Créez une clé API dans Tableau de bord &gt; Clés API, puis : Tous les champs hormis <code>files</code> sont optionnels ; <code>artist</code>, <code>album</code>, <code>title</code>, <code>year</code> remplacent ce qui est déduit du fichier.</p>
+            <p class="fieldDescription">Créez une clé API dans Tableau de bord &gt; Clés API, puis : tous les champs hormis <code>files</code> sont optionnels ; <code>type</code> (<code>music</code>, <code>movie</code> ou <code>series</code>), <code>artist</code>, <code>album</code>, <code>title</code>, <code>year</code>, <code>season</code> remplacent ce qui est déduit du fichier. L'API range tout de suite, sans aperçu.</p>
             <pre class="fieldDescription" style="white-space:pre-wrap;">curl -X POST "http://SERVEUR:8096/MediaUploader/Upload" \
   -H "X-Emby-Token: VOTRE_CLE_API" \
   -F files=@"Titre.opus"</pre>
@@ -102,12 +191,42 @@
             var page = document.querySelector('#MediaUploaderSettingsPage');
             var $ = function (id) { return page.querySelector('#' + id); };
             var PLUGIN_ID = '7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41';
-            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt' };
-            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll' };
+            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt' };
+            var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always' };
+            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx' };
+            var KIND_LABELS = { movie: 'Film', series: 'Série / animé', music: 'Musique' };
 
             function pick(obj, name) {
                 if (!obj) { return undefined; }
                 return obj[name] !== undefined ? obj[name] : obj[name.charAt(0).toLowerCase() + name.slice(1)];
+            }
+
+            function el(tag, attrs, children) {
+                var e = document.createElement(tag);
+                Object.keys(attrs || {}).forEach(function (k) {
+                    var v = attrs[k];
+                    if (v === null || v === undefined || v === false) { return; }
+                    if (k === 'class') { e.className = v; }
+                    else if (k === 'text') { e.textContent = v; }
+                    else if (k.slice(0, 2) === 'on') { e.addEventListener(k.slice(2), v); }
+                    else if (k === 'value') { e.value = v; }
+                    else if (k === 'checked' || k === 'selected' || k === 'disabled') { e[k] = !!v; }
+                    else { e.setAttribute(k, v === true ? '' : v); }
+                });
+                (children || []).forEach(function (c) { if (c) { e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } });
+                return e;
+            }
+
+            // Appel de l'API du plugin ; une réponse d'erreur JSON est relayée dans l'exception (propriété body).
+            function call(method, path, body) {
+                var req = { url: ApiClient.getUrl(path), type: method, dataType: 'json' };
+                if (body !== undefined) { req.data = JSON.stringify(body); req.contentType = 'application/json'; }
+                return ApiClient.fetch(req).catch(function (r) {
+                    if (r && typeof r.json === 'function') {
+                        return r.json().then(function (b) { var e = new Error('Erreur'); e.body = b; throw e; }, function () { throw new Error('Erreur ' + r.status); });
+                    }
+                    throw r;
+                });
             }
 
             function refreshStatus() {
@@ -122,12 +241,10 @@
 
             function loadSettings() {
                 return ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
-                    Object.keys(TEXT).forEach(function (key) {
-                        var def = (key === 'MusicLayout' || key === 'MoviesLayout') ? 'auto' : '';
-                        $(TEXT[key]).value = config[key] || def;
-                    });
+                    Object.keys(TEXT).forEach(function (key) { $(TEXT[key]).value = config[key] || DEFAULTS[key] || ''; });
                     $('muMaxSize').value = config.MaxFileSizeMb || 0;
                     $('muChunkSize').value = config.ChunkSizeMb || 8;
+                    $('muTtl').value = config.BatchTtlHours || 6;
                     Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
                 });
             }
@@ -139,6 +256,7 @@
                     Object.keys(TEXT).forEach(function (key) { config[key] = $(TEXT[key]).value.trim(); });
                     config.MaxFileSizeMb = parseInt($('muMaxSize').value, 10) || 0;
                     config.ChunkSizeMb = Math.min(90, Math.max(1, parseInt($('muChunkSize').value, 10) || 8));
+                    config.BatchTtlHours = Math.min(72, Math.max(1, parseInt($('muTtl').value, 10) || 6));
                     Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
                     return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
                 }).then(function (result) {
@@ -152,8 +270,176 @@
                 return false;
             });
 
+            // ---------- Éditeur de règles ----------
+            var rules = [];
+            var customized = false;
+
+            function setMsg(text, bad) {
+                var m = $('muRulesMsg');
+                m.textContent = text || '';
+                m.style.color = bad ? '#e57373' : '';
+            }
+
+            function collect() {
+                return Array.prototype.map.call($('muRules').querySelectorAll('.mu-rule'), function (card) {
+                    var q = function (sel) { return card.querySelector(sel); };
+                    var kind = q('.kind').value;
+                    return {
+                        id: card.getAttribute('data-id') || '',
+                        name: q('.name').value.trim(),
+                        enabled: q('.en').checked,
+                        kind: kind,
+                        target: q('.target').value,
+                        pattern: q('.pattern').value,
+                        explicitOnly: q('.explicit').checked,
+                        guess: q('.guess').checked,
+                        defaultSeason: parseInt(q('.dseason').value, 10) || 0,
+                        description: q('.desc').value
+                    };
+                });
+            }
+
+            function move(index, delta) {
+                rules = collect();
+                var to = index + delta;
+                if (to < 0 || to >= rules.length) { return; }
+                var tmp = rules[index]; rules[index] = rules[to]; rules[to] = tmp;
+                drawRules();
+            }
+
+            function drawRules() {
+                var box = $('muRules');
+                box.textContent = '';
+                rules.forEach(function (r, i) {
+                    var kind = pick(r, 'Kind') || 'movie';
+                    var enabled = pick(r, 'Enabled') !== false;
+                    var card = el('div', { class: 'mu-rule' + (enabled ? '' : ' off'), 'data-id': pick(r, 'Id') || '' });
+                    var sel = function (cls, opts, cur) {
+                        return el('select', { class: cls }, opts.map(function (o) { return el('option', { value: o[0], text: o[1], selected: cur === o[0] }); }));
+                    };
+                    var kindSel = sel('kind', [['movie', 'Film'], ['series', 'Série / animé'], ['music', 'Musique']], kind);
+                    var dSeasonWrap = el('label', { class: 'mu-small' }, ['Saison supposée ', el('input', { type: 'number', min: '0', max: '99', class: 'mu-in dseason', value: pick(r, 'DefaultSeason') === undefined ? 1 : pick(r, 'DefaultSeason'), style: 'width:4.5em' })]);
+                    function syncKind() { dSeasonWrap.style.display = kindSel.value === 'series' ? '' : 'none'; }
+                    kindSel.addEventListener('change', syncKind);
+                    var enBox = el('input', { type: 'checkbox', class: 'en', checked: enabled });
+                    enBox.addEventListener('change', function () { card.classList.toggle('off', !enBox.checked); });
+                    card.appendChild(el('div', { class: 'mu-row' }, [
+                        el('label', { class: 'mu-small' }, [enBox, ' actif']),
+                        el('input', { type: 'text', class: 'mu-in name grow', placeholder: 'Nom de la règle', value: pick(r, 'Name') || '' }),
+                        kindSel,
+                        sel('target', [['name', 'Nom du fichier'], ['path', 'Chemin du dossier']], pick(r, 'Target') || 'name'),
+                        el('button', { type: 'button', class: 'mu-btn', title: 'Monter', text: '↑', onclick: function () { move(i, -1); } }),
+                        el('button', { type: 'button', class: 'mu-btn', title: 'Descendre', text: '↓', onclick: function () { move(i, 1); } }),
+                        el('button', { type: 'button', class: 'mu-btn', title: 'Supprimer', text: '✕', onclick: function () { rules = collect(); rules.splice(i, 1); drawRules(); } })
+                    ]));
+                    card.appendChild(el('textarea', { class: 'pattern', rows: '2', spellcheck: 'false', value: pick(r, 'Pattern') || '' }));
+                    card.appendChild(el('div', { class: 'mu-row' }, [
+                        el('label', { class: 'mu-small' }, [el('input', { type: 'checkbox', class: 'explicit', checked: !!pick(r, 'ExplicitOnly') }), ' Seulement si le type est choisi explicitement']),
+                        el('label', { class: 'mu-small' }, [el('input', { type: 'checkbox', class: 'guess', checked: !!pick(r, 'Guess') }), ' Toujours « à vérifier »']),
+                        dSeasonWrap
+                    ]));
+                    card.appendChild(el('input', { type: 'text', class: 'mu-in desc', style: 'width:100%', placeholder: 'Note (facultatif)', value: pick(r, 'Description') || '' }));
+                    card.appendChild(el('div', { class: 'mu-err', style: 'display:none' }));
+                    syncKind();
+                    box.appendChild(card);
+                });
+                if (!rules.length) { box.appendChild(el('p', { class: 'fieldDescription', text: 'Aucune règle : rien ne sera reconnu automatiquement. Ajoutez-en une ou restaurez les règles par défaut.' })); }
+            }
+
+            function loadRules() {
+                return call('GET', 'MediaUploader/Rules').then(function (res) {
+                    rules = pick(res, 'Rules') || [];
+                    customized = !!pick(res, 'Customized');
+                    $('muRulesState').textContent = customized
+                        ? 'Règles personnalisées : les futures règles par défaut apportées par une mise à jour du plugin ne seront pas ajoutées automatiquement.'
+                        : 'Règles par défaut du plugin (modifiez-les ou ajoutez-en pour les personnaliser).';
+                    drawRules();
+                }).catch(function () { setMsg('Impossible de charger les règles.', true); });
+            }
+
+            function showRuleErrors(body) {
+                var cards = $('muRules').querySelectorAll('.mu-rule');
+                Array.prototype.forEach.call(cards, function (c) { c.classList.remove('bad'); var e = c.querySelector('.mu-err'); e.style.display = 'none'; e.textContent = ''; });
+                var list = (body && pick(body, 'errors')) || [];
+                list.forEach(function (er) {
+                    var i = pick(er, 'index');
+                    if (cards[i]) {
+                        cards[i].classList.add('bad');
+                        var e = cards[i].querySelector('.mu-err');
+                        e.textContent = pick(er, 'message'); e.style.display = '';
+                    }
+                });
+            }
+
+            $('muAddRule').addEventListener('click', function () {
+                rules = collect();
+                rules.push({ id: '', name: 'Nouvelle règle', enabled: true, kind: 'movie', target: 'name', pattern: '^(?<title>.+?)[ ._]+(?<year>(?:19|20)\\d{2})$', explicitOnly: false, guess: false, defaultSeason: 1, description: '' });
+                drawRules();
+                var cards = $('muRules').querySelectorAll('.mu-rule');
+                var last = cards[cards.length - 1];
+                if (last && last.scrollIntoView) { last.scrollIntoView({ block: 'center' }); }
+            });
+
+            $('muSaveRules').addEventListener('click', function () {
+                setMsg('Enregistrement…');
+                call('PUT', 'MediaUploader/Rules', { rules: collect() }).then(function (res) {
+                    rules = pick(res, 'Rules') || [];
+                    customized = true;
+                    drawRules();
+                    $('muRulesState').textContent = 'Règles personnalisées enregistrées.';
+                    setMsg('Règles enregistrées.');
+                }).catch(function (err) {
+                    showRuleErrors(err && err.body);
+                    setMsg((err && err.body && pick(err.body, 'error')) || 'Impossible d\'enregistrer les règles.', true);
+                });
+            });
+
+            $('muResetRules').addEventListener('click', function () {
+                if (!window.confirm('Remplacer toutes vos règles par les règles par défaut du plugin ?')) { return; }
+                call('PUT', 'MediaUploader/Rules', { rules: [], reset: true }).then(function () { setMsg('Règles par défaut restaurées.'); return loadRules(); })
+                    .catch(function () { setMsg('Impossible de restaurer les règles.', true); });
+            });
+
+            $('muTest').addEventListener('click', function () {
+                var paths = $('muTestInput').value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+                var out = $('muTestOut');
+                out.textContent = '';
+                if (!paths.length) { out.appendChild(el('p', { class: 'fieldDescription', text: 'Saisissez au moins un nom de fichier.' })); return; }
+                call('POST', 'MediaUploader/Rules/Test', { paths: paths, mode: $('muTestMode').value, rules: collect() }).then(function (res) {
+                    var errs = pick(res, 'RuleErrors') || [];
+                    errs.forEach(function (er) { out.appendChild(el('div', { class: 'mu-err', text: 'Règle ignorée « ' + pick(er, 'Name') + ' » : ' + pick(er, 'Message') })); });
+                    var table = el('table', { class: 'mu-test' });
+                    (pick(res, 'Items') || []).forEach(function (it) {
+                        var conf = pick(it, 'Confidence'), st = pick(it, 'Status');
+                        var bits = [];
+                        var k = pick(it, 'Kind');
+                        if (k === 'music') { bits.push([pick(it, 'Artist'), pick(it, 'Album')].filter(Boolean).join(' — ') || '(aucun artiste/album)'); }
+                        else {
+                            bits.push(pick(it, 'Title') ? pick(it, 'Title') + (pick(it, 'Year') ? ' (' + pick(it, 'Year') + ')' : '') : '(titre non reconnu)');
+                            if (k === 'series') { bits.push('S' + String(pick(it, 'Season') === null ? '?' : pick(it, 'Season')).padStart(2, '0') + 'E' + String(pick(it, 'Episode') === null ? '?' : pick(it, 'Episode')).padStart(2, '0')); }
+                        }
+                        var cls = st === 'ready' ? 'mu-ok' : (st === 'guess' ? 'mu-guess' : 'mu-unknown');
+                        var cell = el('td', {}, [
+                            el('div', { text: (KIND_LABELS[k] || k || '?') + ' · ' + bits.join(' · ') }),
+                            pick(it, 'Dest') ? el('div', { class: 'mu-small', text: '→ ' + pick(it, 'Dest') }) : null,
+                            pick(it, 'RuleName') ? el('div', { class: 'mu-small', text: 'Règle : ' + pick(it, 'RuleName') }) : null
+                        ]);
+                        (pick(it, 'Notes') || []).forEach(function (n) { cell.appendChild(el('div', { class: 'mu-small mu-guess', text: n })); });
+                        table.appendChild(el('tr', {}, [
+                            el('td', { text: pick(it, 'ClientPath') }),
+                            cell,
+                            el('td', { class: cls, text: { ready: 'sûr', guess: 'à vérifier', unknown: 'non reconnu', skipped: 'ignoré', error: 'erreur' }[st] || st })
+                        ]));
+                    });
+                    out.appendChild(table);
+                }).catch(function (err) {
+                    out.appendChild(el('div', { class: 'mu-err', text: (err && err.body && pick(err.body, 'error')) || 'Test impossible.' }));
+                });
+            });
+
             page.addEventListener('pageshow', function () {
                 loadSettings().then(refreshStatus);
+                loadRules();
             });
         })();
     </script>
