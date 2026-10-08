@@ -30,6 +30,25 @@ public static class NameTools
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>
+    /// Retire les répétitions d'un champ artiste : « A, A, A » devient « A » (« A, B, A » devient « A, B »).
+    /// Seuls des éléments identiques (sans tenir compte de la casse) sont fusionnés : « Tyler, The Creator » reste intact.
+    /// </summary>
+    /// <param name="artist">Valeur lue dans les tags.</param>
+    /// <returns>Valeur sans répétition, ou null si vide.</returns>
+    public static string? DedupeArtists(string? artist)
+    {
+        if (string.IsNullOrWhiteSpace(artist))
+        {
+            return null;
+        }
+
+        var parts = artist.Split(new[] { ", ", "; " }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var kept = parts.Where(p => seen.Add(p)).ToList();
+        return kept.Count == 0 ? artist.Trim() : string.Join(", ", kept);
+    }
+
+    /// <summary>
     /// Vrai si l'extension est celle d'un sous-titre.
     /// </summary>
     /// <param name="ext">Extension avec point.</param>

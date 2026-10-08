@@ -192,7 +192,7 @@ public sealed class DetectionEngine
     /// <returns>Résultat (jamais null).</returns>
     public Detection DetectMusic(string clientPath, TagInfo? tags)
     {
-        var det = new Detection { Kind = "music", Artist = CleanText(tags?.Artist), Album = CleanText(tags?.Album) };
+        var det = new Detection { Kind = "music", Artist = CleanText(NameTools.DedupeArtists(tags?.Artist)), Album = CleanText(tags?.Album) };
         if (det.Artist is not null && det.Album is not null)
         {
             det.Confidence = "sure";

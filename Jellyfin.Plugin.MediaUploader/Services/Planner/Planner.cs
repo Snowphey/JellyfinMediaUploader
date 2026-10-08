@@ -65,6 +65,9 @@ public static class Planner
             works.Add(Classify(f, ov, forcedMode, o, engine));
         }
 
+        // 0. Un album = un seul dossier d'artiste, même si les tags des pistes citent des artistes différents.
+        UnifyAlbumArtists(works);
+
         // 1. Fichiers principaux (audio, vidéo) : destination et nom.
         var taken = new HashSet<string>(StringComparer.Ordinal);
         foreach (var w in works.Where(w => w.Item.Role == "main" && !w.Rejected))
@@ -659,6 +662,86 @@ public static class Planner
         return dir;
     }
 
+    private static readonly string[] ArtistSeparators = { ", ", "; ", " & ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " / " };
+
+    // Artiste commun à plusieurs artistes d'un même album (featurings, invités). Retourne l'artiste et s'il faut le faire vérifier.
+    // 1. le plus court s'il ouvre tous les autres (« Kendrick Lamar » / « Kendrick Lamar, SZA ») ;
+    // 2. le premier nom, s'il est le même partout (« Duo, X » / « Duo, Y ») ;
+    // 3. les noms présents sur toutes les pistes, quel que soit leur ordre (« A, B » / « B, A » / « A ») : à vérifier ;
+    // 4. sinon « Various Artists » : à vérifier.
+    private static (string Artist, bool Review) CommonArtist(List<string> artists)
+    {
+        var shortest = artists.OrderBy(a => a.Length).First();
+        if (artists.All(a => a.Equals(shortest, StringComparison.OrdinalIgnoreCase)
+            || ArtistSeparators.Any(sep => a.StartsWith(shortest + sep, StringComparison.OrdinalIgnoreCase))))
+        {
+            return (shortest, false);
+        }
+
+        List<string> Tokens(string a) => a.Split(ArtistSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var leads = artists.Select(a => Tokens(a).FirstOrDefault() ?? a).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (leads.Count == 1)
+        {
+            return (leads[0], false);
+        }
+
+        var shared = Tokens(shortest);
+        foreach (var a in artists)
+        {
+            var t = Tokens(a);
+            shared = shared.Where(x => t.Contains(x, StringComparer.OrdinalIgnoreCase)).ToList();
+        }
+
+        return shared.Count > 0 ? (string.Join(", ", shared), true) : ("Various Artists", true);
+    }
+
+    private static void UnifyAlbumArtists(List<Work> works)
+    {
+        var byAlbum = works
+            .Where(w => w.IsAudio && !w.Rejected && w.File.Analyzed && w.Det is { Artist: not null, Album: not null, RuleId: null } && Blank(w.Ov?.Artist))
+            .GroupBy(w => NameTools.TitleKey(w.Det!.Album))
+            .Where(g => g.Key.Length > 0);
+
+        foreach (var g in byAlbum)
+        {
+            var artists = g.Select(w => w.Det!.Artist!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (artists.Count < 2)
+            {
+                continue;
+            }
+
+            var (artist, review) = CommonArtist(artists);
+            foreach (var w in g.Where(w => !string.Equals(w.Det!.Artist, artist, StringComparison.OrdinalIgnoreCase)))
+            {
+                w.Item.Notes.Add(review
+                    ? $"Artistes différents sur cet album ({artists.Count}) : regroupés sous « {artist} » (à vérifier)"
+                    : $"Artiste unifié avec les autres morceaux de l'album : « {artist} » (tags : « {w.Det!.Artist} »)");
+                w.Det!.Artist = artist;
+                w.Item.Artist = artist;
+                if (review)
+                {
+                    Raise(w.Item, "guess");
+                }
+            }
+
+            if (review)
+            {
+                // Le choix est incertain : on propose les artistes possibles à l'utilisateur.
+                var choices = new[] { artist }.Concat(artists).Append("Various Artists").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                foreach (var w in g)
+                {
+                    w.Item.ArtistChoices = choices;
+                }
+
+                foreach (var w in g.Where(w => w.Item.Artist == artist && !w.Item.Notes.Any(n => n.StartsWith("Artistes différents", StringComparison.Ordinal))))
+                {
+                    w.Item.Notes.Add($"Artistes différents sur cet album : regroupés sous « {artist} » (à vérifier)");
+                    Raise(w.Item, "guess");
+                }
+            }
+        }
+    }
+
     private static string? MusicKey(string? artist, string? title)
     {
         var a = NameTools.TitleKey(artist);
@@ -674,7 +757,7 @@ public static class Planner
         foreach (var w in works.Where(w => w.Item.Role == "main" && w.IsAudio && !w.Rejected && w.Placed && w.File.Analyzed))
         {
             var title = !Blank(w.Ov?.Title) ? w.Ov!.Title : w.File.Tags?.Title;
-            var key = MusicKey(w.Item.Artist, title);
+            var key = MusicKey(NameTools.DedupeArtists(w.File.Tags?.Artist) ?? w.Item.Artist, title);
             if (key is null)
             {
                 continue;
@@ -699,7 +782,7 @@ public static class Planner
                     foreach (var path in files.Where(p => o.Audio.Contains(Path.GetExtension(p).ToLowerInvariant())))
                     {
                         var tags = fs.ReadTags(path);
-                        var k = MusicKey(tags?.Artist, tags?.Title);
+                        var k = MusicKey(NameTools.DedupeArtists(tags?.Artist), tags?.Title);
                         if (k is not null)
                         {
                             known.Add((Path.GetRelativePath(root, path).Replace('\\', '/'), k));

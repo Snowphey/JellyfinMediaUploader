@@ -720,6 +720,20 @@
         if (S.edit && S.edit.type === 'selection') { box.appendChild(h('div', { style: 'padding:0 .8em' }, [selectionEditor(chosen.length)])); }
       }
     } else if (kind !== 'ignored') { box.appendChild(h('div', { class: 'gfolder', text: pick(g, 'Folder') ? '→ ' + pick(g, 'Folder') : '→ racine de la bibliothèque' })); }
+    var choices = [];
+    items.forEach(function (i) { list(pick(i, 'ArtistChoices')).forEach(function (c) { if (choices.indexOf(c) < 0) { choices.push(c); } }); });
+    if (choices.length && !S.committing) {
+      var picked = pick(g, 'Artist') || choices[0];
+      var sel = h('select', { onchange: function (e) { picked = e.target.value; } }, choices.map(function (c) { return h('option', { value: c, text: c, selected: c === picked }); }));
+      box.appendChild(h('div', { class: 'edit', style: 'margin:0 .8em .5em' }, [
+        h('span', { class: 'note', text: 'Les artistes diffèrent d\'un morceau à l\'autre de cet album. Quel artiste pour le dossier ?' }),
+        sel,
+        h('button', { type: 'button', class: 'small', text: 'Confirmer ce choix', onclick: function () {
+          items.forEach(function (i) { if (pick(i, 'Role') === 'main' && !rejected(i)) { setOverride(pick(i, 'Id'), { artist: picked }); } });
+        } }),
+        h('span', { class: 'muted', text: 'Autre nom : « Modifier » (avec autocomplétion).' })
+      ]));
+    }
     if (S.edit && S.edit.type === 'group' && S.edit.key === key) { box.appendChild(h('div', { style: 'padding:0 .8em' }, [groupEditor(g)])); }
     if (open) {
       var body = h('div', { class: 'gbody' }), lastSeason = null, lastDir = null;

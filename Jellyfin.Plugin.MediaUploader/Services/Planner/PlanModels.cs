@@ -325,6 +325,9 @@ public sealed class PlanItem
     /// <summary>Gets or sets l'association (sous-titres).</summary>
     public PlanPair? Pair { get; set; }
 
+    /// <summary>Gets or sets les artistes possibles pour le dossier quand le choix automatique est incertain (artiste commun d'un album aux artistes variés) ; vide si le choix est sûr.</summary>
+    public List<string> ArtistChoices { get; set; } = new();
+
     /// <summary>Gets or sets le doublon détecté (musique), forcé ou non.</summary>
     public PlanDuplicate? Duplicate { get; set; }
 

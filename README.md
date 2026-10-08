@@ -33,8 +33,8 @@ dotnet publish Jellyfin.Plugin.MediaUploader -c Release -o out
 ```
 
 Copier `out/Jellyfin.Plugin.MediaUploader.dll` et `out/TagLibSharp.dll` dans :
-`<dossier-données-jellyfin>/plugins/MediaUploader_1.1.0.0/` puis redémarrer Jellyfin
-(supprimez l'ancien dossier `MediaUploader_1.0.0.0` s'il existe).
+`<dossier-données-jellyfin>/plugins/MediaUploader_1.1.1.0/` puis redémarrer Jellyfin
+(supprimez les anciens dossiers `MediaUploader_1.0.0.0` et `MediaUploader_1.1.0.0` s'il existe).
 
 Tests du moteur de détection et du rangement (aucune dépendance à Jellyfin) : `dotnet run --project Jellyfin.Plugin.MediaUploader.Tests`.
 
@@ -85,6 +85,16 @@ recommencez avec une autre sélection pour les suivants. ✎ permet aussi de ren
 Les champs artiste et album proposent par **autocomplétion** les artistes et albums déjà présents dans la bibliothèque (noms de dossiers) et dans le lot, pour réutiliser un nom existant
 plutôt que d'en créer une variante (« Daft punk » / « Daft Punk »).
 La même autocomplétion existe partout où l'on corrige le rangement (groupe ou fichier) : artiste et album pour la musique, titre pour les films et séries (choisir un titre connu renseigne son année).
+
+### Plusieurs artistes sur un même album
+
+Les tags d'un album ou d'une bande originale citent souvent des artistes différents d'une piste à l'autre. Pour ne pas éclater l'album en plusieurs dossiers :
+les répétitions sont retirées (« A, A, A » devient « A »), puis tous les morceaux d'un même album du lot reçoivent **un seul artiste** : le plus court s'il ouvre les autres
+(« Lorien Testard » pour « Lorien Testard, Alice Duport-Percier » ; « Kendrick Lamar » pour « Kendrick Lamar feat. Drake » ou « Kendrick Lamar & Rihanna »), sinon le premier nom qu'ils partagent
+(invités différents), sinon les noms présents sur toutes les pistes quel que soit leur ordre (« A, B » / « B, A » : *À vérifier*), sinon **« Various Artists »** (*À vérifier*).
+Séparateurs reconnus : `, ` `; ` ` & ` ` feat. ` ` ft. ` ` featuring ` ` / `.
+Quand le choix est incertain (*À vérifier*), le groupe pose la question : une liste des artistes possibles et « Confirmer ce choix », qui l'applique à tous les morceaux de l'album ; « Modifier » permet un autre nom, avec autocomplétion. Les cas sûrs ne posent aucune question.
+Un artiste corrigé à la main n'est jamais modifié. Deux albums distincts qui portent le même titre (« Greatest Hits ») seraient regroupés : c'est pourquoi ce dernier cas est à vérifier.
 
 ### Rangement
 
@@ -202,17 +212,17 @@ Prérequis (une seule fois) : Settings > Actions > General > Workflow permission
 3. Commiter et pousser les changements : `git add -A && git commit -m "..." && git push`
 4. Créer le tag, **avec 4 chiffres** (format de version Jellyfin) et un numéro jamais utilisé :
    ```bash
-   git tag v1.1.0.0
-   git push origin v1.1.0.0
+   git tag v1.1.1.0
+   git push origin v1.1.1.0
    ```
-5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_1.1.0.0.zip`
-   (le plugin + TagLibSharp), et un commit « Manifest : version 1.1.0.0 » est ajouté sur `main`.
+5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_1.1.1.0.zip`
+   (le plugin + TagLibSharp), et un commit « Manifest : version 1.1.1.0 » est ajouté sur `main`.
 6. `git pull` pour récupérer ce commit, et vérifier que `manifest.json` contient la nouvelle version.
 
 Jellyfin propose ensuite la mise à jour dans Tableau de bord > Extensions > Catalogue / Mes plugins.
 
 Si un run échoue, corriger puis supprimer et recréer le tag :
-`git tag -d v1.1.0.0 && git push origin :refs/tags/v1.1.0.0`, puis refaire l'étape 4.
+`git tag -d v1.1.1.0 && git push origin :refs/tags/v1.1.1.0`, puis refaire l'étape 4.
 Si la cible change de version de Jellyfin, adapter `targetAbi` dans `Jellyfin.Plugin.MediaUploader/build.yaml` avant de tagger.
 
 ## Licence

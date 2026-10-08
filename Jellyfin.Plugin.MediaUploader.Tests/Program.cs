@@ -269,7 +269,7 @@ Check("doublon dans le lot (noms de fichiers différents)", (Item(dupBatch, "01 
 Check("doublon : jamais enregistré sans forcer", dupBatch.Summary.ToReview, 1);
 var dupForce = Run(new List<PlanFile> { Song("a", "x.flac", "Artiste", "Mon Titre"), Song("b", "y.flac", "Artiste", "Mon Titre") }, ov: new() { ["b"] = new ItemOverride { Force = true } });
 Check("doublon forcé : enregistré, à vérifier", (Item(dupForce, "y.flac").Status, Item(dupForce, "y.flac").Duplicate!.Forced), ("guess", true));
-Check("même titre, autre artiste : pas un doublon", Run(new List<PlanFile> { Song("a", "x.flac", "A", "Titre"), Song("b", "y.flac", "B", "Titre") }).Summary.ToReview, 0);
+Check("même titre, autre artiste : pas un doublon", Run(new List<PlanFile> { Song("a", "x.flac", "A", "Titre"), Song("b", "y.flac", "B", "Titre") }).Groups.SelectMany(g => g.Items).Any(i => i.Status == "duplicate"), false);
 Check("sans titre dans les tags : pas de détection", Run(new List<PlanFile> { Song("a", "x.flac", "A", null), Song("b", "y.flac", "A", null) }).Summary.ToReview, 0);
 var libFs = new FakeFs(new[] { Music + "/Artiste/Autre Album/Ancien nom.flac" }, new() { [Music + "/Artiste/Autre Album/Ancien nom.flac"] = new TagInfo("Artiste", "Autre Album", "Mon titre") });
 var dupLib = Planner.Build(new List<PlanFile> { Song("a", "nouveau.flac", "Artiste", "Mon Titre") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, libFs);
@@ -300,6 +300,42 @@ Check("titre seul manquant : pas signalé", Run(new List<PlanFile> { Song("s", "
 var fbDup = Run(new List<PlanFile> { NoTags("a", "x.flac"), NoTags("b", "y.flac") },
     ov: new() { ["a"] = new ItemOverride { Artist = "Moi", Album = "A", Title = "Chanson" }, ["b"] = new ItemOverride { Artist = "Moi", Album = "A", Title = "chanson" } });
 Check("titre saisi : sert aux doublons", Item(fbDup, "y.flac").Status, "duplicate");
+
+// Artistes multiples autour d'un même album.
+Check("répétitions retirées", NameTools.DedupeArtists("Alisa Okehazama, Alisa Okehazama, Alisa Okehazama"), "Alisa Okehazama");
+Check("noms composés intacts", NameTools.DedupeArtists("Tyler, The Creator"), "Tyler, The Creator");
+Check("A, B, A", NameTools.DedupeArtists("A, B, a"), "A, B");
+var ost = Run(new List<PlanFile> {
+    Song("1", "7 to 3.m4a", "Alisa Okehazama, Alisa Okehazama, Alisa Okehazama", "7 to 3"),
+    Song("2", "Impatience.m4a", "Paranom, Kasper, Hiroaki Tsutsumi, Hiroaki Tsutsumi, Hiroaki Tsutsumi", "Impatience"),
+    Song("3", "Monoco.mp3", "Lorien Testard", "Monoco"), Song("4", "Alicia.mp3", "Lorien Testard, Alice Duport-Percier", "Alicia") });
+Check("même album : un seul groupe", ost.Groups.Count(g => g.Kind == "music"), 1);
+Check("artistes disjoints : Various Artists, à vérifier", (Item(ost, "Impatience.m4a").Dest, Item(ost, "Impatience.m4a").Status), ("Various Artists/Album/Impatience.m4a", "guess"));
+var proj = Run(new List<PlanFile> {
+    new() { Id = "1", ClientPath = "Monoco.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard", "Clair Obscur", "Monoco") },
+    new() { Id = "2", ClientPath = "Alicia.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur: Expedition 33 (OST)", "Alicia") },
+    new() { Id = "3", ClientPath = "Autre.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur", "Autre") } });
+Check("préfixe commun : le plus court", (Item(proj, "Autre.mp3").Dest, Item(proj, "Autre.mp3").Status), ("Lorien Testard/Clair Obscur/Autre.mp3", "ready"));
+Check("autre album non touché", Item(proj, "Alicia.mp3").Dest, "Lorien Testard, Alice Duport-Percier/Clair Obscur: Expedition 33 (OST)/Alicia.mp3");
+var lead = Run(new List<PlanFile> { Song("1", "a.flac", "Duo, X", "A"), Song("2", "b.flac", "Duo, Y", "B") }, ov: null);
+Check("même premier nom : unifié", (Item(lead, "a.flac").Dest, Item(lead, "b.flac").Dest), ("Duo/Album/a.flac", "Duo/Album/b.flac"));
+var keepOv = Run(new List<PlanFile> { Song("1", "a.flac", "P", "A"), Song("2", "b.flac", "Q", "B") }, ov: new() { ["1"] = new ItemOverride { Artist = "Moi" } });
+Check("artiste corrigé à la main : respecté", Item(keepOv, "a.flac").Dest, "Moi/Album/a.flac");
+
+// Featurings sur un album de rap.
+var rap = Run(new List<PlanFile> { Song("1", "1.flac", "Kendrick Lamar", "A"), Song("2", "2.flac", "Kendrick Lamar, SZA", "B"), Song("3", "3.flac", "Kendrick Lamar feat. Drake", "C"), Song("4", "4.flac", "Kendrick Lamar & Rihanna", "D") });
+Check("rap : featurings, un seul dossier, sûr", (rap.Groups.Count(g => g.Kind == "music"), rap.Summary.ToReview, Item(rap, "3.flac").Dest), (1, 0, "Kendrick Lamar/Album/3.flac"));
+var rap2 = Run(new List<PlanFile> { Song("1", "1.flac", "Drake", "A"), Song("2", "2.flac", "Future, Drake", "B"), Song("3", "3.flac", "Drake, Future", "C") });
+Check("rap : ordre inversé, nom commun, à vérifier", (Item(rap2, "2.flac").Dest, Item(rap2, "2.flac").Status), ("Drake/Album/2.flac", "guess"));
+var rap3 = Run(new List<PlanFile> { Song("1", "1.flac", "Duo, X", "A"), Song("2", "2.flac", "Duo, Y", "B") });
+Check("même artiste principal, invités différents : sûr", (Item(rap3, "1.flac").Dest, Item(rap3, "1.flac").Status), ("Duo/Album/1.flac", "ready"));
+
+// Choix incertain : les possibilités sont proposées ; le choix de l'utilisateur lève le doute.
+Check("choix incertain : propositions", string.Join(" | ", Item(rap2, "2.flac").ArtistChoices), "Drake | Future, Drake | Drake, Future | Various Artists");
+Check("choix sûr : pas de proposition", Item(rap, "3.flac").ArtistChoices.Count, 0);
+var picked = Run(new List<PlanFile> { Song("1", "1.flac", "Drake", "A"), Song("2", "2.flac", "Future, Drake", "B"), Song("3", "3.flac", "Drake, Future", "C") },
+    ov: new() { ["1"] = new ItemOverride { Artist = "Drake" }, ["2"] = new ItemOverride { Artist = "Drake" }, ["3"] = new ItemOverride { Artist = "Drake" } });
+Check("choix confirmé : sûr, plus de proposition", (picked.Summary.ToReview, Item(picked, "2.flac").ArtistChoices.Count), (0, 0));
 
 Console.WriteLine(failures == 0 ? $"OK : {total} vérifications." : $"{failures} échec(s) sur {total}.");
 return failures == 0 ? 0 : 1;

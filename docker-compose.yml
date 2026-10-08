@@ -5,7 +5,7 @@ services:
   plugin-builder:
     build: ./Jellyfin.Plugin.MediaUploader
     volumes:
-      - ./jellyfin/config/plugins/MediaUploader_1.1.0.0:/plugin-out
+      - ./jellyfin/config/plugins/MediaUploader_1.1.1.0:/plugin-out
     restart: "no"
 
   jellyfin:

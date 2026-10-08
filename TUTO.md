@@ -25,7 +25,7 @@ cd Jellyfin.Plugin.MediaUploader   # racine du dépôt cloné
 docker compose up -d --build
 ```
 
-Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.1.0.0/`,
+Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.1.1.0/`,
 puis démarre Jellyfin. Suivre les logs : `docker compose logs -f jellyfin`.
 
 Si le build du plugin échoue lancez
@@ -37,7 +37,7 @@ Si le build du plugin échoue lancez
 2. Ajoutez vos bibliothèques :
    - Musique : dossier `/media/music`
    - Films : dossier `/media/movies`
-   - Séries et animés : dossier `/media/shows`
+   - Séries et animés (optionnel) : type de contenu **Séries**, dossier `/media/shows`
 3. Tableau de bord > Extensions : « Media Uploader » doit apparaître.
    Sinon : `docker compose restart jellyfin`.
 
@@ -47,7 +47,7 @@ Tableau de bord > Extensions > **Media Uploader** (clic sur la fiche du plugin) 
 
 - Dossier musique : `/media/music`
 - Dossier films : `/media/movies`
-- Dossier séries et animés : `/media/shows`
+- Dossier séries et animés : `/media/shows` (laissez vide si vous n'en voulez pas : les épisodes seront refusés)
 
 Ce sont des chemins vus depuis le conteneur, pas ceux de l'hôte. Cliquez sur « Enregistrer les paramètres ».
 Le reste (rangement `auto`/`flat`, extraction de pochette, autorisation des non-admins, extensions,
