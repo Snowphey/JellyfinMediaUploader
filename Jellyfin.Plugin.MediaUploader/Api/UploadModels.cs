@@ -154,7 +154,9 @@ public class CommitRequest
 /// <param name="Received">Octets reçus.</param>
 /// <param name="Size">Taille.</param>
 /// <param name="Complete">Fichier entièrement reçu et analysé.</param>
-public record ItemProgress(long Received, long Size, bool Complete);
+/// <param name="State">État d'un fichier en cours d'import (« queued », « downloading »), sinon null.</param>
+/// <param name="Message">Détail de l'import en cours.</param>
+public record ItemProgress(long Received, long Size, bool Complete, string? State = null, string? Message = null);
 
 /// <summary>
 /// État d'un lot : plan et avancement.

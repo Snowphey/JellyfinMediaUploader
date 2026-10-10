@@ -1,6 +1,8 @@
 using System.Net.Mime;
 using Jellyfin.Plugin.MediaUploader.Services;
+using Jellyfin.Plugin.MediaUploader.Services.Import;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -22,16 +24,19 @@ public class BatchController : MediaUploaderControllerBase
     private const int MaxBatchesPerOwner = 10;
 
     private readonly ILibraryManager _libraryManager;
+    private readonly IPlaylistManager _playlistManager;
     private readonly ILogger<BatchController> _logger;
 
     /// <summary>
     /// Initialise une nouvelle instance de la classe <see cref="BatchController"/>.
     /// </summary>
     /// <param name="libraryManager">Gestionnaire de bibliothèque.</param>
+    /// <param name="playlistManager">Gestionnaire de listes de lecture.</param>
     /// <param name="logger">Logger.</param>
-    public BatchController(ILibraryManager libraryManager, ILogger<BatchController> logger)
+    public BatchController(ILibraryManager libraryManager, IPlaylistManager playlistManager, ILogger<BatchController> logger)
     {
         _libraryManager = libraryManager;
+        _playlistManager = playlistManager;
         _logger = logger;
     }
 
@@ -388,6 +393,18 @@ public class BatchController : MediaUploaderControllerBase
                 scanQueued = true;
             }
 
+            // Import de playlist : la liste de lecture Jellyfin est créée dès que le scan a fait apparaître les morceaux.
+            if (saved > 0 && batch.Playlist is { } playlist)
+            {
+                var position = playlist.Order.Select((itemId, index) => (itemId, index)).ToDictionary(x => x.itemId, x => x.index, StringComparer.Ordinal);
+                var paths = work.Select((w, i) => (w.Item.Id, Result: results[i]))
+                    .Where(x => x.Result.Status == "saved" && x.Result.Path is not null && position.ContainsKey(x.Id))
+                    .OrderBy(x => position[x.Id])
+                    .Select(x => x.Result.Path!)
+                    .ToList();
+                PlaylistBuilder.Queue(_libraryManager, _playlistManager, playlist, paths, _logger);
+            }
+
             return new UploadResponse(saved, scanQueued, results);
         }
         finally
@@ -412,6 +429,7 @@ public class BatchController : MediaUploaderControllerBase
         }
 
         UploadStore.Batches.TryRemove(batch.Id, out _);
+        ImportManager.CancelForBatch(batch.Id);
         lock (batch.Sync)
         {
             foreach (var item in batch.Items)
@@ -464,7 +482,7 @@ public class BatchController : MediaUploaderControllerBase
         Dictionary<string, ItemProgress> progress;
         lock (batch.Sync)
         {
-            progress = batch.Items.ToDictionary(i => i.Id, i => new ItemProgress(i.Received, i.Size, i.Complete), StringComparer.Ordinal);
+            progress = batch.Items.ToDictionary(i => i.Id, i => new ItemProgress(i.Received, i.Size, i.Complete, i.ImportState, i.ImportMessage), StringComparer.Ordinal);
         }
 
         return new BatchResponse(batch.Id, ChunkMb(config) * 1024 * 1024, ids, plan, progress);
@@ -492,6 +510,96 @@ public class BatchController : MediaUploaderControllerBase
         }
 
         return batch;
+    }
+
+    /// <summary>
+    /// Tags lus dans un fichier audio entièrement reçu (titre, artistes, album, numéros, année, durée, présence de pochette), pour vérifier avant de confirmer.
+    /// </summary>
+    /// <param name="id">Identifiant du lot.</param>
+    /// <param name="itemId">Identifiant du fichier.</param>
+    /// <returns>Tags.</returns>
+    [HttpGet("Batch/{id}/Items/{itemId}/Preview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult GetItemPreview(string id, string itemId)
+    {
+        var details = ReadItemDetails(id, itemId, out var error);
+        if (details is null)
+        {
+            return error!;
+        }
+
+        return Ok(new
+        {
+            details.Title,
+            details.Artist,
+            details.AlbumArtist,
+            details.Album,
+            Track = details.Track == 0 ? (uint?)null : details.Track,
+            Disc = details.Disc == 0 ? (uint?)null : details.Disc,
+            Year = details.Year == 0 ? (uint?)null : details.Year,
+            details.DurationSec,
+            HasCover = details.CoverData is not null,
+            CoverBytes = details.CoverData?.Length ?? 0
+        });
+    }
+
+    /// <summary>
+    /// Pochette intégrée d'un fichier audio reçu.
+    /// </summary>
+    /// <param name="id">Identifiant du lot.</param>
+    /// <param name="itemId">Identifiant du fichier.</param>
+    /// <returns>Image.</returns>
+    [HttpGet("Batch/{id}/Items/{itemId}/Cover")]
+    [Produces("image/jpeg", "image/png", "image/webp")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult GetItemCover(string id, string itemId)
+    {
+        var details = ReadItemDetails(id, itemId, out var error);
+        if (details is null)
+        {
+            return error!;
+        }
+
+        if (details.CoverData is null || details.CoverMime is null)
+        {
+            return NotFound(new { error = "Pas de pochette dans ce fichier." });
+        }
+
+        Response.Headers["Cache-Control"] = "private, max-age=300";
+        return File(details.CoverData, details.CoverMime);
+    }
+
+    private AudioDetails? ReadItemDetails(string id, string itemId, out ActionResult? error)
+    {
+        var item = FindItem(id, itemId, out var batch, out error);
+        if (item is null || batch is null)
+        {
+            return null;
+        }
+
+        string? path;
+        bool complete;
+        lock (batch.Sync)
+        {
+            path = item.TempPath;
+            complete = item.Complete;
+        }
+
+        if (!complete || path is null || !System.IO.File.Exists(path))
+        {
+            error = NotFound(new { error = "Fichier pas encore reçu." });
+            return null;
+        }
+
+        var details = AudioTagReader.ReadDetails(path, item.Ext);
+        if (details is null)
+        {
+            error = NotFound(new { error = "Tags illisibles." });
+        }
+
+        return details;
     }
 
     private BatchItem? FindItem(string id, string itemId, out Batch? batch, out ActionResult? error)

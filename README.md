@@ -33,17 +33,52 @@ dotnet publish Jellyfin.Plugin.MediaUploader -c Release -o out
 ```
 
 Copier `out/Jellyfin.Plugin.MediaUploader.dll` et `out/TagLibSharp.dll` dans :
-`<dossier-données-jellyfin>/plugins/MediaUploader_1.1.1.0/` puis redémarrer Jellyfin
-(supprimez les anciens dossiers `MediaUploader_1.0.0.0` et `MediaUploader_1.1.0.0` s'il existe).
+`<dossier-données-jellyfin>/plugins/MediaUploader_1.2.0.0/` puis redémarrer Jellyfin
+(supprimez les anciens dossiers `MediaUploader_1.0.0.0`, `MediaUploader_1.1.0.0` et `MediaUploader_1.1.1.0` s'il existe).
 
 Tests du moteur de détection et du rangement (aucune dépendance à Jellyfin) : `dotnet run --project Jellyfin.Plugin.MediaUploader.Tests`.
 
+## Import par lien et navigation (Spotify, YouTube, artistes et albums)
+
+Un onglet **Lien** et un onglet **Parcourir** s'ajoutent à la page d'upload. Les morceaux téléchargés arrivent dans un lot, avec le même aperçu groupé par album,
+les mêmes corrections et la même confirmation que les fichiers envoyés : rien n'entre dans la bibliothèque avant votre accord (sauf si l'administrateur a choisi la confirmation « seulement en cas de doute » ou « jamais »). Aucune clé d'API n'est nécessaire.
+
+- **Lien** : playlist, album ou titre Spotify (les métadonnées sont lues sans clé sur la page d'intégration de Spotify, qui n'expose que les **100 premiers titres** d'une playlist ; chaque titre est ensuite cherché sur YouTube),
+  playlist YouTube / YouTube Music, album YouTube Music ou vidéo seule (via [yt-dlp](https://github.com/yt-dlp/yt-dlp)). La liste des morceaux s'affiche : vous décochez ce que vous ne voulez pas,
+  puis choisissez le rangement (chaque titre dans son album d'origine, ou tout dans un album au nom de la playlist, sous « Various Artists »).
+- **Parcourir** : recherche d'un artiste, liste de ses albums / EP / singles (filtres pour live et compilations), cases à cocher, « Importer la sélection ».
+  Le catalogue vient de [MusicBrainz](https://musicbrainz.org) (pistes, durées, ISRC) et des pochettes de Cover Art Archive ; chaque morceau est ensuite cherché sur YouTube (en comparant les durées) et téléchargé par yt-dlp ; le plugin écrit les tags et la pochette.
+
+### Mise en place
+
+1. Tableau de bord > Extensions > Media Uploader > onglet **Démarrage** : bouton *Installer / mettre à jour les outils* (**yt-dlp** et **deno** ; seuls les outils en retard sont retéléchargés)
+   (téléchargés depuis leurs dépôts GitHub officiels dans le dossier de données du plugin ; empreinte SHA-256 vérifiée pour yt-dlp et deno). deno est l'exécuteur JavaScript que yt-dlp exige désormais pour YouTube.
+   Vous pouvez aussi installer les outils vous-même (`pip install yt-dlp`) et indiquer leur chemin, ou les laisser dans le `PATH`.
+2. ffmpeg est celui de Jellyfin. Le dossier **musique** doit être configuré (les imports ne concernent que la musique).
+3. Le serveur Jellyfin doit pouvoir sortir sur Internet (YouTube, Spotify, musicbrainz.org, coverartarchive.org, github.com pour l'installation des outils).
+4. Réglages : cadence des téléchargements (voir ci-dessous), format audio (M4A par défaut, sans réencodage dans la plupart des cas ; Opus ; MP3), téléchargements simultanés, fichier de cookies facultatif (YouTube Music Premium, ou si YouTube réclame une vérification).
+
+Liste de lecture : pour un lien de **playlist**, une liste de lecture Jellyfin du même nom est créée avec les morceaux confirmés, dans l'ordre d'origine, dès que Jellyfin a scanné les nouveaux fichiers
+(quelques minutes ; si la liste existe déjà, les morceaux manquants y sont ajoutés). Elle appartient à l'utilisateur qui a lancé l'import et est **publique par défaut** (visible de tous) ; une case permet de la garder privée
+au moment du téléchargement, et les deux valeurs par défaut se règlent dans l'onglet Import. Une clé d'API ne peut pas posséder de liste de lecture.
+
+Cadence (anti-robot) : pour que le serveur ne soit pas pris pour un robot par YouTube, les téléchargements sont espacés d'un délai **aléatoire de 8 à 25 s** (commun à tous les utilisateurs, puisque l'adresse IP est la même),
+plafonnés à **100 par heure** et **400 par jour**, un seul à la fois, avec une pause entre les requêtes internes de yt-dlp. Si YouTube signale une limitation ou une vérification anti-robot, tout est suspendu 30 min
+(puis 1 h, 2 h… jusqu'à 6 h en cas de récidive) et reprend seul, sans perdre les morceaux en attente. Tout est réglable dans les paramètres (0 = sans plafond).
+
+Les onglets Lien et Parcourir de la page d'envoi affichent les quotas en cours (utilisés et restants cette heure et aujourd'hui, selon vos réglages) et, avant de lancer un téléchargement, prévient si la sélection dépasse un plafond (combien de morceaux attendront, et environ combien de temps).
+
+Remarques :
+- Seuls les liens Spotify, YouTube et YouTube Music sont acceptés ; l'adresse transmise aux outils est reconstruite à partir d'identifiants validés (le serveur ne sert pas de téléchargeur universel).
+- Un morceau introuvable ou en échec est retiré du lot et signalé dans le suivi ; « Arrêter l'import » garde ce qui est déjà reçu.
+- Ces outils dépendent de services tiers qui changent régulièrement : en cas d'erreur après quelques semaines, remettez yt-dlp à jour avec les boutons ci-dessus.
+- N'importez que des contenus dont vous avez le droit de disposer.
+
 ## Configurer
 
-Tableau de bord > Extensions > Media Uploader : renseigner les dossiers musique et films, et si vous voulez des séries/animés
-le dossier séries (par exemple `/media/shows`, sur lequel vous créez dans Jellyfin une bibliothèque de type « Séries »).
-Ce sont des dossiers de vos bibliothèques, en écriture pour l'utilisateur qui lance Jellyfin. Sans dossier séries, un épisode est
-refusé avec un message clair (il n'est jamais rangé avec les films).
+Tableau de bord > Extensions > Media Uploader > onglet **Démarrage** : renseigner les trois dossiers (par exemple `/media/music`, `/media/movies` et `/media/shows`,
+sur lequel vous créez dans Jellyfin une bibliothèque de type « Séries »). Les paramètres ne s'enregistrent que si les trois sont remplis.
+Ce sont des dossiers de vos bibliothèques, en écriture pour l'utilisateur qui lance Jellyfin.
 
 ## Interface (tous les utilisateurs)
 
@@ -154,6 +189,15 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | DELETE | `/MediaUploader/Batch/{id}/Items/{itemId}` | Retire un fichier du lot |
 | POST | `/MediaUploader/Batch/{id}/Commit` | Confirme : `{itemIds, scan}` ; range les fichiers choisis |
 | DELETE | `/MediaUploader/Batch/{id}` | Annule le lot |
+| GET | `/MediaUploader/Music/Suggestions?artist=` | Artistes (et albums de l'artiste) déjà présents, pour l'autocomplétion |
+| GET | `/MediaUploader/Library/Titles?kind=` | Titres de films ou séries déjà présents |
+| GET | `/MediaUploader/Import/Status` | Outils d'import disponibles et réglages (`?versions=true` : versions installées, administrateurs) |
+| POST | `/MediaUploader/Import/Tools/{tool}` | Installe ou met à jour `yt-dlp`, `deno` ou `all` (administrateurs) |
+| POST | `/MediaUploader/Import/Jobs` | Lit un lien Spotify / YouTube : `{url, layout}` ; renvoie la liste des morceaux |
+| POST | `/MediaUploader/Import/Albums` | Importe des albums choisis dans la navigation (identifiants MusicBrainz) |
+| GET / DELETE | `/MediaUploader/Import/Jobs/{id}` | État d'un import / arrêt |
+| POST | `/MediaUploader/Import/Jobs/{id}/Start` | Lance les téléchargements : `{trackIds, layout, createPlaylist, playlistPublic}` |
+| GET | `/MediaUploader/Browse/Artists?q=` · `/Browse/Artists/{id}/Albums` | Recherche d'artistes et albums (MusicBrainz) |
 | GET / PUT | `/MediaUploader/Rules` | Lit / enregistre les règles de détection (administrateurs) |
 | POST | `/MediaUploader/Rules/Test` | Essaie des noms de fichiers sur les règles (administrateurs) |
 
@@ -190,9 +234,10 @@ plus de 2 h sont supprimés. L'envoi simple `Upload` (multipart) reste disponibl
 Si un nom de fichier existe déjà, le plugin n'écrase rien et ajoute un suffixe (`Titre (2).opus`),
 sauf si « Écraser les fichiers existants » est activé.
 
-## Brancher yt-dlp plus tard
+## Utiliser yt-dlp vous-même via l'API
 
-Astuce : `--download-archive archive.txt` évite de retélécharger (et donc de dupliquer) un morceau déjà récupéré.
+L'import par lien est intégré (voir plus haut). Pour un script qui télécharge de son côté, l'API `Upload` range le résultat :
+`--download-archive archive.txt` évite de retélécharger (et donc de dupliquer) un morceau déjà récupéré.
 
 ```bash
 yt-dlp -x --audio-format opus --embed-metadata --embed-thumbnail -o "%(title)s [%(id)s].%(ext)s" "URL"
@@ -212,17 +257,17 @@ Prérequis (une seule fois) : Settings > Actions > General > Workflow permission
 3. Commiter et pousser les changements : `git add -A && git commit -m "..." && git push`
 4. Créer le tag, **avec 4 chiffres** (format de version Jellyfin) et un numéro jamais utilisé :
    ```bash
-   git tag v1.1.1.0
-   git push origin v1.1.1.0
+   git tag v1.2.0.0
+   git push origin v1.2.0.0
    ```
-5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_1.1.1.0.zip`
-   (le plugin + TagLibSharp), et un commit « Manifest : version 1.1.1.0 » est ajouté sur `main`.
+5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_1.2.0.0.zip`
+   (le plugin + TagLibSharp), et un commit « Manifest : version 1.2.0.0 » est ajouté sur `main`.
 6. `git pull` pour récupérer ce commit, et vérifier que `manifest.json` contient la nouvelle version.
 
 Jellyfin propose ensuite la mise à jour dans Tableau de bord > Extensions > Catalogue / Mes plugins.
 
 Si un run échoue, corriger puis supprimer et recréer le tag :
-`git tag -d v1.1.1.0 && git push origin :refs/tags/v1.1.1.0`, puis refaire l'étape 4.
+`git tag -d v1.2.0.0 && git push origin :refs/tags/v1.2.0.0`, puis refaire l'étape 4.
 Si la cible change de version de Jellyfin, adapter `targetAbi` dans `Jellyfin.Plugin.MediaUploader/build.yaml` avant de tagger.
 
 ## Licence

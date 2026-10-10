@@ -16,6 +16,8 @@
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\PathBuilder.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Detection\*.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Planner\*.cs" />
+    <!-- Import : tout sauf ce qui dépend de Jellyfin ou de TagLib (ImportManager, TrackTagger, PlaylistBuilder). -->
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Import\*.cs" Exclude="..\Jellyfin.Plugin.MediaUploader\Services\Import\ImportManager.cs;..\Jellyfin.Plugin.MediaUploader\Services\Import\TrackTagger.cs;..\Jellyfin.Plugin.MediaUploader\Services\Import\PlaylistBuilder.cs" />
   </ItemGroup>
 
 </Project>

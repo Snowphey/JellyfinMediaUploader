@@ -23,16 +23,34 @@
         #MediaUploaderSettingsPage table.mu-test { width: 100%; border-collapse: collapse; margin-top: .8em; font-size: .9em; }
         #MediaUploaderSettingsPage table.mu-test td { border-top: 1px solid rgba(255,255,255,.12); padding: .35em .4em; vertical-align: top; word-break: break-word; }
         #MediaUploaderSettingsPage .mu-ok { color: #6fcf97; } #MediaUploaderSettingsPage .mu-guess { color: #f2c94c; } #MediaUploaderSettingsPage .mu-unknown { color: #e57373; }
+        #MediaUploaderSettingsPage .mu-tabs { display: flex; gap: .3em; flex-wrap: wrap; margin: 1em 0 1.2em; border-bottom: 1px solid rgba(255,255,255,.18); }
+        #MediaUploaderSettingsPage .mu-tab { background: none; color: inherit; opacity: .7; border: 0; border-bottom: 2px solid transparent; padding: .6em 1em; font: inherit; cursor: pointer; }
+        #MediaUploaderSettingsPage .mu-tab:hover { opacity: 1; }
+        #MediaUploaderSettingsPage .mu-tab.on { opacity: 1; border-bottom-color: #00a4dc; }
+        #MediaUploaderSettingsPage .mu-save { position: sticky; bottom: 0; z-index: 5; padding: .8em 0; background: var(--theme-body-bg, #101010); }
+        #MediaUploaderSettingsPage [data-panel] { display: none; }
+        #MediaUploaderSettingsPage [data-panel].on { display: block; }
     </style>
     <div data-role="content">
         <div class="content-primary">
             <h2>Media Uploader : paramètres</h2>
-            <p class="fieldDescription">L'envoi de fichiers se fait sur la page /MediaUploader/Ui (ouverte à tous les utilisateurs connectés), pas depuis cette page. Ici : réglages réservés aux administrateurs.</p>
+            <p class="fieldDescription">L'envoi de fichiers se fait sur la page /MediaUploader/Ui (ouverte à tous les utilisateurs connectés), pas depuis cette page. Ici : réglages réservés aux administrateurs. Le premier onglet regroupe tout ce qu'il faut pour démarrer.</p>
             <p id="muWarning" class="fieldDescription" style="display:none; color:#e57373;"></p>
 
+            <div class="mu-tabs" id="muTabs">
+                <button type="button" class="mu-tab on" data-tab="setup">Démarrage</button>
+                <button type="button" class="mu-tab" data-tab="upload">Envoi</button>
+                <button type="button" class="mu-tab" data-tab="import">Import</button>
+                <button type="button" class="mu-tab" data-tab="rate">Cadence</button>
+                <button type="button" class="mu-tab" data-tab="rules">Règles de détection</button>
+                <button type="button" class="mu-tab" data-tab="api">API</button>
+            </div>
+
             <form id="muSettingsForm">
+                <div data-panel="setup" class="on">
+                    <h3>1. Bibliothèques</h3>
                 <div class="inputContainer">
-                    <label class="inputLabel inputLabelUnfocused" for="muMusicPath">Dossier musique (chemin vu par Jellyfin, ex. /media/music)</label>
+                    <label class="inputLabel inputLabelUnfocused" for="muMusicPath">Dossier musique (ex. /media/music)</label>
                     <input id="muMusicPath" type="text" is="emby-input" placeholder="/media/music" />
                 </div>
                 <div class="inputContainer">
@@ -40,11 +58,32 @@
                     <input id="muMoviesPath" type="text" is="emby-input" placeholder="/media/movies" />
                 </div>
                 <div class="inputContainer">
-                    <label class="inputLabel inputLabelUnfocused" for="muShowsPath">Dossier séries et animés (optionnel, ex. /media/shows)</label>
+                    <label class="inputLabel inputLabelUnfocused" for="muShowsPath">Dossier séries et animés (ex. /media/shows)</label>
                     <input id="muShowsPath" type="text" is="emby-input" placeholder="/media/shows" />
-                    <div class="fieldDescription">Créez dans Jellyfin une bibliothèque de type « Séries » sur ce dossier. Sans dossier, les épisodes sont refusés (ils ne sont pas rangés avec les films).</div>
                 </div>
 
+                    <h3 style="margin-top:2em;">2. Outils d'import (yt-dlp et deno)</h3>
+                    <div class="fieldDescription" style="margin-bottom:.8em;">Nécessaires pour importer depuis Spotify, YouTube et YouTube Music. Sans eux, l'envoi de fichiers fonctionne quand même.</div>
+                <div id="muTools" class="fieldDescription" style="margin:.5em 0 1em;"></div>
+                <div style="margin-bottom:1.2em;">
+                    <button is="emby-button" type="button" class="raised emby-button button-submit" id="muInstAll"><span>Installer / mettre à jour les outils</span></button>
+                    <button is="emby-button" type="button" class="raised emby-button" id="muInstYt"><span>Réinstaller yt-dlp</span></button>
+                    <button is="emby-button" type="button" class="raised emby-button" id="muInstDeno"><span>Réinstaller deno</span></button>
+                    <div id="muInstMsg" class="fieldDescription" style="margin-top:.5em;"></div>
+                    <div class="fieldDescription">Les outils sont téléchargés depuis leurs dépôts GitHub officiels dans le dossier de données du plugin (empreinte SHA-256 vérifiée pour yt-dlp et deno). deno est l'exécuteur JavaScript dont yt-dlp a besoin pour YouTube. ffmpeg est celui de Jellyfin.</div>
+                </div>
+
+                    <h3 style="margin-top:2em;">3. Intégration à l'accueil</h3>
+            <p class="fieldDescription">Après avoir installé <strong>File Transformation</strong> et <strong>Custom Tabs</strong> (voir le README), créez un onglet dans Tableau de bord &gt; Mes plugins &gt; Custom Tabs et collez ce contenu HTML :</p>
+            <pre id="muEmbedCode" class="fieldDescription" style="white-space:pre-wrap; user-select:all;"></pre>
+            <div id="muEmbedStatus" class="fieldDescription" style="margin:.5em 0;"></div>
+            <button is="emby-button" type="button" class="raised emby-button button-submit" id="muEmbedApply" disabled><span>Créer / mettre à jour l'onglet « Upload »</span></button>
+            <button is="emby-button" type="button" class="raised emby-button" id="muEmbedCopy"><span>Copier le code</span></button>
+            <span id="muEmbedMsg" class="fieldDescription"></span>
+            <p class="fieldDescription">L'adresse tient compte d'un éventuel préfixe d'URL du serveur. Sans Custom Tabs, partagez simplement le lien : <a id="muEmbedLink" target="_blank" rel="noopener"></a></p>
+                </div>
+
+                <div data-panel="upload">
                 <div class="selectContainer">
                     <label class="selectLabel" for="muMusicLayout">Rangement musique</label>
                     <select is="emby-select" id="muMusicLayout">
@@ -141,13 +180,90 @@
                         <span>Écraser les fichiers existants (sinon un suffixe (2) est ajouté)</span>
                     </label>
                 </div>
+                </div>
 
-                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                    <span>Enregistrer les paramètres</span>
-                </button>
+                <div data-panel="import">
+                <h3 style="margin-top:2em;">Import Spotify / YouTube</h3>
+                <div class="fieldDescription" style="margin-bottom:1em;">
+                    Lit des playlists Spotify (sans clé d'API, limitées par Spotify aux 100 premiers titres) et des playlists YouTube / YouTube Music, puis télécharge l'audio depuis YouTube (avec
+                    <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a>), et permet de parcourir artistes et albums (données <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a>).
+                    Les morceaux arrivent dans le même aperçu que les envois de fichiers. N'importez que des contenus dont vous avez le droit de disposer.
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muImpEnabled" type="checkbox" is="emby-checkbox" />
+                        <span>Activer l'import par lien et la navigation par artistes</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muImpPlaylist" type="checkbox" is="emby-checkbox" />
+                        <span>Créer une liste de lecture Jellyfin pour chaque playlist importée</span>
+                    </label>
+                    <div class="fieldDescription">Proposé par défaut à chaque import, modifiable au moment de lancer le téléchargement. La liste apparaît quand Jellyfin a fini de scanner les nouveaux morceaux.</div>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="muImpPlaylistPublic" type="checkbox" is="emby-checkbox" />
+                        <span>Rendre ces listes de lecture publiques par défaut (visibles de tous les utilisateurs ; sinon privées)</span>
+                    </label>
+                </div>
+                <div class="selectContainer">
+                    <label class="selectLabel" for="muImpFormat">Format audio des imports</label>
+                    <select id="muImpFormat" is="emby-select" class="emby-select-withcolor emby-select">
+                        <option value="m4a">M4A (AAC, sans réencodage dans la plupart des cas)</option>
+                        <option value="opus">Opus (sans réencodage, meilleur rapport qualité/taille)</option>
+                        <option value="mp3">MP3 (réencodage, compatibilité maximale)</option>
+                    </select>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muYtDlpPath">Chemin de yt-dlp (facultatif)</label>
+                    <input id="muYtDlpPath" type="text" is="emby-input" />
+                    <div class="fieldDescription">Vide : l'outil installé ci-dessus, sinon celui du PATH.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muCookiesPath">Fichier de cookies (facultatif)</label>
+                    <input id="muCookiesPath" type="text" is="emby-input" />
+                    <div class="fieldDescription">Fichier au format Netscape, transmis à yt-dlp (contenus à âge restreint, YouTube Music Premium, vérification anti-robot). Attention : ce sont les cookies d'un vrai compte, qui peut être sanctionné par YouTube en cas de téléchargements massifs ; préférez un compte secondaire.</div>
+                </div>
+                </div>
+
+                <div data-panel="rate">
+                    <div class="fieldDescription" style="margin-bottom:1em;">Pour que le serveur ne soit pas pris pour un robot par YouTube. Les réglages par défaut sont très prudents.</div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muImpConc">Téléchargements simultanés (1 à 4)</label>
+                    <input id="muImpConc" type="number" min="1" max="4" is="emby-input" />
+                    <div class="fieldDescription">1 recommandé : plusieurs téléchargements en parallèle ressemblent à un robot pour YouTube (limitations, vérifications). Une pause de quelques secondes est de toute façon ajoutée entre les morceaux.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muImpMinDelay">Délai minimal entre deux téléchargements (secondes)</label>
+                    <input id="muImpMinDelay" type="number" min="2" max="600" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muImpMaxDelay">Délai maximal entre deux téléchargements (secondes)</label>
+                    <input id="muImpMaxDelay" type="number" min="2" max="1800" is="emby-input" />
+                    <div class="fieldDescription">Le délai réel est tiré au hasard entre les deux bornes, pour tout le serveur (pas par utilisateur : l'adresse IP, elle, est la même pour tous). Par défaut 8 à 25 s.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muImpPerHour">Plafond de téléchargements par heure (0 : sans limite)</label>
+                    <input id="muImpPerHour" type="number" min="0" max="1000" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muImpPerDay">Plafond de téléchargements par jour (0 : sans limite)</label>
+                    <input id="muImpPerDay" type="number" min="0" max="10000" is="emby-input" />
+                    <div class="fieldDescription">Les valeurs par défaut (100 par heure, 400 par jour) restent très en dessous de ce que YouTube tolère sans compte (environ 300 par heure). Une longue playlist est simplement étalée dans le temps. Si YouTube signale une limitation ou une vérification anti-robot, tous les téléchargements sont suspendus 30 minutes (puis 1 h, 2 h… jusqu'à 6 h en cas de récidive) puis reprennent seuls.</div>
+                </div>
+                </div>
+
+                <div class="mu-save" id="muSaveBar">
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Enregistrer les paramètres</span>
+                    </button>
+                </div>
             </form>
 
-            <h3 style="margin-top:2.2em;">Règles de détection</h3>
+            <div data-panel="rules">
+                <h3>Règles de détection</h3>
             <p class="fieldDescription">
                 Une règle est une expression régulière .NET (sans tenir compte de la casse) qui reconnaît un nom de fichier et en extrait des <b>groupes nommés</b> :
                 <code>(?&lt;title&gt;…)</code>, <code>(?&lt;year&gt;…)</code>, <code>(?&lt;season&gt;…)</code>, <code>(?&lt;episode&gt;…)</code> pour les films et séries ;
@@ -177,12 +293,15 @@
                 <button type="button" class="mu-btn primary" id="muTest">Tester</button>
             </div>
             <div id="muTestOut"></div>
+            </div>
 
-            <h3 style="margin-top:2em;">Utiliser l'API (scripts, yt-dlp…)</h3>
+            <div data-panel="api">
+                <h3>Utiliser l'API (scripts, yt-dlp…)</h3>
             <p class="fieldDescription">Créez une clé API dans Tableau de bord &gt; Clés API, puis : tous les champs hormis <code>files</code> sont optionnels ; <code>type</code> (<code>music</code>, <code>movie</code> ou <code>series</code>), <code>artist</code>, <code>album</code>, <code>title</code>, <code>year</code>, <code>season</code> remplacent ce qui est déduit du fichier. L'API range tout de suite, sans aperçu.</p>
             <pre class="fieldDescription" style="white-space:pre-wrap;">curl -X POST "http://SERVEUR:8096/MediaUploader/Upload" \
   -H "X-Emby-Token: VOTRE_CLE_API" \
   -F files=@"Titre.opus"</pre>
+            </div>
         </div>
     </div>
 
@@ -191,10 +310,25 @@
             var page = document.querySelector('#MediaUploaderSettingsPage');
             var $ = function (id) { return page.querySelector('#' + id); };
             var PLUGIN_ID = '7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41';
-            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt' };
-            var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always' };
-            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx' };
+            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt', YtDlpPath: 'muYtDlpPath', ImportCookiesPath: 'muCookiesPath', ImportAudioFormat: 'muImpFormat' };
+            var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always', ImportAudioFormat: 'm4a' };
+            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx', ImportEnabled: 'muImpEnabled', ImportCreatePlaylist: 'muImpPlaylist', ImportPlaylistPublic: 'muImpPlaylistPublic' };
             var KIND_LABELS = { movie: 'Film', series: 'Série / animé', music: 'Musique' };
+
+            // ---------- Onglets ----------
+            var TAB_KEY = 'mediaUploaderSettingsTab';
+            var FORM_TABS = { setup: 1, upload: 1, import: 1, rate: 1 };
+            function showTab(name) {
+                if (!page.querySelector('[data-tab="' + name + '"]')) { name = 'setup'; }
+                Array.prototype.forEach.call(page.querySelectorAll('.mu-tab'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === name); });
+                Array.prototype.forEach.call(page.querySelectorAll('[data-panel]'), function (p) { p.classList.toggle('on', p.getAttribute('data-panel') === name); });
+                $('muSaveBar').style.display = FORM_TABS[name] ? '' : 'none';
+                try { localStorage.setItem(TAB_KEY, name); } catch (e) { /* mémorisation facultative */ }
+            }
+            Array.prototype.forEach.call(page.querySelectorAll('.mu-tab'), function (b) { b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); }); });
+            var firstTab = 'setup';
+            try { firstTab = localStorage.getItem(TAB_KEY) || 'setup'; } catch (e) { firstTab = 'setup'; }
+            showTab(firstTab);
 
             function pick(obj, name) {
                 if (!obj) { return undefined; }
@@ -234,6 +368,7 @@
                     var missing = [];
                     if (!pick(s, 'MusicConfigured')) { missing.push('musique'); }
                     if (!pick(s, 'MoviesConfigured')) { missing.push('films'); }
+                    if (!pick(s, 'ShowsConfigured')) { missing.push('séries'); }
                     $('muWarning').textContent = missing.length ? 'Dossier non configuré : ' + missing.join(', ') + '.' : '';
                     $('muWarning').style.display = missing.length ? '' : 'none';
                 });
@@ -245,18 +380,35 @@
                     $('muMaxSize').value = config.MaxFileSizeMb || 0;
                     $('muChunkSize').value = config.ChunkSizeMb || 8;
                     $('muTtl').value = config.BatchTtlHours || 6;
+                    $('muImpConc').value = config.ImportConcurrency || 1;
+                    $('muImpMinDelay').value = config.ImportMinDelaySeconds || 8;
+                    $('muImpMaxDelay').value = config.ImportMaxDelaySeconds || 25;
+                    $('muImpPerHour').value = config.ImportMaxPerHour === undefined ? 100 : config.ImportMaxPerHour;
+                    $('muImpPerDay').value = config.ImportMaxPerDay === undefined ? 400 : config.ImportMaxPerDay;
                     Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
                 });
             }
 
             $('muSettingsForm').addEventListener('submit', function (e) {
                 e.preventDefault();
+                var empty = [['muMusicPath', 'musique'], ['muMoviesPath', 'films'], ['muShowsPath', 'séries et animés']].filter(function (p) { return !$(p[0]).value.trim(); }).map(function (p) { return p[1]; });
+                if (empty.length) {
+                    showTab('setup');
+                    $('muWarning').textContent = 'Dossier non renseigné : ' + empty.join(', ') + '.';
+                    $('muWarning').style.display = '';
+                    return false;
+                }
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
                     Object.keys(TEXT).forEach(function (key) { config[key] = $(TEXT[key]).value.trim(); });
                     config.MaxFileSizeMb = parseInt($('muMaxSize').value, 10) || 0;
                     config.ChunkSizeMb = Math.min(90, Math.max(1, parseInt($('muChunkSize').value, 10) || 8));
                     config.BatchTtlHours = Math.min(72, Math.max(1, parseInt($('muTtl').value, 10) || 6));
+                    config.ImportConcurrency = Math.min(4, Math.max(1, parseInt($('muImpConc').value, 10) || 1));
+                    config.ImportMinDelaySeconds = Math.min(600, Math.max(2, parseInt($('muImpMinDelay').value, 10) || 8));
+                    config.ImportMaxDelaySeconds = Math.min(1800, Math.max(config.ImportMinDelaySeconds, parseInt($('muImpMaxDelay').value, 10) || 25));
+                    config.ImportMaxPerHour = Math.min(1000, Math.max(0, parseInt($('muImpPerHour').value, 10) || 0));
+                    config.ImportMaxPerDay = Math.min(10000, Math.max(0, parseInt($('muImpPerDay').value, 10) || 0));
                     Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
                     return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
                 }).then(function (result) {
@@ -269,6 +421,95 @@
                 });
                 return false;
             });
+
+
+            // ---------- Intégration à l'accueil ----------
+            (function () {
+                var url = ApiClient.getUrl('MediaUploader/Ui');
+                var path = url.replace(/^https?:\/\/[^/]+/, '');
+                var code = '<iframe src="' + path + '" style="width:100%;height:calc(100vh - 8em);min-height:640px;border:0;" allow="clipboard-write"></iframe>';
+                $('muEmbedCode').textContent = code;
+                $('muEmbedLink').textContent = url;
+                $('muEmbedLink').href = url;
+                var CUSTOM_TABS_ID = 'fbacd0b6-fd46-4a05-b0a4-2045d6a135b0';
+                var TAB_TITLE = 'Upload';
+                var ready = false;
+                function setEmbed(text, bad) { $('muEmbedMsg').style.color = bad ? '#e57373' : ''; $('muEmbedMsg').textContent = text ? ' ' + text : ''; }
+
+                // Les plugins installés : Custom Tabs (par son identifiant) et File Transformation (par son nom, dont dépend Custom Tabs).
+                ApiClient.getJSON(ApiClient.getUrl('Plugins')).then(function (list) {
+                    var named = function (n) { return list.filter(function (p) { return (pick(p, 'Name') || '').toLowerCase() === n; })[0]; };
+                    var tabs = list.filter(function (p) { return (pick(p, 'Id') || '').toLowerCase() === CUSTOM_TABS_ID; })[0] || named('custom tabs');
+                    var ft = named('file transformation');
+                    var problems = [];
+                    function check(p, label) {
+                        if (!p) { problems.push(label + ' n\'est pas installé'); }
+                        else if (pick(p, 'Status') && pick(p, 'Status') !== 'Active') { problems.push(label + ' n\'est pas actif (état : ' + pick(p, 'Status') + ' ; un redémarrage de Jellyfin est peut-être nécessaire)'); }
+                    }
+                    check(ft, 'File Transformation');
+                    check(tabs, 'Custom Tabs');
+                    ready = !problems.length;
+                    $('muEmbedStatus').style.color = ready ? '' : '#e57373';
+                    $('muEmbedStatus').textContent = ready ? 'File Transformation et Custom Tabs sont installés : l\'onglet peut être créé automatiquement.' : problems.join(' ; ') + '.';
+                    $('muEmbedApply').disabled = !ready;
+                }).catch(function () { $('muEmbedStatus').textContent = 'Impossible de lire la liste des plugins : copiez le code à la main.'; });
+
+                $('muEmbedApply').addEventListener('click', function () {
+                    if (!ready) { return; }
+                    var button = this;
+                    button.disabled = true;
+                    setEmbed('');
+                    ApiClient.getPluginConfiguration(CUSTOM_TABS_ID).then(function (config) {
+                        var tabs = (config.Tabs || []).slice();
+                        var index = -1;
+                        tabs.forEach(function (t, i) { if (index < 0 && (t.Title === TAB_TITLE || (t.ContentHtml || '').indexOf('/MediaUploader/Ui') >= 0)) { index = i; } });
+                        var tab = { Title: TAB_TITLE, ContentHtml: code };
+                        if (index >= 0) { tabs[index] = tab; } else { tabs.push(tab); }
+                        config.Tabs = tabs;
+                        return ApiClient.updatePluginConfiguration(CUSTOM_TABS_ID, config).then(function () { return index >= 0; });
+                    }).then(function (updated) {
+                        setEmbed((updated ? 'Onglet « Upload » mis à jour.' : 'Onglet « Upload » créé.') + ' Rechargez l\'accueil avec Ctrl+F5 ; si l\'onglet n\'apparaît pas, redémarrez Jellyfin.');
+                    }).catch(function () {
+                        setEmbed('Impossible de modifier la configuration de Custom Tabs : copiez le code à la main.', true);
+                    }).then(function () { button.disabled = !ready; });
+                });
+
+                $('muEmbedCopy').addEventListener('click', function () {
+                    var done = function (ok) { $('muEmbedMsg').textContent = ok ? ' Copié.' : ' Sélectionnez le code ci-dessus et copiez-le (Ctrl+C).'; };
+                    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(function () { done(true); }, function () { done(false); }); }
+                    else { done(false); }
+                });
+            })();
+
+            // ---------- Outils d'import ----------
+            function loadTools() {
+                return ApiClient.fetch({ url: ApiClient.getUrl('MediaUploader/Import/Status?versions=true'), type: 'GET', dataType: 'json' }).then(function (s) {
+                    function line(label, t) {
+                        var v = pick(t, 'Version');
+                        if (!pick(t, 'Found')) { return label + ' : absent'; }
+                        return label + ' : installé' + (v ? ' (' + v + ')' : '') + (pick(t, 'UpdateAvailable') ? ' — mise à jour disponible (' + pick(t, 'Latest') + ')' : '');
+                    }
+                    var parts = [line('yt-dlp', pick(s, 'YtDlp')), line('deno', pick(s, 'Deno')), 'ffmpeg de Jellyfin : ' + (pick(s, 'Ffmpeg') ? 'trouvé' : 'introuvable')];
+                    if (pick(s, 'PausedUntil')) { parts.push('téléchargements suspendus encore ' + pick(s, 'PausedMinutes') + ' min (limitation signalée par YouTube)'); }
+                    $('muTools').textContent = parts.join(' · ');
+                }).catch(function () { $('muTools').textContent = 'État des outils indisponible.'; });
+            }
+
+            function install(tool, label, button) {
+                $('muInstMsg').style.color = '';
+                $('muInstMsg').textContent = 'Téléchargement de ' + label + ' en cours (peut prendre une minute)…';
+                button.disabled = true;
+                call('POST', 'MediaUploader/Import/Tools/' + tool).then(function () {
+                    $('muInstMsg').textContent = tool === 'all' ? 'Outils à jour.' : label + ' installé.';
+                }).catch(function (err) {
+                    $('muInstMsg').style.color = '#e57373';
+                    $('muInstMsg').textContent = (err && err.body && pick(err.body, 'error')) || ('Installation de ' + label + ' impossible.');
+                }).then(function () { button.disabled = false; return loadTools(); });
+            }
+
+            $('muInstAll').addEventListener('click', function () { install('all', 'les outils', this); });
+            $('muInstYt').addEventListener('click', function () { install('yt-dlp', 'yt-dlp', this); });
+            $('muInstDeno').addEventListener('click', function () { install('deno', 'deno', this); });
 
             // ---------- Éditeur de règles ----------
             var rules = [];
@@ -438,7 +679,7 @@
             });
 
             page.addEventListener('pageshow', function () {
-                loadSettings().then(refreshStatus);
+                loadSettings().then(refreshStatus).then(loadTools);
                 loadRules();
             });
         })();

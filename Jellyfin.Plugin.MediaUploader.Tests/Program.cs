@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Jellyfin.Plugin.MediaUploader.Configuration;
 using Jellyfin.Plugin.MediaUploader.Services;
+using Jellyfin.Plugin.MediaUploader.Services.Import;
 
 // Tests du moteur de détection et du planificateur (sans Jellyfin, sans NuGet).
 // Lancer : dotnet run   (depuis ce dossier). Code de sortie non nul si un test échoue.
@@ -336,6 +337,311 @@ Check("choix sûr : pas de proposition", Item(rap, "3.flac").ArtistChoices.Count
 var picked = Run(new List<PlanFile> { Song("1", "1.flac", "Drake", "A"), Song("2", "2.flac", "Future, Drake", "B"), Song("3", "3.flac", "Drake, Future", "C") },
     ov: new() { ["1"] = new ItemOverride { Artist = "Drake" }, ["2"] = new ItemOverride { Artist = "Drake" }, ["3"] = new ItemOverride { Artist = "Drake" } });
 Check("choix confirmé : sûr, plus de proposition", (picked.Summary.ToReview, Item(picked, "2.flac").ArtistChoices.Count), (0, 0));
+
+
+// ---------- Import : liens ----------
+
+string? Link(string? input) { var l = ImportUrl.Parse(input, out _); return l is null ? null : $"{l.Source}|{l.Kind}|{l.Url}"; }
+const string SpId = "37i9dQZF1DXcBWIGoYBM5M";
+
+Check("Spotify playlist", Link($"https://open.spotify.com/playlist/{SpId}?si=abc"), $"Spotify|playlist|https://open.spotify.com/playlist/{SpId}");
+Check("Spotify intl + album", Link($"https://open.spotify.com/intl-fr/album/{SpId}"), $"Spotify|album|https://open.spotify.com/album/{SpId}");
+Check("Spotify URI", Link($"spotify:track:{SpId}"), $"Spotify|track|https://open.spotify.com/track/{SpId}");
+Check("Spotify id invalide", Link("https://open.spotify.com/playlist/abc"), null);
+Check("YouTube playlist", Link("https://www.youtube.com/playlist?list=PLabcdefghij12345"), "YouTube|playlist|https://www.youtube.com/playlist?list=PLabcdefghij12345");
+Check("YouTube watch + list = playlist", Link("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLabcdefghij12345&index=2"), "YouTube|playlist|https://www.youtube.com/playlist?list=PLabcdefghij12345");
+Check("YouTube vidéo", Link("https://youtu.be/dQw4w9WgXcQ?t=3"), "YouTube|track|https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+Check("YT Music album OLAK", Link("https://music.youtube.com/playlist?list=OLAK5uy_abcdefghijklmnop"), "YouTube|album|https://music.youtube.com/playlist?list=OLAK5uy_abcdefghijklmnop");
+Check("YT Music browse MPRE", Link("https://music.youtube.com/browse/MPREb_gTAcphH99wE"), "YouTube|album|https://music.youtube.com/browse/MPREb_gTAcphH99wE");
+Check("mix YouTube refusé", Link("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ"), null);
+Check("autre site refusé", Link("https://example.com/watch?v=dQw4w9WgXcQ"), null);
+Check("réseau local refusé", Link("http://192.168.1.10:8096/playlist?list=PLabcdefghij12345"), null);
+Check("hôte piégé refusé", Link("https://youtube.com.evil.test/playlist?list=PLabcdefghij12345"), null);
+Check("option injectée refusée", Link("--exec rm"), null);
+Check("fichier refusé", Link("file:///etc/passwd"), null);
+
+// ---------- Import : noms ----------
+
+Check("nettoyage (Official Video)", TrackNaming.CleanTitle("Song Name (Official Video) [HD]"), "Song Name");
+Check("nettoyage garde (Remix)", TrackNaming.CleanTitle("Song (Remix)"), "Song (Remix)");
+Check("Topic -> artiste", TrackNaming.ArtistFromChannel("Daft Punk - Topic"), "Daft Punk");
+Check("VEVO -> artiste", TrackNaming.ArtistFromChannel("AdeleVEVO"), "Adele");
+Check("Artiste - Titre", TrackNaming.FromVideo("Daft Punk - One More Time (Official Audio)", "Some Channel"), ("Daft Punk", "One More Time"));
+Check("chaîne Topic : pas de découpe", TrackNaming.FromVideo("One More Time", "Daft Punk - Topic"), ("Daft Punk", "One More Time"));
+Check("nom de fichier piste", TrackNaming.FileName(1, 5, "Intro", ".m4a"), "05 - Intro.m4a");
+Check("nom de fichier disque 2", TrackNaming.FileName(2, 5, "Intro", ".m4a"), "2-05 - Intro.m4a");
+Check("nom de fichier sans piste", TrackNaming.FileName(null, null, "A/B", ".mp3"), "A B.mp3");
+
+var specA = new TrackSpec { Id = "t1", Title = "Song", Artist = "Artist", AlbumArtist = "Band", Album = "Record", TrackNo = 3, DiscNo = 1, Year = 2020 };
+var specNoAlbum = new TrackSpec { Id = "t2", Title = "Vid", Artist = "Someone" };
+Check("rangement source", ImportNaming.Resolve(specA, "List", "source", 9), new TrackMeta("Artist", "Band", "Record", 3, 1, 2020));
+Check("rangement playlist", ImportNaming.Resolve(specA, "List", "playlist", 9), new TrackMeta("Artist", "Various Artists", "List", 9, null, 2020));
+Check("sans album -> album de la liste", ImportNaming.Resolve(specNoAlbum, "List", "source", 4), new TrackMeta("Someone", "Various Artists", "List", 4, null, null));
+Check("chemin client", ImportNaming.ClientPath(ImportNaming.Resolve(specA, "List", "source", 1), "Song", ".m4a"), "Band/Record/03 - Song.m4a");
+Check("layout normalisé", ImportNaming.NormalizeLayout("PLAYLIST"), "playlist");
+
+// ---------- Import : yt-dlp ----------
+
+var ytLink = ImportUrl.Parse("https://music.youtube.com/playlist?list=PLabcdefghij12345", out _)!;
+var flat = """
+{"_type":"playlist","title":"Road Trip","entries":[
+ {"id":"dQw4w9WgXcQ","title":"Rick Astley - Never Gonna Give You Up (Official Video)","channel":"Rick Astley","duration":213.0},
+ {"id":"abcdefghijk","title":"One More Time","channel":"Daft Punk - Topic","duration":320},
+ {"id":"zzzzzzzzzzz","title":"[Private video]"},
+ {"id":"not-valid","title":"Bad id","channel":"x"},
+ null
+]}
+""";
+var yl = YtDlpClient.ParseListing(flat, ytLink);
+Check("yt-dlp : titre de playlist", yl.Title, "Road Trip");
+Check("yt-dlp : nombre de morceaux", yl.Tracks.Count, 2);
+Check("yt-dlp : artiste/titre découpés", (yl.Tracks[0].Artist, yl.Tracks[0].Title), ("Rick Astley", "Never Gonna Give You Up"));
+Check("yt-dlp : chaîne Topic", (yl.Tracks[1].Artist, yl.Tracks[1].Title, yl.Tracks[1].DurationSec), ("Daft Punk", "One More Time", (int?)320));
+Check("yt-dlp : adresse reconstruite", yl.Tracks[0].VideoUrl, "https://music.youtube.com/watch?v=dQw4w9WgXcQ");
+var albumLink = ImportUrl.Parse("https://music.youtube.com/playlist?list=OLAK5uy_abcdefghijklmnop", out _)!;
+var al = YtDlpClient.ParseListing("""{"_type":"playlist","title":"Album - Discovery (14 Songs)","thumbnails":[{"url":"https://i.ytimg.com/a.jpg"},{"url":"https://lh3.googleusercontent.com/b"}],"entries":[{"id":"aaaaaaaaaaa","title":"One More Time","channel":"Daft Punk - Topic"},{"id":"bbbbbbbbbbb","title":"Aerodynamic","channel":"Daft Punk - Topic"}]}""", albumLink);
+Check("yt-dlp album : titre", al.Title, "Discovery");
+Check("yt-dlp album : genre", al.Kind, "album");
+Check("yt-dlp album : album/numéros", (al.Tracks[1].Album, al.Tracks[1].AlbumArtist, al.Tracks[1].TrackNo), ("Discovery", "Daft Punk", (int?)2));
+Check("yt-dlp album : pochette", al.CoverUrl, "https://lh3.googleusercontent.com/b");
+var single = YtDlpClient.ParseListing("""{"id":"dQw4w9WgXcQ","title":"Song","track":"Real Title","artist":"Real Artist","channel":"x"}""", ImportUrl.Parse("https://youtu.be/dQw4w9WgXcQ", out _)!);
+Check("yt-dlp vidéo seule : métadonnées musique", (single.Kind, single.Tracks[0].Artist, single.Tracks[0].Title), ("track", "Real Artist", "Real Title"));
+
+var ctx = new ToolContext { ToolsDir = "/tmp/mu-tools", YtDlp = "/bin/yt-dlp", Ffmpeg = "/usr/bin/ffmpeg", Format = "m4a" };
+var dl = YtDlpClient.DownloadArgs(ctx, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "/tmp/w");
+True("yt-dlp : URL après « -- »", dl[^2] == "--" && dl[^1].EndsWith("dQw4w9WgXcQ"));
+True("yt-dlp : sélecteur m4a", dl.Contains("bestaudio[ext=m4a]/bestaudio/best"));
+True("yt-dlp : ffmpeg transmis", dl.Contains("--ffmpeg-location") && dl.Contains("/usr/bin/ffmpeg"));
+True("yt-dlp : pas de shell, un argument par élément", dl.All(a => !a.Contains("&&")));
+var ls = YtDlpClient.ListArgs(new ToolContext { Deno = "/x/deno", CookiesPath = "/nonexistent" }, "https://www.youtube.com/playlist?list=PLabcdefghij12345");
+True("yt-dlp : liste à plat + deno", ls.Contains("--flat-playlist") && ls.Contains("deno:/x/deno") && !ls.Contains("--cookies"));
+
+// ---------- Import : Spotify (page d'intégration) ----------
+
+var spLink = ImportUrl.Parse($"https://open.spotify.com/playlist/{SpId}", out _)!;
+string Embed(string entity) => "<html><script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\":{\"pageProps\":{\"state\":{\"data\":{\"entity\":" + entity + "}}}}}</script></html>";
+var sl = SpotifyClient.ParseEmbed(Embed("""{"type":"playlist","title":"Road Trip","coverArt":{"sources":[{"url":"https://i.scdn.co/image/x"}]},"trackList":[{"title":"Get Lucky","subtitle":"Daft Punk, Pharrell Williams","duration":369000,"entityType":"track"},{"title":"Lose Yourself","subtitle":"Eminem","duration":326400,"entityType":"track"},{"title":"Épisode","subtitle":"Podcast","entityType":"episode"}]}"""), spLink);
+Check("Spotify : titre de playlist", sl.Title, "Road Trip");
+Check("Spotify : morceaux (épisodes écartés)", sl.Tracks.Count, 2);
+Check("Spotify : artistes", sl.Tracks[0].Artist, "Daft Punk, Pharrell Williams");
+Check("Spotify : durée en secondes", sl.Tracks[1].DurationSec, (int?)326);
+Check("Spotify : pochette", sl.CoverUrl, "https://i.scdn.co/image/x");
+Check("Spotify : pas de remarque sous 100 titres", sl.Note, null);
+var big = SpotifyClient.ParseEmbed(Embed("{\"type\":\"playlist\",\"title\":\"Big\",\"trackList\":[" + string.Join(",", Enumerable.Range(1, 100).Select(i => $"{{\"title\":\"T{i}\",\"subtitle\":\"A\",\"entityType\":\"track\"}}")) + "]}"), spLink);
+True("Spotify : remarque à 100 titres", big.Tracks.Count == 100 && big.Note is not null);
+var spAlbum = SpotifyClient.ParseEmbed(Embed("""{"type":"album","title":"Discovery","subtitle":"Daft Punk","trackList":[{"title":"One More Time","subtitle":"Daft Punk","duration":320000,"entityType":"track"}]}"""), ImportUrl.Parse($"https://open.spotify.com/album/{SpId}", out _)!);
+Check("Spotify album : album et numéro", (spAlbum.Tracks[0].Album, spAlbum.Tracks[0].AlbumArtist, spAlbum.Tracks[0].TrackNo), ("Discovery", "Daft Punk", (int?)1));
+var spTrack = SpotifyClient.ParseEmbed(Embed("""{"type":"track","title":"Never Gonna Give You Up","artists":[{"name":"Rick Astley"}],"duration":213573}"""), ImportUrl.Parse($"https://open.spotify.com/track/{SpId}", out _)!);
+Check("Spotify titre seul", (spTrack.Tracks[0].Artist, spTrack.Tracks[0].Title, spTrack.Tracks[0].DurationSec), ("Rick Astley", "Never Gonna Give You Up", (int?)214));
+var search = YtDlpClient.SearchArgs(new ToolContext { Format = "m4a" }, sl.Tracks[0], "/w", strict: true);
+True("recherche : requête après « -- »", search[^2] == "--" && search[^1] == "ytsearch5:Daft Punk, Pharrell Williams Get Lucky");
+True("recherche : filtre de durée ±15 s", search[search.IndexOf("--match-filters") + 1] == "duration>=354 & duration<=384");
+True("recherche : un seul téléchargement", search[search.IndexOf("--max-downloads") + 1] == "1");
+True("recherche souple : sans filtre", !YtDlpClient.SearchArgs(new ToolContext { Format = "m4a" }, sl.Tracks[0], "/w", strict: false).Contains("--match-filters"));
+
+// ---------- Import : MusicBrainz ----------
+
+var artists = MusicBrainzClient.ParseArtists("""{"artists":[{"id":"056e4f3e-d505-4dad-8ec1-d04f521cbb56","name":"Daft Punk","disambiguation":"French electronic duo","country":"FR","type":"Group","score":100},{"name":"sans id"}]}""");
+Check("MB : artistes", artists.Count, 1);
+Check("MB : artiste", (artists[0].Name, artists[0].Country), ("Daft Punk", "FR"));
+var (groups, groupTotal) = MusicBrainzClient.ParseReleaseGroups("""{"release-group-count":2,"release-groups":[{"id":"11111111-1111-1111-1111-111111111111","title":"Discovery","primary-type":"Album","secondary-types":[],"first-release-date":"2001-03-12"},{"id":"22222222-2222-2222-2222-222222222222","title":"Alive 2007","primary-type":"Album","secondary-types":["Live"],"first-release-date":"2007-11-19"}]}""");
+Check("MB : albums", (groups.Count, groupTotal), (2, 2));
+Check("MB : type secondaire", groups[1].Extras.ToArray(), new[] { "Live" });
+Check("MB : échappement Lucene", MusicBrainzClient.EscapeLucene("AC/DC (live)"), "AC\\/DC \\(live\\)");
+
+string Rel(string title, string date, int tracks) => "{\"title\":\"" + title + "\",\"date\":\"" + date + "\",\"artist-credit\":[{\"name\":\"Daft Punk\",\"joinphrase\":\"\",\"artist\":{\"name\":\"Daft Punk\"}}],\"media\":[{\"position\":1,\"tracks\":["
+    + string.Join(",", Enumerable.Range(1, tracks).Select(i => $"{{\"position\":{i},\"title\":\"T{i}\",\"length\":{200000 + i * 1000},\"recording\":{{\"id\":\"00000000-0000-0000-0000-00000000000{i % 10}\",\"isrcs\":[\"ISRC{i}\"]}},\"artist-credit\":[{{\"name\":\"Daft Punk\",\"joinphrase\":\" feat. \",\"artist\":{{\"name\":\"Daft Punk\"}}}},{{\"name\":\"Guest\",\"joinphrase\":\"\",\"artist\":{{\"name\":\"Guest\"}}}}]}}")) + "]}]}";
+var releases = "{\"releases\":[" + Rel("Discovery (Deluxe)", "2012-01-01", 16) + "," + Rel("Discovery", "2001-03-12", 14) + "," + Rel("Discovery", "2001-03-13", 14) + "]}";
+var mb = MusicBrainzClient.ParseRelease(releases, "11111111-1111-1111-1111-111111111111", "https://coverartarchive.org/release-group/x/front-500");
+Check("MB : sortie la plus représentative (14 pistes, la plus ancienne)", mb.Tracks.Count, 14);
+Check("MB : album", (mb.Title, mb.Tracks[0].Year), ("Discovery", (int?)2001));
+Check("MB : artiste crédité", mb.Tracks[0].Artist, "Daft Punk feat. Guest");
+Check("MB : durée", mb.Tracks[1].DurationSec, (int?)202);
+Check("cause yt-dlp préférée au message générique", ProcessRunner.Summarize("AudioProviderError: YT-DLP download error -\nERROR: [youtube] lYWldRgI9fo: Sign in to confirm your age\nAudioProviderError: YT-DLP download error -"), "ERROR: [youtube] lYWldRgI9fo: Sign in to confirm your age");
+True("environnement sans retour à la ligne", new ToolContext { ToolsDir = "/tmp/mu-t" }.ChildEnvironment()["COLUMNS"] == "400");
+True("nouvelle tentative détaillée", new ToolContext { Format = "m4a" }.WithVerbose().Verbose);
+Check("plantage PyInstaller : cause affichée", ProcessRunner.Summarize("Traceback (most recent call last):\n  File \"x.py\", line 1\nKeyError: 'name'\n[PYI-1430:ERROR] Failed to execute script '__main__' due to unhandled exception!"), "KeyError: 'name'");
+Check("MB : aucune sortie", MusicBrainzClient.ParseRelease("{\"releases\":[]}", "x", null).Tracks.Count, 0);
+
+var longName = "[Group] Show - 05 " + new string('x', 200) + " [1080p].mkv";
+var safeLong = PathBuilder.SanitizeFileName(longName, "file");
+True("nom long : extension conservée", safeLong.EndsWith(".mkv") && safeLong.Length <= 150);
+var cjk = PathBuilder.SanitizeFileName(new string('\u3042', 200) + ".mp3", "file");
+True("nom long : limite en octets (255)", cjk.EndsWith(".mp3") && System.Text.Encoding.UTF8.GetByteCount(cjk) <= 255);
+Check("nom court inchangé", PathBuilder.SanitizeFileName("Film (2019).mkv", "file"), "Film (2019).mkv");
+Check("nom vide : repli", PathBuilder.SanitizeFileName(".mkv", "file"), "file.mkv");
+True("nom : séparateurs retirés", !PathBuilder.SanitizeFileName("../../etc/passwd.mkv", "file").Contains('/'));
+
+// ---------- Import : cadence anti-robot ----------
+
+var now0 = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+var clockNow = now0;
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => clockNow;
+ImportThrottle.Pick = (min, max) => max;
+var tcx = new ToolContext { MinDelaySeconds = 8, MaxDelaySeconds = 25, MaxPerHour = 3, MaxPerDay = 5 };
+Check("cadence : premier téléchargement immédiat", ImportThrottle.TryReserve(tcx), TimeSpan.Zero);
+Check("cadence : délai avant le suivant", ImportThrottle.TryReserve(tcx), TimeSpan.FromSeconds(25));
+clockNow = now0.AddSeconds(25);
+Check("cadence : suivant autorisé", ImportThrottle.TryReserve(tcx), TimeSpan.Zero);
+clockNow = now0.AddSeconds(60);
+Check("cadence : troisième", ImportThrottle.TryReserve(tcx), TimeSpan.Zero);
+clockNow = now0.AddSeconds(100);
+Check("cadence : plafond horaire atteint", ImportThrottle.TryReserve(tcx), TimeSpan.FromHours(1) - TimeSpan.FromSeconds(100));
+clockNow = now0.AddHours(1).AddSeconds(1);
+Check("cadence : plafond horaire libéré", ImportThrottle.TryReserve(tcx), TimeSpan.Zero);
+var first = ImportThrottle.ReportBlocked();
+Check("cadence : première suspension", first, TimeSpan.FromMinutes(30));
+Check("cadence : même incident, pas d'escalade", ImportThrottle.ReportBlocked(), TimeSpan.FromMinutes(30));
+clockNow = clockNow.AddMinutes(31);
+var second = ImportThrottle.ReportBlocked();
+Check("cadence : récidive, suspension doublée", second, TimeSpan.FromHours(1));
+True("cadence : suspendu", ImportThrottle.PausedUntil() is not null && ImportThrottle.TryReserve(tcx) > TimeSpan.FromMinutes(59));
+clockNow = clockNow.AddHours(2);
+ImportThrottle.ReportSuccess();
+Check("cadence : retour à la durée de base", ImportThrottle.ReportBlocked(), TimeSpan.FromMinutes(30));
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => DateTime.UtcNow;
+ImportThrottle.Pick = (min, max) => min + (Random.Shared.NextDouble() * (max - min));
+True("blocage : anti-robot", ImportThrottle.IsBlock("ERROR: [youtube] x: Sign in to confirm you’re not a bot"));
+True("blocage : 429", ImportThrottle.IsBlock("ERROR: unable to download: HTTP Error 429: Too Many Requests"));
+True("blocage : limitation", ImportThrottle.IsBlock("This content isn't available, try again later. The current session has been rate-limited by YouTube"));
+True("pas un blocage : âge", !ImportThrottle.IsBlock("ERROR: [youtube] x: Sign in to confirm your age"));
+True("pas un blocage : vidéo indisponible", !ImportThrottle.IsBlock("ERROR: Video unavailable"));
+True("versions : à jour", !ToolInstaller.IsOutdated("2026.08.19", "2026.08.19") && !ToolInstaller.IsOutdated("v2.1.0", "2.1.0"));
+True("versions : mise à jour", ToolInstaller.IsOutdated("2026.07.01", "2026.08.19"));
+True("versions : inconnue", !ToolInstaller.IsOutdated(null, "2026.08.19"));
+True("recherche : pause entre les requêtes", YtDlpClient.DownloadArgs(new ToolContext(), "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "/w").Contains("--sleep-requests"));
+
+var toolDir = Path.Combine(Path.GetTempPath(), "mu-tools-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(Path.Combine(toolDir, "yt-dlp-dist"));
+var distExe = Path.Combine(toolDir, "yt-dlp-dist", ToolLocator.FileName("yt-dlp"));
+File.WriteAllText(distExe, "x");
+Check("outil : version « dossier » trouvée", ToolLocator.Find("yt-dlp", null, toolDir), distExe);
+ToolManifest.Record(toolDir, "yt-dlp", "2026.08.19");
+Check("outil : version lue sans lancer l'outil", ToolManifest.Known(toolDir, "yt-dlp", distExe), "2026.08.19");
+Check("outil : autre exemplaire ignoré", ToolManifest.Known(toolDir, "yt-dlp", "/usr/bin/yt-dlp"), null);
+Directory.Delete(toolDir, recursive: true);
+
+True("pochette : Spotify acceptée", CoverHosts.Allowed("https://i.scdn.co/image/abc", out _));
+True("pochette : Cover Art Archive acceptée", CoverHosts.Allowed("https://coverartarchive.org/release-group/x/front-500", out _) && CoverHosts.Allowed("https://ia800000.us.archive.org/x.jpg", out _));
+True("pochette : autre hôte refusé", !CoverHosts.Allowed("https://evil.example/x.jpg", out _) && !CoverHosts.Allowed("http://i.scdn.co/x.jpg", out _));
+var ytm = YtDlpClient.ParseListing("""{"_type":"playlist","title":"Mix","entries":[{"id":"aaaaaaaaaaa","title":"A","channel":"X - Topic","thumbnails":[{"url":"https://i.ytimg.com/vi/aaaaaaaaaaa/hq.jpg"},{"url":"https://lh3.googleusercontent.com/art=w544"}]},{"id":"bbbbbbbbbbb","title":"B","thumbnails":[{"url":"https://i.ytimg.com/vi/bbbbbbbbbbb/hq.jpg"}]}]}""", ytLink);
+Check("pochette YouTube Music : miniature carrée seulement", (ytm.Tracks[0].CoverUrl, ytm.Tracks[1].CoverUrl), ("https://lh3.googleusercontent.com/art=w544", (string?)null));
+
+var mbCount = MusicBrainzClient.ParseTrackCount("{\"releases\":[{\"media\":[{\"track-count\":16}]},{\"media\":[{\"track-count\":14}]},{\"media\":[{\"track-count\":14}]},{\"media\":[{\"track-count\":7},{\"track-count\":7}]}]}");
+Check("MB : nombre de pistes (le plus courant, tous supports)", mbCount, 14);
+Check("MB : égalité -> la plus courte édition", MusicBrainzClient.ParseTrackCount("{\"releases\":[{\"media\":[{\"track-count\":16}]},{\"media\":[{\"track-count\":12}]}]}"), 12);
+Check("MB : aucune sortie", MusicBrainzClient.ParseTrackCount("{\"releases\":[]}"), 0);
+
+var qNow = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => qNow;
+ImportThrottle.Pick = (min, max) => min;
+var qc = new ToolContext { MinDelaySeconds = 10, MaxDelaySeconds = 10, MaxPerHour = 5, MaxPerDay = 100 };
+var q0 = ImportThrottle.Snapshot(qc, 0);
+Check("quota : état vide", (q0.UsedHour, q0.UsedDay, q0.NextSlotIn), (0, 0, (TimeSpan?)null));
+var q3 = ImportThrottle.Snapshot(qc, 3);
+Check("quota : 3 morceaux rentrent (démarrages espacés de 10 s)", (q3.Delayed, q3.LastStartIn), (0, TimeSpan.FromSeconds(20)));
+var q8 = ImportThrottle.Snapshot(qc, 8);
+Check("quota : 3 morceaux de trop attendent le plafond horaire", q8.Delayed, 3);
+True("quota : le dernier démarre après l'heure", q8.LastStartIn > TimeSpan.FromHours(1));
+for (var k = 0; k < 5; k++) { ImportThrottle.TryReserve(qc); qNow = qNow.AddSeconds(11); }
+var qFull = ImportThrottle.Snapshot(qc, 0);
+Check("quota : 5 utilisés cette heure", qFull.UsedHour, 5);
+True("quota : prochaine place annoncée", qFull.NextSlotIn is { } w && w > TimeSpan.FromMinutes(50));
+var qFree = ImportThrottle.Snapshot(new ToolContext { MaxPerHour = 0, MaxPerDay = 0, MinDelaySeconds = 10, MaxDelaySeconds = 10 }, 500);
+Check("quota : sans plafond, rien n'est retardé", qFree.Delayed, 0);
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => DateTime.UtcNow;
+ImportThrottle.Pick = (min, max) => min + (Random.Shared.NextDouble() * (max - min));
+
+Check("yt-dlp : progression", YtDlpClient.PhaseOf("[download]  45.3% of 3.20MiB at 1.20MiB/s ETA 00:02"), ((string, int?)?)("downloading", 45));
+Check("yt-dlp : début de téléchargement", YtDlpClient.PhaseOf("[download] Destination: x.webm"), ((string, int?)?)("downloading", 0));
+Check("yt-dlp : conversion", YtDlpClient.PhaseOf("[ExtractAudio] Destination: x.m4a"), ((string, int?)?)("converting", null));
+Check("yt-dlp : recherche", YtDlpClient.PhaseOf("[youtube] Extracting URL: ytsearch5:Daft Punk"), ((string, int?)?)("searching", null));
+Check("yt-dlp : ligne sans information", YtDlpClient.PhaseOf("[info] Available formats"), ((string, int?)?)null);
+var qPace = ImportThrottle.Snapshot(new ToolContext(), 0);
+Check("quota : pas de délai en attente au repos", qPace.PaceIn, (TimeSpan?)null);
+
+var quotaDir = Path.Combine(Path.GetTempPath(), "mu-quota-" + Guid.NewGuid().ToString("N"));
+var pc = new ToolContext { ToolsDir = quotaDir, MinDelaySeconds = 10, MaxDelaySeconds = 10, MaxPerHour = 50, MaxPerDay = 100 };
+var pNow = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => pNow;
+ImportThrottle.Pick = (min, max) => min;
+ImportThrottle.TryReserve(pc);
+pNow = pNow.AddSeconds(11);
+ImportThrottle.TryReserve(pc);
+ImportThrottle.ReportBlocked();
+True("quota persistant : fichier écrit", File.Exists(Path.Combine(quotaDir, "quota.json")));
+ImportThrottle.Reset();
+var afterRestart = ImportThrottle.Snapshot(pc, 0);
+Check("quota persistant : compteurs relus après un redémarrage", (afterRestart.UsedHour, afterRestart.UsedDay), (2, 2));
+True("quota persistant : suspension relue", afterRestart.PausedFor is { } pf && pf > TimeSpan.FromMinutes(29));
+File.WriteAllText(Path.Combine(quotaDir, "quota.json"), "pas du json");
+ImportThrottle.Reset();
+Check("quota persistant : fichier abîmé ignoré", ImportThrottle.Snapshot(pc, 0).UsedHour, 0);
+pNow = pNow.AddDays(2);
+File.WriteAllText(Path.Combine(quotaDir, "quota.json"), "{\"Starts\":[\"2026-01-01T12:00:00Z\"],\"Blocks\":0}");
+ImportThrottle.Reset();
+Check("quota persistant : démarrages vieux de plus de 24 h oubliés", ImportThrottle.Snapshot(pc, 0).UsedDay, 0);
+Directory.Delete(quotaDir, recursive: true);
+ImportThrottle.Reset();
+ImportThrottle.Clock = () => DateTime.UtcNow;
+ImportThrottle.Pick = (min, max) => min + (Random.Shared.NextDouble() * (max - min));
+
+// ---------- Import : outils ----------
+
+Check("asset yt-dlp linux", ToolInstaller.YtDlpAsset(ToolPlatform.LinuxX64), "yt-dlp_linux.zip");
+Check("asset yt-dlp arm", ToolInstaller.YtDlpAsset(ToolPlatform.LinuxArm64), "yt-dlp_linux_aarch64.zip");
+Check("asset deno", ToolInstaller.DenoAsset(ToolPlatform.LinuxX64), "deno-x86_64-unknown-linux-gnu.zip");
+Check("format normalisé", ToolContext.NormalizeFormat("FLAC"), "m4a");
+Check("format opus", ToolContext.NormalizeFormat(" Opus "), "opus");
+
+// Processus réels (Linux) : faux yt-dlp qui imite les sorties du vrai outil.
+if (OperatingSystem.IsLinux())
+{
+    var tmp = Path.Combine(Path.GetTempPath(), "mu-test-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(tmp);
+    try
+    {
+        var r = ProcessRunner.RunAsync("/bin/sh", new[] { "-c", "echo out; echo 'ERROR: boom' >&2; exit 3" }, null, null, TimeSpan.FromSeconds(10), CancellationToken.None).GetAwaiter().GetResult();
+        Check("processus : code de sortie", r.ExitCode, 3);
+        Check("processus : résumé d'erreur", ProcessRunner.Summarize(r.Stderr), "ERROR: boom");
+        var slowRun = ProcessRunner.RunAsync("/bin/sleep", new[] { "30" }, null, null, TimeSpan.FromMilliseconds(300), CancellationToken.None).GetAwaiter().GetResult();
+        True("processus : délai dépassé", slowRun.TimedOut);
+        var quote = ProcessRunner.RunAsync("/bin/sh", new[] { "-c", "printf '%s' \"$1\"", "sh", "a b; echo hacked $(id)" }, null, null, TimeSpan.FromSeconds(10), CancellationToken.None).GetAwaiter().GetResult();
+        Check("processus : arguments non interprétés", quote.Stdout.TrimEnd(), "a b; echo hacked $(id)");
+
+        var fakeYt = Path.Combine(tmp, "yt-dlp");
+        File.WriteAllText(fakeYt, "#!/bin/sh\nfor a in \"$@\"; do if [ \"$a\" = \"-J\" ]; then echo '" + flat.Replace("\n", string.Empty) + "'; exit 0; fi; done\nwhile [ $# -gt 0 ]; do if [ \"$1\" = \"-P\" ]; then d=\"$2\"; fi; shift; done\nprintf data > \"$d/dQw4w9WgXcQ.m4a\"\n");
+        File.SetUnixFileMode(fakeYt, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var fctx = new ToolContext { ToolsDir = tmp, YtDlp = fakeYt, Format = "m4a" };
+        var listed = YtDlpClient.ListAsync(fctx, ytLink, CancellationToken.None).GetAwaiter().GetResult();
+        Check("faux yt-dlp : liste", listed.Tracks.Count, 2);
+        var wd = Path.Combine(tmp, "w1"); Directory.CreateDirectory(wd);
+        var got = YtDlpClient.DownloadAsync(fctx, listed.Tracks[0], wd, CancellationToken.None).GetAwaiter().GetResult();
+        Check("faux yt-dlp : fichier produit", Path.GetFileName(got), "dQw4w9WgXcQ.m4a");
+
+        var wd2 = Path.Combine(tmp, "w2"); Directory.CreateDirectory(wd2);
+        var got2 = YtDlpClient.DownloadAsync(fctx, sl.Tracks[0], wd2, CancellationToken.None).GetAwaiter().GetResult();
+        Check("faux yt-dlp : morceau cherché par titre", Path.GetFileName(got2), "dQw4w9WgXcQ.m4a");
+
+        var failing = Path.Combine(tmp, "failing");
+        File.WriteAllText(failing, "#!/bin/sh\necho 'ERROR: Video unavailable' >&2\nexit 1\n");
+        File.SetUnixFileMode(failing, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var wd3 = Path.Combine(tmp, "w3"); Directory.CreateDirectory(wd3);
+        string? failMsg = null;
+        try { YtDlpClient.DownloadAsync(new ToolContext { YtDlp = failing, Format = "m4a" }, listed.Tracks[0], wd3, CancellationToken.None).GetAwaiter().GetResult(); }
+        catch (ImportException ex) { failMsg = ex.Message; }
+        Check("échec de téléchargement : message de l'outil", failMsg, "ERROR: Video unavailable");
+    }
+    finally
+    {
+        Directory.Delete(tmp, recursive: true);
+    }
+}
 
 Console.WriteLine(failures == 0 ? $"OK : {total} vérifications." : $"{failures} échec(s) sur {total}.");
 return failures == 0 ? 0 : 1;

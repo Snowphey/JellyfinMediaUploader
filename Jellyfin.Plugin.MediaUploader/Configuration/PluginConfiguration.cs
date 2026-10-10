@@ -33,6 +33,17 @@ public class PluginConfiguration : BasePluginConfiguration
         OverwriteExisting = false;
         ExtractCover = true;
         AllowNonAdminUploads = true;
+        ImportEnabled = true;
+        YtDlpPath = string.Empty;
+        ImportAudioFormat = "m4a";
+        ImportConcurrency = 1;
+        ImportCookiesPath = string.Empty;
+        ImportMinDelaySeconds = 8;
+        ImportMaxDelaySeconds = 25;
+        ImportMaxPerHour = 100;
+        ImportMaxPerDay = 400;
+        ImportCreatePlaylist = true;
+        ImportPlaylistPublic = true;
     }
 
     /// <summary>
@@ -46,7 +57,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public string MoviesPath { get; set; }
 
     /// <summary>
-    /// Obtient ou définit le dossier racine de la bibliothèque séries et animés (type « Séries » dans Jellyfin). Optionnel.
+    /// Obtient ou définit le dossier racine de la bibliothèque séries et animés (type « Séries » dans Jellyfin).
     /// </summary>
     public string ShowsPath { get; set; }
 
@@ -140,4 +151,59 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Obtient ou définit une valeur indiquant si les utilisateurs non administrateurs peuvent uploader.
     /// </summary>
     public bool AllowNonAdminUploads { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit une valeur indiquant si l'import par lien (Spotify, YouTube) et la navigation par artistes sont proposés.
+    /// </summary>
+    public bool ImportEnabled { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le chemin de yt-dlp (vide : outil installé par le plugin, sinon PATH).
+    /// </summary>
+    public string YtDlpPath { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le format audio des imports : "m4a" (défaut, sans réencodage), "opus" ou "mp3".
+    /// </summary>
+    public string ImportAudioFormat { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre de téléchargements simultanés (1 à 4).
+    /// </summary>
+    public int ImportConcurrency { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le délai minimal, en secondes, entre deux téléchargements (tirage aléatoire entre min et max, pour tout le serveur).
+    /// </summary>
+    public int ImportMinDelaySeconds { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le délai maximal, en secondes, entre deux téléchargements.
+    /// </summary>
+    public int ImportMaxDelaySeconds { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre maximal de téléchargements par heure glissante pour tout le serveur (0 : sans limite).
+    /// </summary>
+    public int ImportMaxPerHour { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre maximal de téléchargements par jour glissant pour tout le serveur (0 : sans limite).
+    /// </summary>
+    public int ImportMaxPerDay { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit une valeur indiquant si un import de playlist crée aussi une liste de lecture Jellyfin (valeur proposée par défaut à chaque import).
+    /// </summary>
+    public bool ImportCreatePlaylist { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit une valeur indiquant si la liste de lecture créée est publique par défaut (visible de tous les utilisateurs) ou privée.
+    /// </summary>
+    public bool ImportPlaylistPublic { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le fichier de cookies (format Netscape) transmis à yt-dlp, par exemple pour YouTube Music Premium. Facultatif.
+    /// </summary>
+    public string ImportCookiesPath { get; set; }
 }

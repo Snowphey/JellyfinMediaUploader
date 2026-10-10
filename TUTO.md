@@ -21,11 +21,11 @@ Jellyfin.Plugin.MediaUploader/        # racine du dépôt cloné
 ## 1. Lancer
 
 ```bash
-cd Jellyfin.Plugin.MediaUploader   # racine du dépôt cloné
+cd JellyfinMediaUploader   # dossier du dépôt cloné (celui qui contient docker-compose.yml)
 docker compose up -d --build
 ```
 
-Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.1.1.0/`,
+Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.2.0.0/`,
 puis démarre Jellyfin. Suivre les logs : `docker compose logs -f jellyfin`.
 
 Si le build du plugin échoue lancez
@@ -37,7 +37,7 @@ Si le build du plugin échoue lancez
 2. Ajoutez vos bibliothèques :
    - Musique : dossier `/media/music`
    - Films : dossier `/media/movies`
-   - Séries et animés (optionnel) : type de contenu **Séries**, dossier `/media/shows`
+   - Séries et animés : type de contenu **Séries**, dossier `/media/shows`
 3. Tableau de bord > Extensions : « Media Uploader » doit apparaître.
    Sinon : `docker compose restart jellyfin`.
 
@@ -47,9 +47,11 @@ Tableau de bord > Extensions > **Media Uploader** (clic sur la fiche du plugin) 
 
 - Dossier musique : `/media/music`
 - Dossier films : `/media/movies`
-- Dossier séries et animés : `/media/shows` (laissez vide si vous n'en voulez pas : les épisodes seront refusés)
+- Dossier séries et animés : `/media/shows`
 
-Ce sont des chemins vus depuis le conteneur, pas ceux de l'hôte. Cliquez sur « Enregistrer les paramètres ».
+Ce sont des chemins vus depuis le conteneur, pas ceux de l'hôte. Les trois sont obligatoires pour enregistrer. Cliquez sur « Enregistrer les paramètres ».
+
+Import depuis Spotify / YouTube (facultatif) : dans le même onglet **Démarrage**, bouton « Installer / mettre à jour les outils » (yt-dlp et deno), puis onglet **Cadence** pour les délais et plafonds de téléchargement (très prudents par défaut). Le serveur doit pouvoir sortir sur Internet. Détails dans le README.
 Le reste (rangement `auto`/`flat`, extraction de pochette, autorisation des non-admins, extensions,
 scan automatique) peut rester par défaut.
 
@@ -75,7 +77,7 @@ normale : le plugin est installé à la main, il n'est dans aucun dépôt.
 La page d'upload est sur `http://IP_DU_SERVEUR:8096/MediaUploader/Ui` : tout utilisateur connecté à Jellyfin
 (dans le même navigateur) peut l'utiliser, sans accès au tableau de bord. Glissez des fichiers ou des dossiers (ou « Choisir un dossier »), choisissez le type si besoin, puis **Analyser**.
 
-1. Le serveur reçoit les fichiers (progression, reprise automatique en cas de coupure) et les analyse. **Rien n'entre encore dans la bibliothèque.**
+1. Le serveur reçoit les fichiers (progression, reprise automatique en cas de coupure) et les analyse. **Rien n'entre encore dans la bibliothèque** (réglage par défaut : la confirmation peut être rendue automatique dans les paramètres).
 2. L'**aperçu** regroupe les fichiers : un groupe par album, par film (avec ses sous-titres) et par série (avec ses saisons), chacun avec son dossier de destination
    et l'état *Prêt* ou *À vérifier*. Les groupes *Prêt* sont cochés d'office ; ceux à vérifier attendent que vous les corrigiez (**Modifier** pour tout le groupe,
    ✎ pour un fichier) puis les cochiez.
@@ -108,10 +110,10 @@ Tout cela est réglable : voir « Règles de détection » dans le README (Table
    n'est pas encore à jour pour la 12 : voir le dépôt `IAmParadox27/jellyfin-plugin-file-transformation` (issues, releases).
 3. Installez **Custom Tabs** pour la 12.1. La version construite pour la 12.1 que j'ai trouvée est le fork
    `stefgia/jellyfin-plugin-custom-tabs` (release 0.2.11.0, à installer via ses instructions de dépôt).
-4. Redémarrez Jellyfin, puis Tableau de bord > Mes plugins > **Custom Tabs** > ajoutez un onglet « Upload » avec ce contenu :
+4. Redémarrez Jellyfin, puis Tableau de bord > Mes plugins > **Custom Tabs** > ajoutez un onglet « Upload » avec ce contenu (le même code, à copier en un clic, est affiché dans Tableau de bord > Extensions > Media Uploader, avec l'adresse adaptée à votre serveur) :
 
 ```html
-<iframe src="/MediaUploader/Ui" style="width:100%;height:85vh;border:0;"></iframe>
+<iframe src="/MediaUploader/Ui" style="width:100%;height:calc(100vh - 8em);min-height:640px;border:0;" allow="clipboard-write"></iframe>
 ```
 
 5. Ctrl+F5 sur l'accueil : l'onglet apparaît dans la barre d'onglets de l'accueil, pour tous les utilisateurs.

@@ -55,16 +55,86 @@
   a.act { color: #9a9a9a; text-decoration: none; margin-left: .5em; cursor: pointer; }
   a.act:hover { color: #fff; }
   .result.saved { color: #6fcf97; } .result.error, .result.skipped { color: #e57373; }
+  .tabs { display: flex; gap: .4em; margin: 1em 0 .2em; border-bottom: 1px solid #2c2c2c; }
+  .tab { background: none; color: #9a9a9a; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: .5em 1em; }
+  .tab.on { color: #fff; border-bottom-color: #00a4dc; }
+  .linkrow { display: flex; gap: .6em; margin: 1em 0; flex-wrap: wrap; }
+  .linkrow input[type=text] { flex: 1; min-width: 14em; }
+  .tracks { max-height: 26em; overflow: auto; border: 1px solid #2c2c2c; border-radius: 8px; padding: .2em .8em; margin: .6em 0; background: #161616; }
+  .trow { display: flex; gap: .6em; align-items: baseline; padding: .3em 0; border-bottom: 1px solid #222; }
+  .trow:last-child { border-bottom: 0; }
+  .trow .tt { flex: 1; word-break: break-word; }
+  .trow.failed .tt { color: #e57373; }
+  .hits { display: flex; flex-direction: column; gap: .3em; margin: .6em 0; }
+  .hit { text-align: left; background: #1c1c1c; border: 1px solid #333; padding: .5em .8em; }
+  .hit:hover { border-color: #00a4dc; }
+  .albums { margin: .6em 0; border: 1px solid #2c2c2c; border-radius: 8px; background: #161616; max-height: 32em; overflow: auto; padding: .2em .8em; }
+  .arow { display: flex; gap: .8em; align-items: center; padding: .4em 0; border-bottom: 1px solid #222; }
+  .arow:last-child { border-bottom: 0; }
+  .arow img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; background: #222; flex: none; }
+  .arow .tt { flex: 1; word-break: break-word; }
+  .filters { display: flex; gap: 1em; flex-wrap: wrap; margin: .6em 0; font-size: .9em; color: #bbb; }
+  .filters label { display: flex; gap: .3em; align-items: center; }
+  .imp { margin-top: .6em; font-size: .9em; }
+  .quota { margin: .5em 0; }
+  .quota b.low { color: #f2c94c; } .quota b.out { color: #e57373; }
+  .qwarn { color: #f2c94c; margin: .4em 0; } .qinfo { color: #9a9a9a; margin: .4em 0; }
+  .qbar { position: relative; height: 10px; background: #262626; border-radius: 5px; overflow: hidden; margin: .25em 0 .5em; }
+  .qbar .u { position: absolute; left: 0; top: 0; bottom: 0; background: #00a4dc; }
+  .qbar .s { position: absolute; top: 0; bottom: 0; background: #7cc4e8; opacity: .55; }
+  .qbar.low .u { background: #f2c94c; } .qbar.out .u { background: #e57373; }
+  .qbar.over { box-shadow: 0 0 0 1px #e57373; }
+  .qrow { display: flex; gap: .6em; flex-wrap: wrap; justify-content: space-between; }
+  .dlrow { display: flex; gap: .8em; justify-content: space-between; margin-top: .35em; }
+  .dlrow .tt { flex: 1; word-break: break-word; }
+  progress.small { height: 5px; margin-bottom: .2em; }
+  .gpreview { display: flex; gap: .8em; align-items: center; padding: 0 .8em .6em; }
+  .cover { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: #222; flex: none; }
+  .cover.none { display: flex; align-items: center; justify-content: center; color: #e57373; font-size: .7em; text-align: center; padding: .3em; }
+  .ptable { width: 100%; border-collapse: collapse; font-size: .85em; margin: 0 0 .5em; }
+  .ptable td, .ptable th { text-align: left; padding: .25em .5em; border-top: 1px solid #222; word-break: break-word; }
+  .ptable th { color: #9a9a9a; font-weight: 400; }
+  .ok { color: #6fcf97; } .ko { color: #e57373; }
+  .imp .fails { color: #e57373; margin-top: .3em; word-break: break-word; }
 </style>
 </head>
 <body>
 <h2>Envoyer des médias</h2>
-<div class="muted">Déposez vos fichiers : le serveur les reçoit, lit les tags (musique) et les noms (films, séries, animés), puis vous montre où chaque fichier sera rangé. Rien n'entre dans la bibliothèque avant votre confirmation.</div>
+<div class="muted">Déposez vos fichiers : le serveur les reçoit, lit les tags (musique) et les noms (films, séries, animés), puis vous montre où chaque fichier sera rangé. Par défaut, rien n'entre dans la bibliothèque avant votre confirmation (l'administrateur peut la rendre automatique quand tout est reconnu avec certitude).</div>
 <div id="warn" class="warn" style="display:none"></div>
 
 <datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist>
 
 <div id="pick">
+  <div class="tabs" id="tabs" style="display:none">
+    <button type="button" class="tab on" data-tab="files">Fichiers</button>
+    <button type="button" class="tab" data-tab="link">Lien Spotify / YouTube</button>
+    <button type="button" class="tab" data-tab="browse">Parcourir artistes et albums</button>
+  </div>
+
+  <div id="tabLink" style="display:none">
+    <div class="muted" style="margin-top:.8em">Collez le lien d'une playlist ou d'un album Spotify, d'une playlist YouTube / YouTube Music, ou d'un album YouTube Music. Vous choisirez les morceaux, puis vérifierez le rangement avant qu'ils entrent dans la bibliothèque.</div>
+    <div id="impWarn" class="warn" style="display:none"></div>
+    <div id="quotaLink" class="muted quota"></div>
+    <div class="linkrow">
+      <input id="linkUrl" type="text" placeholder="https://open.spotify.com/playlist/… ou https://music.youtube.com/playlist?list=…" autocomplete="off">
+      <button id="linkGo" type="button">Lire le lien</button>
+    </div>
+    <div id="linkJob"></div>
+  </div>
+
+  <div id="tabBrowse" style="display:none">
+    <div class="muted" style="margin-top:.8em">Cherchez un artiste, cochez ses albums : les pistes viennent de MusicBrainz et chaque morceau est retrouvé sur YouTube Music.</div>
+    <div id="browseWarn" class="warn" style="display:none"></div>
+    <div id="quotaBrowse" class="muted quota"></div>
+    <div class="linkrow">
+      <input id="artistQ" type="text" placeholder="Nom de l'artiste" autocomplete="off">
+      <button id="artistGo" type="button">Chercher</button>
+    </div>
+    <div id="browseOut"></div>
+  </div>
+
+<div id="tabFiles">
   <div class="row">
     <label for="mode">Type</label>
     <select id="mode">
@@ -91,6 +161,7 @@
     <span id="pickinfo" class="muted"></span>
   </div>
 </div>
+</div>
 
 <div id="review" style="display:none">
   <div class="bar">
@@ -105,6 +176,7 @@
       <button id="cancel" type="button" class="danger small">Tout annuler</button>
       <span class="muted" id="ttlnote"></span>
     </div>
+    <div class="imp" id="importinfo" style="display:none"></div>
   </div>
   <div id="groups"></div>
 </div>
@@ -128,7 +200,8 @@
     status: null, entries: [],
     batch: null, files: {}, plan: null, progress: {}, ups: {},
     overrides: {}, include: {}, open: {}, edit: null, sel: {}, sugg: { artists: [], albums: {}, loaded: false, titles: {} },
-    phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, mode: 'auto'
+    phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, mode: 'auto',
+    previews: {}, details: {}
   };
 
   // ---------- Utilitaires ----------
@@ -155,14 +228,18 @@
   }
 
   function token() {
+    // Dans l'onglet de l'accueil (iframe), la page de Jellyfin connaît déjà la session de CE serveur.
+    try {
+      var host = window.parent !== window ? window.parent : window;
+      if (host.ApiClient && typeof host.ApiClient.accessToken === 'function' && host.ApiClient.accessToken()) { return host.ApiClient.accessToken(); }
+    } catch (e) { /* page parente inaccessible */ }
     try {
       var c = JSON.parse(localStorage.getItem('jellyfin_credentials') || '{}');
-      var servers = (c.Servers || []).filter(function (s) { return s.AccessToken; });
-      if (!servers.length) { return null; }
-      var here = servers.filter(function (s) {
-        return [s.ManualAddress, s.LocalAddress, s.RemoteAddress].some(function (a) { return a && a.indexOf(location.origin) === 0; });
+      var here = (c.Servers || []).filter(function (s) {
+        return s.AccessToken && [s.ManualAddress, s.LocalAddress, s.RemoteAddress].some(function (a) { return a && a.indexOf(location.origin) === 0; });
       });
-      return (here[0] || servers[0]).AccessToken;
+      // Jamais le jeton d'un autre serveur mémorisé par le navigateur.
+      return here.length ? here[0].AccessToken : null;
     } catch (e) { return null; }
   }
 
@@ -548,6 +625,8 @@
     if (st === 'skipped') { return { text: 'Ignoré', cls: 'skipped' }; }
     if (st === 'error') { return { text: 'Erreur', cls: 'error' }; }
     if (st === 'duplicate') { return { text: 'Doublon', cls: 'skipped' }; }
+    var pr = S.progress[id], imported = pr && pick(pr, 'State');
+    if (!complete(id) && imported) { return { text: imported === 'downloading' ? 'Téléchargement…' : 'En file', cls: '' }; }
     if (!up && !complete(id)) { return { text: 'À renvoyer', cls: 'error' }; }
     if (up && up.status === 'uploading') { return { text: 'Réception ' + up.pct + ' %', cls: '' }; }
     if (up && up.status === 'error') { return { text: 'Échec', cls: 'error' }; }
@@ -635,6 +714,76 @@
     render();
   }
 
+  // Image servie par le plugin (jeton dans l'en-tête, donc pas de balise img directe) : récupérée en blob.
+  function apiBlob(path) {
+    return new Promise(function (resolve) {
+      var t = token();
+      if (!t) { resolve(null); return; }
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', BASE + '/' + path);
+      xhr.responseType = 'blob';
+      xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
+      xhr.onload = function () { resolve(xhr.status === 200 ? URL.createObjectURL(xhr.response) : null); };
+      xhr.onerror = function () { resolve(null); };
+      xhr.send();
+    });
+  }
+
+  // Tags et pochette réellement lus dans le fichier reçu : chargés une seule fois par fichier, puis gardés.
+  function previewOf(itemId) {
+    var p = S.previews[itemId];
+    if (p) { return p; }
+    if (!S.batch || !complete(itemId)) { return null; }
+    p = S.previews[itemId] = { state: 'loading' };
+    var base = 'MediaUploader/Batch/' + S.batch.id + '/Items/' + itemId;
+    api('GET', base + '/Preview').then(function (res) {
+      if (res.status !== 200 || !res.body) { p.state = 'error'; return null; }
+      p.data = res.body; p.state = 'ready';
+      return pick(res.body, 'HasCover') ? apiBlob(base + '/Cover') : null;
+    }).then(function (url) { if (url) { p.cover = url; } scheduleRender(); }).catch(function () { p.state = 'error'; scheduleRender(); });
+    return p;
+  }
+
+  function coverBox(p) {
+    if (!p || p.state === 'loading') { return h('div', { class: 'cover none', text: '…' }); }
+    if (p.cover) { return h('img', { class: 'cover', src: p.cover, alt: 'Pochette' }); }
+    return h('div', { class: 'cover none', text: p.state === 'error' ? 'Illisible' : 'Pas de pochette' });
+  }
+
+  // Aperçu d'un album avant confirmation : pochette et tags du premier morceau reçu, détail piste par piste à la demande.
+  function musicPreview(box, g, items) {
+    var mains = items.filter(function (i) { return pick(i, 'Role') === 'main' && complete(pick(i, 'Id')); });
+    if (!mains.length) { return; }
+    var key = pick(g, 'Key'), first = previewOf(pick(mains[0], 'Id')), d = first && first.data;
+    var meta = [];
+    if (d) {
+      if (pick(d, 'Album')) { meta.push(pick(d, 'Album')); }
+      if (pick(d, 'AlbumArtist') || pick(d, 'Artist')) { meta.push(pick(d, 'AlbumArtist') || pick(d, 'Artist')); }
+      if (pick(d, 'Year')) { meta.push(String(pick(d, 'Year'))); }
+    }
+    var open = S.details[key] !== false;
+    box.appendChild(h('div', { class: 'gpreview' }, [
+      coverBox(first),
+      h('div', {}, [
+        h('div', { text: meta.length ? meta.join(' · ') : 'Tags en cours de lecture…' }),
+        h('div', { class: 'muted', text: mains.length + ' morceau' + (mains.length > 1 ? 'x' : '') + ' reçu' + (mains.length > 1 ? 's' : '') }),
+        h('button', { type: 'button', class: 'secondary small', style: 'margin-top:.3em', text: open ? 'Masquer le détail des tags' : 'Vérifier les tags piste par piste', onclick: function () { S.details[key] = !open; render(); } })
+      ])
+    ]));
+    if (open) {
+      var rows = mains.map(function (i) {
+        var p = previewOf(pick(i, 'Id')), pd = p && p.data;
+        var num = pd ? ((pick(pd, 'Disc') ? pick(pd, 'Disc') + '.' : '') + (pick(pd, 'Track') || '–')) : '…';
+        var cover = !p || p.state === 'loading' ? '…' : (p.data && pick(p.data, 'HasCover') ? h('span', { class: 'ok', text: '✓' }) : h('span', { class: 'ko', text: '✗' }));
+        return h('tr', {}, [h('td', { text: num }), h('td', { text: pd ? (pick(pd, 'Title') || '(sans titre)') : '…' }), h('td', { text: pd ? (pick(pd, 'Artist') || '(sans artiste)') : '' }), h('td', { text: pd && pick(pd, 'Year') ? String(pick(pd, 'Year')) : '' }), h('td', { text: pd ? fmtDuration(pick(pd, 'DurationSec')) : '' }), h('td', {}, [cover])]);
+      });
+      box.appendChild(h('div', { style: 'padding:0 .8em' }, [h('table', { class: 'ptable' }, [
+        h('thead', {}, [h('tr', {}, ['N°', 'Titre', 'Artiste(s)', 'Année', 'Durée', 'Pochette'].map(function (t) { return h('th', { text: t }); }))]),
+        h('tbody', {}, rows)
+      ])]));
+    }
+  }
+
   function renderItem(item, selectable) {
     var st = itemState(item), id = pick(item, 'Id'), role = pick(item, 'Role'), pair = pick(item, 'Pair');
     var row = h('div', { class: 'item' + (role === 'subtitle' ? ' sub' : '') });
@@ -645,7 +794,7 @@
     }
     var nameBits = [];
     if (selectable) { nameBits.push(h('input', { type: 'checkbox', checked: !!S.sel[id], style: 'margin-right:.5em', onchange: function (e) { S.sel[id] = e.target.checked; render(); } })); }
-    nameBits.push(h('span', { text: pick(item, 'Name') + ' (' + mb(pick(item, 'Size') || 0) + ')' }));
+    nameBits.push(h('span', { text: pick(item, 'Name') + (pick(item, 'Size') ? ' (' + mb(pick(item, 'Size')) + ')' : '') }));
     list(pick(item, 'Missing')).forEach(function (m) { nameBits.push(h('span', { class: 'chip review', style: 'margin-left:.5em', text: m === 'artist' ? 'sans artiste' : 'sans album' })); });
     row.appendChild(h('div', { class: 'ihead' }, [h('span', { class: 'name' }, nameBits), h('span', {}, actions)]));
 
@@ -720,6 +869,7 @@
         if (S.edit && S.edit.type === 'selection') { box.appendChild(h('div', { style: 'padding:0 .8em' }, [selectionEditor(chosen.length)])); }
       }
     } else if (kind !== 'ignored') { box.appendChild(h('div', { class: 'gfolder', text: pick(g, 'Folder') ? '→ ' + pick(g, 'Folder') : '→ racine de la bibliothèque' })); }
+    if (!missing && kind === 'music' && !S.committing) { musicPreview(box, g, items); }
     var choices = [];
     items.forEach(function (i) { list(pick(i, 'ArtistChoices')).forEach(function (c) { if (choices.indexOf(c) < 0) { choices.push(c); } }); });
     if (choices.length && !S.committing) {
@@ -792,6 +942,7 @@
     var box = $('groups');
     box.textContent = '';
     groups.forEach(function (g) { box.appendChild(renderGroup(g)); });
+    renderImportInfo();
   }
 
   function renderDone() {
@@ -837,8 +988,8 @@
   }
 
   function finish() {
-    S.phase = 'done'; S.batch = null; S.plan = null;
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ }
+    S.phase = 'done'; S.batch = null; S.plan = null; I.job = null; I.view = null; I.busy = false; I.entered = false;
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(JOB_KEY); } catch (e) { /* ignoré */ }
     render();
   }
 
@@ -862,8 +1013,11 @@
   }
 
   function reset() {
-    S = Object.assign(S, { entries: [], batch: null, files: {}, plan: null, progress: {}, ups: {}, overrides: {}, include: {}, open: {}, edit: null, sel: {}, phase: 'pick', results: [], pumping: false, committing: false, autoDone: false });
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ }
+    S = Object.assign(S, { entries: [], batch: null, files: {}, plan: null, progress: {}, ups: {}, overrides: {}, include: {}, open: {}, edit: null, sel: {}, phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, previews: {}, details: {} });
+    var jid = I.job;
+    I.job = null; I.view = null; I.busy = false; I.entered = false; I.sel = {};
+    if (jid) { api('DELETE', 'MediaUploader/Import/Jobs/' + jid).catch(function () {}); }
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(JOB_KEY); } catch (e) { /* ignoré */ }
     showWarn('');
     render();
   }
@@ -878,7 +1032,11 @@
       S.batch = { id: id, chunk: pick(res.body, 'ChunkSize') };
       applyBatch(res.body);
       S.phase = 'review';
-      showWarn('Lot repris après rechargement de la page : les fichiers incomplets ne peuvent plus être envoyés, retirez-les ou annulez le lot.');
+      var importing = Object.keys(S.progress).some(function (k) { return pick(S.progress[k], 'State'); });
+      var jid = null;
+      try { jid = localStorage.getItem(JOB_KEY); } catch (e) { jid = null; }
+      if (jid) { I.job = jid; I.entered = true; pollJob(); }
+      if (!importing) { showWarn('Lot repris après rechargement de la page : les fichiers incomplets ne peuvent plus être envoyés, retirez-les ou annulez le lot.'); }
     }).catch(function () { /* pas de lot à reprendre */ });
   }
 
@@ -893,10 +1051,433 @@
       if (S.status && !pick(S.status, 'MoviesConfigured')) { missing.push('films'); }
       if (missing.length) { msgs.push('Dossier non configuré (' + missing.join(', ') + ') : un administrateur doit le régler dans Tableau de bord > Extensions > Media Uploader.'); }
       if (msgs.length) { showWarn(msgs.join(' ')); }
-      return resume();
+      return resume().then(loadImportStatus);
     }).catch(function (e) { showWarn(e.message); }).then(render);
   }
 
+
+  // ---------- Import : lien Spotify / YouTube, navigation artistes et albums ----------
+  var JOB_KEY = 'mediauploader.job';
+  var I = { status: null, tab: 'files', job: null, view: null, polling: false, layout: 'source', sel: {}, artists: null, albums: null, artist: null, albumSel: {}, counts: {}, types: { Album: true, EP: true, Single: false, Other: false }, busy: false, entered: false, playlist: null, playlistPublic: true, quota: null, quotaFor: -1 };
+
+  function fmtDuration(sec) { if (!sec) { return ''; } return Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2); }
+
+  function setTab(name) {
+    I.tab = name;
+    $('tabFiles').style.display = name === 'files' ? '' : 'none';
+    $('tabLink').style.display = name === 'link' ? '' : 'none';
+    $('tabBrowse').style.display = name === 'browse' ? '' : 'none';
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === name); });
+    showWarn('');
+    if (name !== 'files') { fetchQuota(0); renderImport(); }
+  }
+
+  function loadImportStatus() {
+    return api('GET', 'MediaUploader/Import/Status').then(function (res) {
+      if (res.status !== 200 || !res.body) { return; }
+      I.status = res.body;
+      $('tabs').style.display = pick(I.status, 'Enabled') && pick(I.status, 'CanUpload') ? '' : 'none';
+    }).catch(function () { /* import indisponible : l'envoi de fichiers reste utilisable */ });
+  }
+
+  function toolWarning(needs) {
+    var st = I.status;
+    if (!st) { return ''; }
+    var missing = needs.filter(function (n) { return !(pick(st, n.key) && pick(pick(st, n.key), 'Found')); }).map(function (n) { return n.label; });
+    if (!missing.length) { return ''; }
+    return missing.join(' et ') + (missing.length > 1 ? ' ne sont pas installés' : ' n\'est pas installé') + ' sur le serveur : un administrateur peut les installer dans Tableau de bord > Extensions > Media Uploader.';
+  }
+
+  // ---------- Quotas de téléchargement ----------
+  var quotaTimer = null;
+  function fmtWait(min) {
+    if (min < 1) { return 'moins d\'une minute'; }
+    if (min < 90) { return min + ' min'; }
+    var h2 = Math.floor(min / 60), m2 = min % 60;
+    return h2 + ' h' + (m2 ? ' ' + ('0' + m2).slice(-2) : '');
+  }
+  function fetchQuota(n) {
+    I.quotaFor = n;
+    return api('GET', 'MediaUploader/Import/Quota?tracks=' + n).then(function (res) {
+      if (res.status === 200 && res.body && I.quotaFor === n) { I.quota = res.body; }
+      renderQuota();
+    }).catch(function () { /* quotas indisponibles : l'import reste possible */ });
+  }
+  // Demande les quotas pour n morceaux (regroupe les demandes rapprochées, et n'en refait pas pour le même nombre).
+  function wantQuota(n) {
+    if (I.quotaFor === n) { return; }
+    I.quotaFor = n;
+    if (quotaTimer) { clearTimeout(quotaTimer); }
+    quotaTimer = setTimeout(function () { quotaTimer = null; fetchQuota(n); }, 250);
+  }
+  // Une jauge par plafond : la part utilisée, et (si une sélection est en vue) la part que la sélection consommerait, en rouge si elle dépasse.
+  function quotaGauge(label, used, max, remaining, planned) {
+    if (!max) { return h('div', {}, [h('div', { class: 'qrow' }, [h('span', { text: label }), h('span', { text: 'sans plafond' })])]); }
+    var pctUsed = Math.min(100, used * 100 / max), pctPlan = Math.min(100 - pctUsed, Math.min(planned, remaining) * 100 / max);
+    var cls = remaining === 0 ? 'out' : remaining <= Math.max(3, max * 0.1) ? 'low' : '';
+    var over = planned > remaining;
+    return h('div', {}, [
+      h('div', { class: 'qrow' }, [h('span', { text: label }), h('span', {}, [h('b', { text: used + ' / ' + max }), ' · ' + remaining + ' restant' + (remaining > 1 ? 's' : '') + (planned ? ' · sélection : ' + planned : '')])]),
+      h('div', { class: 'qbar ' + cls + (over ? ' over' : '') }, [
+        h('span', { class: 'u', style: 'width:' + pctUsed + '%' }),
+        planned ? h('span', { class: 's', style: 'left:' + pctUsed + '%;width:' + pctPlan + '%' }) : null
+      ])
+    ]);
+  }
+  function quotaLine(q) {
+    var n = pick(q, 'Tracks') || 0;
+    return h('div', {}, [
+      h('div', { text: 'Quota de téléchargements (un morceau toutes les ' + pick(q, 'MinDelay') + ' à ' + pick(q, 'MaxDelay') + ' s)' }),
+      quotaGauge('Cette heure', pick(q, 'UsedHour'), pick(q, 'MaxPerHour'), pick(q, 'RemainingHour'), n),
+      quotaGauge('Aujourd\'hui', pick(q, 'UsedDay'), pick(q, 'MaxPerDay'), pick(q, 'RemainingDay'), n)
+    ]);
+  }
+  // Prévient avant de lancer : combien de temps, et si cela dépasse un plafond.
+  function quotaForecast(q, n) {
+    if (!q || !n || pick(q, 'Tracks') !== n) { return null; }
+    var box = h('div', {}), last = pick(q, 'LastStartMinutes'), delayed = pick(q, 'Delayed'), paused = pick(q, 'PausedMinutes');
+    if (paused > 0) { box.appendChild(h('div', { class: 'qwarn', text: '⚠ Téléchargements suspendus encore ' + fmtWait(paused) + ' (YouTube a signalé une limitation) : ils reprendront seuls.' })); }
+    if (delayed > 0) {
+      box.appendChild(h('div', { class: 'qwarn', text: '⚠ Dépasse le quota : ' + delayed + ' des ' + n + ' morceaux attendront qu\'une place se libère. Le dernier ne démarrera que dans environ ' + fmtWait(last) + '. Les téléchargements continuent sur le serveur, vous pouvez fermer la page.' }));
+    } else {
+      box.appendChild(h('div', { class: 'qinfo', text: 'Rentre dans le quota : environ ' + fmtWait(last) + ' pour lancer les ' + n + ' morceaux (au minimum, selon la vitesse de chaque téléchargement).' }));
+    }
+    return box;
+  }
+  function renderQuota() {
+    ['quotaLink', 'quotaBrowse'].forEach(function (id) {
+      var box = $(id);
+      box.textContent = '';
+      if (I.quota) { box.appendChild(quotaLine(I.quota)); }
+    });
+    renderLinkJob();
+    renderBrowse();
+  }
+
+  function renderImport() {
+    var lw = toolWarning([{ key: 'YtDlp', label: 'yt-dlp' }]);
+    $('impWarn').textContent = lw; $('impWarn').style.display = lw ? '' : 'none';
+    var bw = toolWarning([{ key: 'YtDlp', label: 'yt-dlp' }]);
+    $('browseWarn').textContent = bw; $('browseWarn').style.display = bw ? '' : 'none';
+    var paused = pick(I.status, 'PausedMinutes');
+    if (pick(I.status, 'PausedUntil') && paused > 0) { $('impWarn').textContent = (lw ? lw + ' ' : '') + 'Téléchargements suspendus ' + paused + ' min : YouTube a signalé une limitation (reprise automatique).'; $('impWarn').style.display = ''; }
+    $('linkGo').disabled = I.busy;
+    if (pick(I.status, 'Enabled') && pick(I.status, 'CanUpload') && I.quotaFor === -1) { fetchQuota(0); }
+    renderLinkJob();
+    renderBrowse();
+  }
+
+  function startJob(path, body) {
+    I.busy = true; I.view = null; I.entered = false; renderImport();
+    return api('POST', path, body).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      I.job = pick(res.body, 'Id'); I.view = res.body; I.sel = {};
+      try { localStorage.setItem(JOB_KEY, I.job); } catch (e) { /* stockage indisponible */ }
+      pollJob();
+    }).catch(function (err) { I.busy = false; showWarn(err.message); renderImport(); });
+  }
+
+  var pollTimer = null;
+  function pollJob() {
+    if (pollTimer || !I.job) { return; }
+    pollTimer = setTimeout(function () {
+      pollTimer = null;
+      if (!I.job) { return; }
+      api('GET', 'MediaUploader/Import/Jobs/' + I.job).then(function (res) {
+        if (res.status === 404) { I.job = null; I.view = null; I.busy = false; try { localStorage.removeItem(JOB_KEY); } catch (e) { /* ignoré */ } renderImport(); return; }
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var first = !I.view || pick(I.view, 'State') === 'resolving';
+        I.view = res.body;
+        var state = pick(res.body, 'State'), batchId = pick(res.body, 'BatchId');
+        if (first && state === 'ready') {
+          // Rangement proposé par défaut : un lien de playlist YouTube n'a pas d'albums, une playlist Spotify ou un album en ont.
+          I.layout = pick(res.body, 'Source') === 'youtube' && pick(res.body, 'Kind') === 'playlist' ? 'playlist' : 'source';
+          list(pick(res.body, 'Tracks')).forEach(function (t) { I.sel[pick(t, 'Id')] = true; });
+          I.playlist = null;
+        }
+        if (batchId && !I.entered && S.phase === 'pick') { enterBatch(batchId); }
+        if (batchId && S.phase === 'review' && S.batch && S.batch.id === batchId) { refreshBatch(); }
+        var active = state === 'resolving' || state === 'downloading';
+        I.busy = active && state === 'resolving';
+        if (state === 'failed') { showWarn(pick(res.body, 'Message') || 'Import impossible.'); }
+        if (active) { pollJob(); }
+        else if (batchId && S.phase === 'review') { refreshBatch(); }
+        renderImport();
+        if (S.phase === 'review') { renderImportInfo(); }
+      }).catch(function (err) { showWarn(err.message); I.busy = false; renderImport(); });
+    }, 1500);
+  }
+
+  function enterBatch(batchId) {
+    I.entered = true;
+    S.batch = { id: batchId, chunk: 8 * 1048576 };
+    S.files = {}; S.ups = {}; S.overrides = {}; S.include = {}; S.open = {}; S.sel = {}; S.results = []; S.autoDone = false; S.edit = null;
+    try { localStorage.setItem(STORE_KEY, batchId); } catch (e) { /* stockage indisponible */ }
+    return api('GET', 'MediaUploader/Batch/' + batchId).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      applyBatch(res.body);
+      S.phase = 'review';
+      render();
+      renderImportInfo();
+    }).catch(function (err) { showWarn(err.message); });
+  }
+
+  function renderLinkJob() {
+    var box = $('linkJob');
+    box.textContent = '';
+    var v = I.view;
+    if (!v || I.tab !== 'link' || pick(v, 'Source') === 'browse') { return; }
+    var state = pick(v, 'State');
+    if (state === 'resolving') { box.appendChild(h('div', { class: 'muted', text: 'Lecture du lien… (une longue playlist Spotify peut prendre une minute)' })); return; }
+    if (state === 'failed' || state === 'cancelled') { box.appendChild(h('div', { class: 'warn', text: pick(v, 'Message') || 'Import impossible.' })); return; }
+    if (state !== 'ready') { box.appendChild(h('div', { class: 'muted', text: 'Téléchargement lancé : le suivi s\'affiche dans l\'aperçu.' })); return; }
+    var tracks = list(pick(v, 'Tracks')), chosen = tracks.filter(function (t) { return I.sel[pick(t, 'Id')]; });
+    box.appendChild(h('div', { class: 'row' }, [
+      pick(v, 'CoverUrl') ? h('img', { class: 'cover', src: pick(v, 'CoverUrl'), alt: 'Pochette', referrerpolicy: 'no-referrer' }) : null,
+      h('strong', { text: pick(v, 'Title') }),
+      h('span', { class: 'chip kind', text: { album: 'Album', playlist: 'Playlist', track: 'Titre' }[pick(v, 'Kind')] || pick(v, 'Kind') }),
+      h('span', { class: 'chip', text: tracks.length + ' morceau' + (tracks.length > 1 ? 'x' : '') })
+    ]));
+    if (pick(v, 'Message')) { box.appendChild(h('div', { class: 'warn', text: pick(v, 'Message') })); }
+    var layout = h('select', { onchange: function (e) { I.layout = e.target.value; } }, [
+      h('option', { value: 'source', text: 'Chaque morceau dans son album d\'origine', selected: I.layout === 'source' }),
+      h('option', { value: 'playlist', text: 'Tout dans un album « ' + pick(v, 'Title') + ' »', selected: I.layout === 'playlist' })
+    ]);
+    box.appendChild(h('div', { class: 'row' }, [h('label', { text: 'Rangement' }), layout]));
+    if (pick(v, 'Kind') === 'playlist' && pick(I.status, 'CreatePlaylist') !== undefined) {
+      if (I.playlist === null) { I.playlist = !!pick(I.status, 'CreatePlaylist'); I.playlistPublic = !!pick(I.status, 'PlaylistPublic'); }
+      var pubBox = h('input', { type: 'checkbox', checked: I.playlistPublic, disabled: !I.playlist, onchange: function (e) { I.playlistPublic = e.target.checked; } });
+      var plBox = h('input', { type: 'checkbox', checked: I.playlist, onchange: function (e) { I.playlist = e.target.checked; pubBox.disabled = !I.playlist; } });
+      box.appendChild(h('div', { class: 'row' }, [
+        h('label', {}, [plBox, document.createTextNode(' Créer une liste de lecture Jellyfin « ' + pick(v, 'Title') + ' »')]),
+        h('label', {}, [pubBox, document.createTextNode(' Publique (visible de tous)')])
+      ]));
+    }
+    wantQuota(chosen.length);
+    var forecast = quotaForecast(I.quota, chosen.length);
+    if (forecast) { box.appendChild(forecast); }
+    var rows = h('div', { class: 'tracks' });
+    tracks.forEach(function (t) {
+      var id = pick(t, 'Id');
+      rows.appendChild(h('div', { class: 'trow' }, [
+        h('input', { type: 'checkbox', checked: !!I.sel[id], onchange: function (e) { I.sel[id] = e.target.checked; renderLinkJob(); } }),
+        h('span', { class: 'tt', text: (pick(t, 'Artist') ? pick(t, 'Artist') + ' — ' : '') + pick(t, 'Title') + (pick(t, 'Album') ? '  ·  ' + pick(t, 'Album') : '') }),
+        h('span', { class: 'muted', text: fmtDuration(pick(t, 'Duration')) })
+      ]));
+    });
+    box.appendChild(rows);
+    box.appendChild(h('div', { class: 'row' }, [
+      h('button', { type: 'button', disabled: !chosen.length || I.busy, text: 'Télécharger la sélection (' + chosen.length + ')', onclick: function () {
+        I.busy = true; renderLinkJob();
+        api('POST', 'MediaUploader/Import/Jobs/' + I.job + '/Start', { trackIds: chosen.map(function (t) { return pick(t, 'Id'); }), layout: I.layout, createPlaylist: I.playlist === null ? undefined : I.playlist, playlistPublic: I.playlist === null ? undefined : I.playlistPublic }).then(function (res) {
+          if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+          I.view = res.body; I.busy = false; pollJob(); fetchQuota(0);
+        }).catch(function (err) { I.busy = false; showWarn(err.message); renderLinkJob(); });
+      } }),
+      h('button', { type: 'button', class: 'secondary small', text: 'Tout cocher', onclick: function () { tracks.forEach(function (t) { I.sel[pick(t, 'Id')] = true; }); renderLinkJob(); } }),
+      h('button', { type: 'button', class: 'secondary small', text: 'Tout décocher', onclick: function () { I.sel = {}; renderLinkJob(); } }),
+      h('button', { type: 'button', class: 'danger small', text: 'Annuler', onclick: function () { dropJob(); } })
+    ]));
+  }
+
+  function dropJob() {
+    var id = I.job;
+    I.job = null; I.view = null; I.busy = false; I.sel = {}; I.playlist = null;
+    try { localStorage.removeItem(JOB_KEY); } catch (e) { /* ignoré */ }
+    if (id) { api('DELETE', 'MediaUploader/Import/Jobs/' + id).catch(function () {}); }
+    renderImport();
+  }
+
+  // Suivi de l'import dans l'écran d'aperçu : progression, échecs, arrêt.
+  var PHASE_TEXT = {
+    waiting: 'en attente de son tour',
+    searching: 'recherche sur YouTube',
+    downloading: 'téléchargement',
+    converting: 'conversion audio',
+    tagging: 'écriture des tags et de la pochette',
+    filing: 'rangement dans le lot'
+  };
+
+  function fmtSeconds(sec) {
+    if (sec < 90) { return sec + ' s'; }
+    return fmtWait(Math.ceil(sec / 60));
+  }
+
+  // Explication de ce qui se passe pendant un import : avancement global, pause en cours (et pourquoi), étape de chaque téléchargement actif.
+  function renderImportInfo() {
+    var box = $('importinfo'), v = I.view;
+    if (!v || !S.batch || pick(v, 'BatchId') !== S.batch.id) { box.style.display = 'none'; return; }
+    var state = pick(v, 'State'), total = pick(v, 'Total') || 0, done = pick(v, 'Done') || 0, failed = pick(v, 'Failed') || 0;
+    var tracks = list(pick(v, 'Tracks')).filter(function (t) { return pick(t, 'Selected'); });
+    var running = tracks.filter(function (t) { return pick(t, 'State') === 'downloading'; });
+    var waiting = tracks.filter(function (t) { return pick(t, 'State') === 'queued'; });
+    box.style.display = '';
+    box.textContent = '';
+
+    var line = state === 'downloading' ? 'Import en cours : ' + done + ' / ' + total + ' morceau' + (total > 1 ? 'x' : '') + ' reçu' + (done > 1 ? 's' : '')
+      : 'Import terminé : ' + done + ' / ' + total + ' reçu' + (done > 1 ? 's' : '') + (failed ? ', ' + failed + ' échec' + (failed > 1 ? 's' : '') : '') + '.';
+    var kids = [h('strong', { text: line })];
+    if (state === 'downloading') {
+      kids.push(h('button', { type: 'button', class: 'danger small', style: 'margin-left:.8em', text: 'Arrêter l\'import', onclick: function () {
+        api('DELETE', 'MediaUploader/Import/Jobs/' + I.job).then(function () { pollJob(); refreshBatch(); });
+      } }));
+    }
+    box.appendChild(h('div', {}, kids));
+
+    if (total > 0) {
+      box.appendChild(h('progress', { max: String(total), value: String(done + failed), style: 'margin:.4em 0' }));
+      var chips = [h('span', { class: 'chip ready', text: '✓ ' + done + ' reçu' + (done > 1 ? 's' : '') })];
+      if (running.length) { chips.push(h('span', { class: 'chip kind', text: '⬇ ' + running.length + ' en cours' })); }
+      if (waiting.length) { chips.push(h('span', { class: 'chip', text: '⏳ ' + waiting.length + ' en attente' })); }
+      if (failed) { chips.push(h('span', { class: 'chip ignored', text: '✗ ' + failed + ' échec' + (failed > 1 ? 's' : '') })); }
+      box.appendChild(h('div', { class: 'row', style: 'margin:.3em 0' }, chips));
+    }
+
+    if (state === 'downloading') {
+      // Pourquoi rien ne démarre pour l'instant (le plus souvent : le délai volontaire entre deux morceaux).
+      var reason = pick(v, 'WaitReason'), secs = pick(v, 'WaitSeconds') || 0, why = null;
+      if (reason === 'paused') { why = '⏸ Suspendu : YouTube a signalé une limitation. Reprise automatique dans ' + fmtSeconds(secs) + '.'; }
+      else if (reason === 'hour') { why = '⏳ Quota horaire atteint : prochain téléchargement dans ' + fmtSeconds(secs) + '. Les morceaux restants partent seuls ensuite, vous pouvez fermer la page.'; }
+      else if (reason === 'day') { why = '⏳ Quota quotidien atteint : prochain téléchargement dans ' + fmtSeconds(secs) + '. Les morceaux restants partent seuls ensuite.'; }
+      else if (reason === 'pace' && waiting.length) { why = '⏳ Pause volontaire de ' + fmtSeconds(secs) + ' avant le prochain morceau : un délai aléatoire entre deux téléchargements évite que le serveur soit pris pour un robot.'; }
+      if (why) { box.appendChild(h('div', { class: reason === 'paused' ? 'qwarn' : 'qinfo', text: why })); }
+
+      running.forEach(function (t) {
+        var phase = pick(t, 'Phase'), pct = pick(t, 'Percent');
+        var text = (PHASE_TEXT[phase] || 'en cours') + (phase === 'downloading' && pct !== null && pct !== undefined ? ' ' + pct + ' %' : '');
+        var row = h('div', { class: 'dlrow' }, [h('span', { class: 'tt', text: (pick(t, 'Artist') ? pick(t, 'Artist') + ' — ' : '') + pick(t, 'Title') }), h('span', { class: 'muted', text: text })]);
+        box.appendChild(row);
+        if (phase === 'downloading' && pct !== null && pct !== undefined) { box.appendChild(h('progress', { max: '100', value: String(pct), class: 'small' })); }
+      });
+      var blocked = waiting.filter(function (t) { return pick(t, 'Message'); })[0];
+      if (blocked) { box.appendChild(h('div', { class: 'qwarn', text: pick(blocked, 'Message') })); }
+    }
+
+    var fails = list(pick(v, 'Tracks')).filter(function (t) { return pick(t, 'State') === 'failed'; });
+    if (fails.length) {
+      box.appendChild(h('div', { class: 'fails', text: 'Échecs : ' + fails.map(function (t) { return pick(t, 'Title') + ' (' + (pick(t, 'Message') || 'erreur') + ')'; }).join(' ; ') }));
+    }
+  }
+
+  function searchArtists() {
+    var q = $('artistQ').value.trim();
+    if (!q) { return; }
+    I.artists = null; I.albums = null; I.artist = null; I.albumSel = {};
+    $('browseOut').textContent = 'Recherche…';
+    api('GET', 'MediaUploader/Browse/Artists?q=' + encodeURIComponent(q)).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      I.artists = list(pick(res.body, 'Artists'));
+      renderBrowse();
+    }).catch(function (err) { $('browseOut').textContent = ''; showWarn(err.message); });
+  }
+
+  function openArtist(a) {
+    I.artist = a; I.albums = null; I.albumSel = {};
+    $('browseOut').textContent = 'Chargement des albums (MusicBrainz, quelques secondes)…';
+    api('GET', 'MediaUploader/Browse/Artists/' + pick(a, 'Id') + '/Albums').then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      I.albums = list(pick(res.body, 'Albums'));
+      renderBrowse();
+    }).catch(function (err) { $('browseOut').textContent = ''; showWarn(err.message); });
+  }
+
+  function albumGroup(al) {
+    if (list(pick(al, 'Extras')).length) { return 'Other'; }
+    var t = pick(al, 'Type');
+    return t === 'Album' || t === 'EP' || t === 'Single' ? t : 'Other';
+  }
+
+  function visibleAlbums() { return list(I.albums).filter(function (al) { return I.types[albumGroup(al)]; }); }
+
+  // Nombre de pistes des albums cochés : une requête par album (MusicBrainz limite le débit), l'une après l'autre.
+  var countQueue = [], counting = false;
+  function ensureCounts(ids) {
+    ids.forEach(function (id) { if (I.counts[id] === undefined) { I.counts[id] = -1; countQueue.push(id); } });
+    if (!counting) { counting = true; nextCount(); }
+  }
+  function nextCount() {
+    var id = countQueue.shift();
+    if (!id) { counting = false; return; }
+    if (!I.albumSel[id]) { delete I.counts[id]; nextCount(); return; }
+    api('GET', 'MediaUploader/Browse/Albums/' + id + '/Info').then(function (res) {
+      I.counts[id] = res.status === 200 && res.body ? pick(res.body, 'Tracks') : null;
+    }).catch(function () { I.counts[id] = null; }).then(function () { renderBrowse(); nextCount(); });
+  }
+  function selectionLabel(chosen) {
+    var known = chosen.filter(function (id) { return I.counts[id] > 0; }), pending = chosen.some(function (id) { return I.counts[id] === -1; });
+    var total = known.reduce(function (a, id) { return a + I.counts[id]; }, 0);
+    var text = chosen.length + ' album' + (chosen.length > 1 ? 's' : '');
+    if (known.length) { text += ' · ' + total + (pending || known.length < chosen.length ? '+' : '') + ' pistes'; }
+    return text;
+  }
+  function countLabel(id) {
+    var c = I.counts[id];
+    if (c === undefined) { return ''; }
+    if (c === -1) { return '…'; }
+    return c ? c + ' piste' + (c > 1 ? 's' : '') : 'pistes ?';
+  }
+
+  function renderBrowse() {
+    var box = $('browseOut');
+    if (I.tab !== 'browse') { return; }
+    if (I.view && pick(I.view, 'Source') === 'browse' && pick(I.view, 'State') === 'resolving') { box.textContent = 'Récupération des pistes (MusicBrainz, environ une seconde par album)…'; return; }
+    box.textContent = '';
+    if (I.artist && I.albums) {
+      box.appendChild(h('div', { class: 'row' }, [
+        h('button', { type: 'button', class: 'secondary small', text: '← Artistes', onclick: function () { I.artist = null; I.albums = null; renderBrowse(); } }),
+        h('strong', { text: pick(I.artist, 'Name') })
+      ]));
+      var filters = h('div', { class: 'filters' });
+      [['Album', 'Albums'], ['EP', 'EP'], ['Single', 'Singles'], ['Other', 'Live, compilations, remix…']].forEach(function (f) {
+        filters.appendChild(h('label', {}, [h('input', { type: 'checkbox', checked: !!I.types[f[0]], onchange: function (e) { I.types[f[0]] = e.target.checked; renderBrowse(); } }), f[1]]));
+      });
+      box.appendChild(filters);
+      var shown = visibleAlbums(), chosen = Object.keys(I.albumSel).filter(function (k) { return I.albumSel[k]; });
+      var rows = h('div', { class: 'albums' });
+      if (!shown.length) { rows.appendChild(h('div', { class: 'muted', style: 'padding:.6em 0', text: 'Aucun album avec ces filtres.' })); }
+      shown.forEach(function (al) {
+        var id = pick(al, 'Id'), date = pick(al, 'Date') || '';
+        var img = h('img', { src: 'https://coverartarchive.org/release-group/' + id + '/front-250', loading: 'lazy', alt: '' });
+        img.addEventListener('error', function () { img.style.visibility = 'hidden'; });
+        rows.appendChild(h('label', { class: 'arow' }, [
+          h('input', { type: 'checkbox', checked: !!I.albumSel[id], onchange: function (e) { I.albumSel[id] = e.target.checked; if (e.target.checked) { ensureCounts([id]); } renderBrowse(); } }),
+          img,
+          h('span', { class: 'tt', text: pick(al, 'Title') }),
+          h('span', { class: 'chip', text: [pick(al, 'Type')].concat(list(pick(al, 'Extras'))).join(' · ') }),
+          h('span', { class: 'muted', text: countLabel(id) }),
+          h('span', { class: 'muted', text: date.slice(0, 4) })
+        ]));
+      });
+      box.appendChild(rows);
+      var knownTotal = chosen.reduce(function (a, id) { return a + (I.counts[id] > 0 ? I.counts[id] : 0); }, 0);
+      if (knownTotal > 0) { wantQuota(knownTotal); var bf = quotaForecast(I.quota, knownTotal); if (bf) { box.appendChild(bf); } }
+      box.appendChild(h('div', { class: 'row' }, [
+        h('button', { type: 'button', disabled: !chosen.length || I.busy, text: 'Importer la sélection (' + selectionLabel(chosen) + ')', onclick: function () {
+          startJob('MediaUploader/Import/Albums', { artist: pick(I.artist, 'Name'), albums: chosen.map(function (id) { return { id: id }; }) });
+        } }),
+        h('button', { type: 'button', class: 'secondary small', text: 'Tout sélectionner (visibles)', onclick: function () { shown.forEach(function (al) { I.albumSel[pick(al, 'Id')] = true; }); ensureCounts(shown.map(function (al) { return pick(al, 'Id'); })); renderBrowse(); } }),
+        h('button', { type: 'button', class: 'secondary small', text: 'Aucun', onclick: function () { I.albumSel = {}; renderBrowse(); } })
+      ]));
+      return;
+    }
+    if (I.artists) {
+      if (!I.artists.length) { box.appendChild(h('div', { class: 'muted', text: 'Aucun artiste trouvé.' })); return; }
+      var hits = h('div', { class: 'hits' });
+      I.artists.forEach(function (a) {
+        hits.appendChild(h('button', { type: 'button', class: 'hit secondary', onclick: function () { openArtist(a); } }, [
+          h('strong', { text: pick(a, 'Name') }),
+          h('span', { class: 'muted', text: '  ' + [pick(a, 'Type'), pick(a, 'Country'), pick(a, 'Disambiguation')].filter(Boolean).join(' · ') })
+        ]));
+      });
+      box.appendChild(hits);
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
+  $('linkGo').addEventListener('click', function () { showWarn(''); startJob('MediaUploader/Import/Jobs', { url: $('linkUrl').value.trim(), layout: 'source' }); });
+  $('linkUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { $('linkGo').click(); } });
+  $('artistGo').addEventListener('click', function () { showWarn(''); searchArtists(); });
+  $('artistQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') { searchArtists(); } });
   $('drop').addEventListener('click', function () { $('files').click(); });
   $('pickfolder').addEventListener('click', function () { $('folder').click(); });
   $('files').addEventListener('change', function (e) { addEntries(Array.prototype.slice.call(e.target.files).map(function (f) { return { file: f, path: f.name }; })); e.target.value = ''; });

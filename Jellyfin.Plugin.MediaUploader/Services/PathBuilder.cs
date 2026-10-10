@@ -10,17 +10,60 @@ public static class PathBuilder
 {
     private static readonly Regex MultiSpace = new(@"\s+", RegexOptions.Compiled);
 
+    private const int MaxNameChars = 150;
+    private const int MaxNameBytes = 240;
+
     /// <summary>
-    /// Nettoie un segment de chemin (nom de dossier ou de fichier).
+    /// Nettoie un segment de chemin (nom de dossier).
     /// </summary>
     /// <param name="value">Valeur brute.</param>
     /// <param name="fallback">Valeur de repli si le résultat est vide.</param>
     /// <returns>Segment sûr.</returns>
     public static string SanitizeSegment(string? value, string fallback)
     {
+        var cleaned = Clean(value, MaxNameChars);
+        return cleaned.Length == 0 ? fallback : cleaned;
+    }
+
+    /// <summary>
+    /// Nettoie un nom de fichier : le nom est raccourci si besoin, mais l'extension est toujours conservée
+    /// (Jellyfin ignore un fichier sans extension reconnue) et le nom reste sous la limite des systèmes de fichiers (255 octets).
+    /// </summary>
+    /// <param name="name">Nom brut, extension comprise.</param>
+    /// <param name="fallback">Nom de repli (sans extension) si le résultat est vide.</param>
+    /// <returns>Nom de fichier sûr.</returns>
+    public static string SanitizeFileName(string? name, string fallback)
+    {
+        var raw = name ?? string.Empty;
+        var ext = Path.GetExtension(raw);
+        if (ext.Length > 16 || ext.Contains(' '))
+        {
+            ext = string.Empty;
+        }
+
+        var stem = ext.Length > 0 ? raw[..^ext.Length] : raw;
+        var cleanExt = Clean(ext.TrimStart('.'), 15);
+        var suffix = cleanExt.Length > 0 ? "." + cleanExt : string.Empty;
+        var cleaned = Clean(stem, Math.Max(20, MaxNameChars - suffix.Length));
+        if (cleaned.Length == 0)
+        {
+            cleaned = fallback;
+        }
+
+        while (cleaned.Length > 1 && Encoding.UTF8.GetByteCount(cleaned + suffix) > MaxNameBytes)
+        {
+            var cut = char.IsLowSurrogate(cleaned[^1]) ? 2 : 1;
+            cleaned = cleaned[..^Math.Min(cut, cleaned.Length - 1)].TrimEnd();
+        }
+
+        return cleaned + suffix;
+    }
+
+    private static string Clean(string? value, int maxChars)
+    {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return fallback;
+            return string.Empty;
         }
 
         var invalid = Path.GetInvalidFileNameChars();
@@ -38,12 +81,7 @@ public static class PathBuilder
         }
 
         var cleaned = MultiSpace.Replace(sb.ToString(), " ").Trim().Trim('.');
-        if (cleaned.Length == 0)
-        {
-            return fallback;
-        }
-
-        return cleaned.Length > 150 ? cleaned[..150].TrimEnd() : cleaned;
+        return cleaned.Length > maxChars ? cleaned[..maxChars].TrimEnd() : cleaned;
     }
 
     /// <summary>
@@ -99,7 +137,7 @@ public static class PathBuilder
     /// <returns>Chemin complet.</returns>
     public static string Music(string root, string? artist, string? album, string fileName)
     {
-        return Path.Combine(MusicDir(root, artist, album), SanitizeSegment(fileName, "file"));
+        return Path.Combine(MusicDir(root, artist, album), SanitizeFileName(fileName, "file"));
     }
 
     /// <summary>
@@ -137,7 +175,7 @@ public static class PathBuilder
     /// <returns>Chemin complet.</returns>
     public static string Movie(string root, string title, int? year, string fileName)
     {
-        return Path.Combine(MovieDir(root, title, year), SanitizeSegment(fileName, "file"));
+        return Path.Combine(MovieDir(root, title, year), SanitizeFileName(fileName, "file"));
     }
 
     /// <summary>
@@ -165,6 +203,6 @@ public static class PathBuilder
     /// <returns>Chemin complet.</returns>
     public static string Series(string root, string title, int? year, int? season, string fileName)
     {
-        return Path.Combine(SeriesDir(root, title, year, season), SanitizeSegment(fileName, "file"));
+        return Path.Combine(SeriesDir(root, title, year, season), SanitizeFileName(fileName, "file"));
     }
 }

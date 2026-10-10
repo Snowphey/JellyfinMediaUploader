@@ -16,8 +16,19 @@ public static class ChunkWriter
     /// <returns>Succès, total d'octets validés, message d'erreur éventuel.</returns>
     public static async Task<(bool Ok, long Received, string? Error)> AppendAsync(string tempPath, long received, long size, Stream body, CancellationToken ct)
     {
+        // Le fichier partiel existe déjà (créé au démarrage de l'envoi) : s'il a disparu (lot annulé, fichier retiré), on le recréerait vide et SetLength le remplirait de zéros.
+        if (!File.Exists(tempPath))
+        {
+            return (false, received, "Fichier partiel introuvable (envoi annulé ou expiré).");
+        }
+
         // Un morceau précédent interrompu a pu laisser des octets en trop : on repart de la position validée.
-        await using var output = new FileStream(tempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        await using var output = new FileStream(tempPath, FileMode.Open, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        if (output.Length < received)
+        {
+            return (false, received, "Fichier partiel incohérent : recommencez l'envoi de ce fichier.");
+        }
+
         output.SetLength(received);
         output.Seek(received, SeekOrigin.Begin);
 

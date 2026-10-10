@@ -36,11 +36,7 @@ public static class UploadCommitter
         {
             if (item.Status is "skipped" or "error" or "duplicate" || item.DestFull is null || item.Root is null)
             {
-                if (item.Status == "duplicate")
-                {
-                    UploadStore.TryDelete(temp);
-                }
-
+                // Un doublon garde son fichier reçu : l'utilisateur peut encore choisir de le forcer.
                 return new UploadFileResult(item.Name, item.Status == "error" ? "error" : "skipped", null, string.Join(" · ", item.Notes));
             }
 
@@ -55,7 +51,7 @@ public static class UploadCommitter
             // Un sous-titre renommé suit le nom réel de sa vidéo, même si celui-ci a changé depuis l'aperçu.
             if (item.Role == "subtitle" && item.Pair is { Renamed: true, WithId: { } withId } && finalNames.TryGetValue(withId, out var videoName))
             {
-                var wanted = PathBuilder.SanitizeSegment(Planner.SubtitleName(videoName, item.LangSuffix, Path.GetExtension(item.Name)), "file");
+                var wanted = PathBuilder.SanitizeFileName(Planner.SubtitleName(videoName, item.LangSuffix, Path.GetExtension(item.Name)), "file");
                 if (!string.Equals(wanted, Path.GetFileName(target), StringComparison.Ordinal))
                 {
                     target = Path.Combine(Path.GetDirectoryName(target)!, wanted);
@@ -81,7 +77,7 @@ public static class UploadCommitter
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Move(temp, target, overwrite: config.OverwriteExisting);
+            target = MoveWithoutClobber(temp, target, config.OverwriteExisting);
             finalNames[item.Id] = Path.GetFileName(target);
 
             if (config.ExtractCover && item.Kind == "music" && item.Role == "main" && !string.IsNullOrWhiteSpace(item.Album) && item.Dest!.Contains('/'))
@@ -102,8 +98,8 @@ public static class UploadCommitter
         }
         catch (Exception ex)
         {
+            // Le fichier reçu est conservé : une erreur passagère (disque plein, accès refusé) ne doit pas faire perdre un envoi entier, la confirmation peut être refaite.
             logger.LogError(ex, "MediaUploader: échec d'enregistrement de {Name}", item.Name);
-            UploadStore.TryDelete(temp);
             return new UploadFileResult(item.Name, "error", null, ex.Message);
         }
     }
@@ -135,6 +131,23 @@ public static class UploadCommitter
         {
             logger.LogWarning(ex, "MediaUploader: pochette non extraite pour {Path}", finalPath);
             return false;
+        }
+    }
+
+    // Deux confirmations simultanées peuvent viser le même nom : si le déplacement échoue parce que la cible vient d'apparaître, on prend le nom libre suivant.
+    private static string MoveWithoutClobber(string temp, string target, bool overwrite)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, target, overwrite);
+                return target;
+            }
+            catch (IOException) when (!overwrite && attempt < 5 && File.Exists(target))
+            {
+                target = UniquePath(target);
+            }
         }
     }
 

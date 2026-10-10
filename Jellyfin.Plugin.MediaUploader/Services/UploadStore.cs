@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Jellyfin.Plugin.MediaUploader.Configuration;
+using Jellyfin.Plugin.MediaUploader.Services.Import;
 
 namespace Jellyfin.Plugin.MediaUploader.Services;
 
@@ -12,13 +13,13 @@ public sealed class BatchItem
     public required string Id { get; init; }
 
     /// <summary>Gets le chemin relatif côté client.</summary>
-    public required string ClientPath { get; init; }
+    public required string ClientPath { get; set; }
 
     /// <summary>Gets la taille annoncée.</summary>
-    public required long Size { get; init; }
+    public required long Size { get; set; }
 
     /// <summary>Gets l'extension d'origine, en minuscules.</summary>
-    public required string Ext { get; init; }
+    public required string Ext { get; set; }
 
     /// <summary>Gets or sets le fichier partiel dans la bibliothèque (créé à la réception du premier morceau).</summary>
     public string? TempPath { get; set; }
@@ -32,8 +33,32 @@ public sealed class BatchItem
     /// <summary>Gets or sets les tags lus (audio).</summary>
     public TagInfo? Tags { get; set; }
 
+    /// <summary>Gets or sets l'état d'un fichier en cours d'import (« queued », « downloading »), null pour un fichier envoyé par l'utilisateur.</summary>
+    public string? ImportState { get; set; }
+
+    /// <summary>Gets or sets le détail de l'import en cours.</summary>
+    public string? ImportMessage { get; set; }
+
     /// <summary>Gets le verrou qui sérialise les écritures d'un même fichier.</summary>
     public SemaphoreSlim Lock { get; } = new(1, 1);
+}
+
+/// <summary>
+/// Liste de lecture Jellyfin à créer à partir des morceaux d'un import de playlist.
+/// </summary>
+public sealed class PlaylistRequest
+{
+    /// <summary>Gets le nom de la liste de lecture.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Gets l'utilisateur Jellyfin à qui appartient la liste.</summary>
+    public required Guid UserId { get; init; }
+
+    /// <summary>Gets a value indicating whether la liste est publique (visible de tous les utilisateurs).</summary>
+    public bool Public { get; init; }
+
+    /// <summary>Gets l'ordre voulu : identifiants des éléments du lot, dans l'ordre de la playlist d'origine.</summary>
+    public required IReadOnlyList<string> Order { get; init; }
 }
 
 /// <summary>
@@ -49,6 +74,9 @@ public sealed class Batch
 
     /// <summary>Gets or sets le type choisi : "auto", "music", "movie" ou "series".</summary>
     public string Mode { get; set; } = "auto";
+
+    /// <summary>Gets or sets la liste de lecture à créer avec les morceaux de ce lot (import de playlist), ou null.</summary>
+    public PlaylistRequest? Playlist { get; set; }
 
     /// <summary>Gets or sets la date de dernière activité (UTC).</summary>
     public DateTime LastActivity { get; set; } = DateTime.UtcNow;
@@ -134,6 +162,7 @@ public static class UploadStore
     /// <param name="config">Configuration.</param>
     public static void Sweep(PluginConfiguration config)
     {
+        ImportManager.Sweep();
         var now = DateTime.UtcNow;
         foreach (var (id, session) in Sessions)
         {
@@ -148,6 +177,7 @@ public static class UploadStore
         {
             if (now - batch.LastActivity > ttl && Batches.TryRemove(id, out var removed))
             {
+                ImportManager.CancelForBatch(id);
                 lock (removed.Sync)
                 {
                     foreach (var item in removed.Items)
@@ -187,9 +217,9 @@ public static class UploadStore
                     }
                 }
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Nettoyage best effort.
+                // Nettoyage best effort : un dossier illisible ne doit pas bloquer les envois.
             }
         }
     }

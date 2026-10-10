@@ -353,7 +353,7 @@ public static class Planner
             item.Notes.Add(kind == "music" ? "Pas d'artiste ni d'album : placé à la racine" : "Titre non reconnu : placé à la racine");
         }
 
-        Finish(w, root, PathBuilder.SanitizeSegment(item.Name, "file"), o, fs, taken);
+        Finish(w, root, PathBuilder.SanitizeFileName(item.Name, "file"), o, fs, taken);
     }
 
     // Applique le nom final, résout les collisions et remplit la destination.
@@ -518,7 +518,7 @@ public static class Planner
         }
 
         w.Dir = pairDir ?? ownDir;
-        var fileName = PathBuilder.SanitizeSegment(item.Name, "file");
+        var fileName = PathBuilder.SanitizeFileName(item.Name, "file");
 
         if (pairName is not null)
         {
@@ -528,7 +528,7 @@ public static class Planner
             var alreadyOk = string.Equals(NameTools.StemOf(item.Name), videoStem, StringComparison.OrdinalIgnoreCase);
             if (!alreadyOk && o.RenameSubtitles && w.Ov?.KeepName != true)
             {
-                fileName = PathBuilder.SanitizeSegment(SubtitleName(pairName, item.LangSuffix, w.Ext), "file");
+                fileName = PathBuilder.SanitizeFileName(SubtitleName(pairName, item.LangSuffix, w.Ext), "file");
                 pair.Renamed = true;
             }
             else if (!alreadyOk)
@@ -647,7 +647,7 @@ public static class Planner
                 : "Aucun média associé : placé à la racine");
         }
 
-        Finish(w, root!, PathBuilder.SanitizeSegment(item.Name, "file"), o, fs, taken);
+        Finish(w, root!, PathBuilder.SanitizeFileName(item.Name, "file"), o, fs, taken);
     }
 
     // Dossier « racine » d'un média : pour une série, le dossier de la série (au-dessus de Season NN).
