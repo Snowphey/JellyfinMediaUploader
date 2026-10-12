@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bibliothèque</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 1.2em; background: #101010; color: #eee; font-family: "Noto Sans", system-ui, sans-serif; font-size: 15px; }
+  h2 { margin: 0 0 .3em; font-weight: 500; }
+  h3 { margin: 1em 0 .4em; font-weight: 500; }
+  .muted { color: #9a9a9a; font-size: .9em; }
+  .warn { color: #e57373; margin: .8em 0; }
+  .ok { color: #6fcf97; } .bad { color: #e57373; } .mid { color: #f2c94c; }
+  button { background: #00a4dc; color: #fff; border: 0; border-radius: 4px; padding: .5em 1.1em; font: inherit; cursor: pointer; }
+  button.secondary { background: #333; }
+  button.danger { background: #8e2f2f; }
+  button.small { padding: .25em .7em; font-size: .85em; }
+  button:disabled { opacity: .45; cursor: default; }
+  select, input[type=text], input[type=number] { background: #1c1c1c; color: #eee; border: 1px solid #444; border-radius: 4px; padding: .4em .55em; font: inherit; max-width: 100%; }
+  .tabs { display: flex; gap: .4em; margin: 1em 0 .2em; border-bottom: 1px solid #2c2c2c; flex-wrap: wrap; }
+  .tab { background: none; color: #9a9a9a; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: .5em 1em; }
+  .tab.on { color: #fff; border-bottom-color: #00a4dc; }
+  .bar { display: flex; gap: .6em; align-items: center; flex-wrap: wrap; margin: .8em 0; }
+  .grow { flex: 1; min-width: 12em; }
+  .crumbs a { color: #7cc4e8; cursor: pointer; text-decoration: none; } .crumbs a:hover { text-decoration: underline; }
+  .crumbs span.sep { color: #666; margin: 0 .3em; }
+  table.files { width: 100%; border-collapse: collapse; }
+  table.files th { text-align: left; color: #9a9a9a; font-weight: 400; font-size: .85em; padding: .35em .5em; border-bottom: 1px solid #2c2c2c; white-space: nowrap; }
+  table.files th.sortable { cursor: pointer; user-select: none; } table.files th.sortable:hover { color: #fff; }
+  table.files td { padding: .4em .5em; border-bottom: 1px solid #1d1d1d; vertical-align: middle; word-break: break-word; }
+  table.files tr:hover td { background: #161616; }
+  table.files tr.sel td { background: #17242c; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .name a { cursor: pointer; color: #eee; text-decoration: none; } .name a:hover { color: #7cc4e8; }
+  .name.hidden { opacity: .55; }
+  .chip { font-size: .75em; padding: .15em .55em; border-radius: 99px; background: #2a2a2a; color: #bbb; white-space: nowrap; }
+  .chip.ok { background: #1d3a2a; color: #6fcf97; } .chip.warn { background: #403517; color: #f2c94c; margin: 0; }
+  .act { background: none; color: #9a9a9a; padding: .1em .45em; font-size: 1em; } .act:hover { color: #fff; background: #222; }
+  .sizecell { min-width: 9em; }
+  .sbar { height: 4px; background: #262626; border-radius: 2px; margin-top: .2em; overflow: hidden; } .sbar span { display: block; height: 100%; background: #00a4dc; }
+  .box { border: 1px solid #2c2c2c; border-radius: 8px; padding: .6em .8em; margin: .6em 0; background: #161616; }
+  .toast { position: fixed; right: 1em; bottom: 1em; background: #1d3a2a; color: #cdeedd; padding: .7em 1em; border-radius: 6px; max-width: 28em; z-index: 40; }
+  .toast.error { background: #3a2323; color: #f1c0c0; }
+  .overlay { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 30; padding: 1em; }
+  .dialog { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 1em 1.2em; width: min(46em, 100%); max-height: 92vh; overflow: auto; }
+  .dialog.wide { width: min(70em, 100%); }
+  .dialog h3 { margin-top: 0; }
+  .dlist { max-height: 16em; overflow: auto; border: 1px solid #2c2c2c; border-radius: 6px; padding: .3em .6em; margin: .5em 0; font-size: .9em; }
+  .dlist div { padding: .15em 0; word-break: break-all; }
+  .tree { max-height: 22em; overflow: auto; border: 1px solid #2c2c2c; border-radius: 6px; padding: .3em .6em; margin: .5em 0; font-size: .9em; }
+  .tree details { margin-left: 1em; } .tree > details { margin-left: 0; } .tree summary { cursor: pointer; padding: .1em 0; } .tree .f { margin-left: 1.4em; padding: .05em 0; word-break: break-all; }
+  .picker a { display: block; padding: .3em .4em; cursor: pointer; color: #eee; border-radius: 4px; } .picker a:hover { background: #222; }
+  .picker { max-height: 14em; overflow: auto; border: 1px solid #2c2c2c; border-radius: 6px; margin: .5em 0; }
+  .row { display: flex; gap: .6em; align-items: center; flex-wrap: wrap; margin: .6em 0; }
+  .healthlist a { color: #7cc4e8; cursor: pointer; }
+  .preview { text-align: center; }
+  .preview img.big { max-width: 100%; max-height: 70vh; border-radius: 6px; }
+  .preview video { max-width: 100%; max-height: 70vh; background: #000; }
+  .preview audio { width: 100%; margin-top: .6em; }
+  .preview .cover { width: 220px; height: 220px; object-fit: cover; border-radius: 8px; background: #222; }
+  .preview pre { text-align: left; max-height: 60vh; overflow: auto; background: #111; padding: .6em; border-radius: 6px; white-space: pre-wrap; }
+  .covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .6em; margin: .6em 0; }
+  .ccard { cursor: pointer; border: 2px solid transparent; border-radius: 8px; padding: .35em; background: #161616; font-size: .82em; }
+  .ccard:hover { border-color: #444; } .ccard.on { border-color: #00a4dc; background: #14232b; }
+  .ccard img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; background: #222; display: block; }
+  .ccard .ct { margin-top: .3em; font-weight: 500; word-break: break-word; }
+  .fields { display: grid; grid-template-columns: 11em 1fr; gap: .4em .8em; align-items: center; margin: .6em 0; }
+  .fields label { color: #bbb; font-size: .9em; } .fields input { width: 100%; }
+  .fields input.dirty { border-color: #00a4dc; }
+  table.ptable { width: 100%; border-collapse: collapse; font-size: .85em; margin: .4em 0; }
+  table.ptable td, table.ptable th { text-align: left; padding: .25em .5em; border-top: 1px solid #262626; word-break: break-word; }
+  table.ptable th { color: #9a9a9a; font-weight: 400; }
+</style>
+</head>
+<body>
+<h2>Bibliothèque</h2>
+<div class="muted">Parcourez les dossiers de vos bibliothèques, lisez et téléchargez des médias, déplacez, renommez, fusionnez ou supprimez des fichiers et des dossiers entiers, modifiez les tags. Chaque action importante est écrite dans le journal d'activité de Jellyfin.</div>
+<div id="warn" class="warn" style="display:none"></div>
+<div class="tabs" id="tabs"></div>
+<div id="main"></div>
+<div id="toast" class="toast" style="display:none"></div>
+<div id="dialog"></div>
+
+<script>
+(function () {
+  'use strict';
+  var BASE = location.pathname.replace(/\/MediaUploader\/LibraryUi.*$/i, '');
+  var $ = function (id) { return document.getElementById(id); };
+
+  function pick(obj, name) {
+    if (!obj) { return undefined; }
+    return obj[name] !== undefined ? obj[name] : obj[name.charAt(0).toLowerCase() + name.slice(1)];
+  }
+  function list(x) { return Array.isArray(x) ? x : []; }
+
+  function h(tag, attrs, children) {
+    var el = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k];
+      if (v === null || v === undefined || v === false) { return; }
+      if (k === 'class') { el.className = v; }
+      else if (k === 'text') { el.textContent = v; }
+      else if (k.slice(0, 2) === 'on') { el.addEventListener(k.slice(2), v); }
+      else if (k === 'value') { el.value = v; }
+      else if (k === 'checked' || k === 'disabled' || k === 'selected') { el[k] = !!v; }
+      else { el.setAttribute(k, v === true ? '' : v); }
+    });
+    (children || []).forEach(function (c) { if (c !== null && c !== undefined && c !== false) { el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } });
+    return el;
+  }
+
+  // Jeton de la session Jellyfin de CE serveur : celui de la page parente si on est dans un onglet de l'accueil, sinon celui dont l'adresse correspond.
+  function token() {
+    try {
+      var host = window.parent !== window ? window.parent : window;
+      if (host.ApiClient && typeof host.ApiClient.accessToken === 'function' && host.ApiClient.accessToken()) { return host.ApiClient.accessToken(); }
+    } catch (e) { /* page parente inaccessible */ }
+    try {
+      var c = JSON.parse(localStorage.getItem('jellyfin_credentials') || '{}');
+      var here = (c.Servers || []).filter(function (s) {
+        return s.AccessToken && [s.ManualAddress, s.LocalAddress, s.RemoteAddress].some(function (a) { return a && a.indexOf(location.origin) === 0; });
+      });
+      return here.length ? here[0].AccessToken : null;
+    } catch (e) { return null; }
+  }
+
+  function api(method, path, body) {
+    return new Promise(function (resolve, reject) {
+      var t = token();
+      if (!t) { reject(new Error('Session Jellyfin introuvable : connectez-vous puis rechargez.')); return; }
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BASE + '/MediaUploader/' + path);
+      xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
+      var payload = null;
+      if (body) { payload = JSON.stringify(body); xhr.setRequestHeader('Content-Type', 'application/json'); }
+      xhr.onload = function () {
+        var parsed = null;
+        try { parsed = JSON.parse(xhr.responseText); } catch (e) { parsed = null; }
+        resolve({ status: xhr.status, body: parsed });
+      };
+      xhr.onerror = function () { reject(new Error('Erreur réseau')); };
+      xhr.send(payload);
+    });
+  }
+
+  // API de Jellyfin lui-même (sessions, lecture), avec le même jeton.
+  function jfApi(method, path) {
+    return new Promise(function (resolve, reject) {
+      var t = token();
+      if (!t) { reject(new Error('Session Jellyfin introuvable : connectez-vous puis rechargez.')); return; }
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BASE + path);
+      xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + t + '"');
+      xhr.onload = function () { var parsed = null; try { parsed = JSON.parse(xhr.responseText); } catch (e) { parsed = null; } resolve({ status: xhr.status, body: parsed }); };
+      xhr.onerror = function () { reject(new Error('Erreur réseau')); };
+      xhr.send();
+    });
+  }
+
+  // Lance la lecture dans le lecteur de Jellyfin (comme un clic sur le média là-bas) : l'ordre est envoyé à la session « Jellyfin Web » de l'utilisateur
+  // (l'onglet où la page est intégrée en priorité). Sans session ouverte, la fiche du média s'ouvre à la place.
+  function openDetails(itemId) {
+    var url = BASE + '/web/#/details?id=' + itemId;
+    try { if (window.top !== window && window.top.location.origin === location.origin) { window.top.location.hash = '#/details?id=' + itemId; return; } } catch (e) { /* onglet parent inaccessible */ }
+    window.open(url, '_blank', 'noopener');
+  }
+  function playInJellyfin(itemId, name) {
+    var deviceId = null;
+    try { var host = window.parent !== window ? window.parent : null; if (host && host.ApiClient && typeof host.ApiClient.deviceId === 'function') { deviceId = host.ApiClient.deviceId(); } } catch (e) { /* page parente inaccessible */ }
+    return jfApi('GET', '/Users/Me').then(function (me) {
+      if (me.status !== 200 || !me.body) { throw new Error('Utilisateur introuvable.'); }
+      return jfApi('GET', '/Sessions?ControllableByUserId=' + encodeURIComponent(me.body.Id));
+    }).then(function (res) {
+      var sessions = list(res.body).filter(function (s) { return s.SupportsRemoteControl && /web/i.test(s.Client || ''); });
+      if (deviceId) { var mine = sessions.filter(function (s) { return s.DeviceId === deviceId; }); if (mine.length) { sessions = mine; } }
+      sessions.sort(function (a, b) { return new Date(b.LastActivityDate) - new Date(a.LastActivityDate); });
+      if (!sessions.length) { return false; }
+      return jfApi('POST', '/Sessions/' + sessions[0].Id + '/Playing?playCommand=PlayNow&itemIds=' + encodeURIComponent(itemId)).then(function (r) { return r.status < 300; });
+    }).then(function (ok) {
+      if (ok) { toast('Lecture lancée dans Jellyfin' + (name ? ' : ' + name : '') + '.'); }
+      else { toast('Aucun client Jellyfin Web ouvert : ouverture de la fiche du média.'); openDetails(itemId); }
+    }).catch(function (e) { toast(e.message, true); openDetails(itemId); });
+  }
+
+  // Adresses pour <img>, <audio>, <video> et les téléchargements : la balise ne peut pas envoyer d'en-tête, le jeton passe donc dans l'adresse (comme le fait Jellyfin).
+  function fileUrl(root, path, download) {
+    return BASE + '/MediaUploader/Library/File?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(path) + '&ApiKey=' + encodeURIComponent(token() || '') + (download ? '&download=true' : '');
+  }
+  function coverUrl(root, path) {
+    return BASE + '/MediaUploader/Library/Cover?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(path) + '&ApiKey=' + encodeURIComponent(token() || '');
+  }
+  function downloadUrl(root, paths) {
+    return BASE + '/MediaUploader/Library/Download?root=' + encodeURIComponent(root) + paths.map(function (p) { return '&path=' + encodeURIComponent(p); }).join('') + '&ApiKey=' + encodeURIComponent(token() || '');
+  }
+  function startDownload(url) {
+    var a = h('a', { href: url, download: '' });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  function errText(res) {
+    if (res.status === 401) { return 'Session expirée : reconnectez-vous à Jellyfin.'; }
+    if (res.status === 403) { return 'Action non autorisée pour votre compte.'; }
+    return (res.body && pick(res.body, 'error')) || ('Erreur ' + res.status);
+  }
+
+  function fmtSize(b) {
+    if (!b) { return '0 o'; }
+    var u = ['o', 'Ko', 'Mo', 'Go', 'To'], i = 0, v = b;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return (i === 0 ? String(Math.round(v)) : v.toFixed(v >= 100 ? 0 : 1).replace('.', ',')) + ' ' + u[i];
+  }
+  function fmtDate(iso) {
+    if (!iso) { return ''; }
+    var d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function fmtDur(sec) { return sec ? Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2) : ''; }
+  function plural(n, one, many) { return n + ' ' + (n > 1 ? many : one); }
+
+  var L = { caps: null, view: null, path: '', entries: [], sel: {}, showHidden: false, hits: null, sizes: {}, sort: { key: 'name', dir: 1 }, trash: null, health: null };
+  var toastTimer = null, sizeRun = 0, renderTimer = null;
+
+  function toast(text, bad) {
+    var t = $('toast');
+    t.textContent = text;
+    t.className = 'toast' + (bad ? ' error' : '');
+    t.style.display = '';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.style.display = 'none'; }, bad ? 9000 : 5000);
+  }
+  function showWarn(text) { var w = $('warn'); w.textContent = text || ''; w.style.display = text ? '' : 'none'; }
+
+  function rootLabel(key) {
+    var r = list(pick(L.caps, 'Roots')).filter(function (x) { return pick(x, 'Key') === key; })[0];
+    return r ? pick(r, 'Label') : key;
+  }
+  function can(name) { return !!pick(L.caps, name); }
+  function isRoot(v) { return v && v !== 'trash' && v !== 'health'; }
+  function join(path, name) { return path ? path + '/' + name : name; }
+  function parentOf(path) { var i = path.lastIndexOf('/'); return i < 0 ? '' : path.slice(0, i); }
+  function baseName(path) { var i = path.lastIndexOf('/'); return i < 0 ? path : path.slice(i + 1); }
+
+  // ---------- Onglets ----------
+  function renderTabs() {
+    var tabs = $('tabs');
+    tabs.textContent = '';
+    list(pick(L.caps, 'Roots')).forEach(function (r) {
+      tabs.appendChild(h('button', { type: 'button', class: 'tab' + (L.view === pick(r, 'Key') ? ' on' : ''), text: pick(r, 'Label'), onclick: function () { openRoot(pick(r, 'Key'), ''); } }));
+    });
+    tabs.appendChild(h('button', { type: 'button', class: 'tab' + (L.view === 'trash' ? ' on' : ''), text: 'Corbeille', onclick: openTrash }));
+    tabs.appendChild(h('button', { type: 'button', class: 'tab' + (L.view === 'health' ? ' on' : ''), text: 'Santé', onclick: openHealth }));
+  }
+
+  function openRoot(key, path) {
+    L.view = key; L.path = path || ''; L.sel = {}; L.hits = null; L.sizes = {};
+    renderTabs();
+    return loadList();
+  }
+
+  function loadList() {
+    $('main').textContent = 'Chargement…';
+    return api('GET', 'Library/List?root=' + encodeURIComponent(L.view) + '&path=' + encodeURIComponent(L.path)).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      L.path = pick(res.body, 'Path') || '';
+      L.entries = list(pick(res.body, 'Entries'));
+      L.sizes = {};
+      showWarn('');
+      render();
+      loadSizes();
+    }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
+  }
+
+  // Poids de chaque dossier affiché : une requête par dossier, quatre à la fois, la liste se complète au fil de l'eau.
+  function loadSizes() {
+    var run = ++sizeRun, root = L.view, path = L.path;
+    var queue = L.entries.filter(function (e) { return pick(e, 'IsDir') && !pick(e, 'Hidden'); }).map(function (e) { return pick(e, 'Name'); });
+    function next() {
+      if (run !== sizeRun || !queue.length) { return; }
+      var name = queue.shift();
+      api('GET', 'Library/Size?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(join(path, name))).then(function (res) {
+        if (run !== sizeRun) { return; }
+        if (res.status === 200 && res.body) { L.sizes[name] = { bytes: pick(res.body, 'Bytes'), files: pick(res.body, 'Files'), partial: !!pick(res.body, 'Truncated') }; scheduleRender(); }
+      }).catch(function () { /* poids indisponible : la liste reste utilisable */ }).then(next);
+    }
+    for (var i = 0; i < 4; i++) { next(); }
+  }
+
+  function scheduleRender() {
+    if (renderTimer) { return; }
+    renderTimer = setTimeout(function () { renderTimer = null; if (isRoot(L.view) && !document.querySelector('.overlay')) { render(); } }, 250);
+  }
+
+  // ---------- Vue d'un dossier ----------
+  function selectedNames() { return Object.keys(L.sel).filter(function (n) { return L.sel[n]; }); }
+  function icon(e) {
+    if (pick(e, 'IsDir')) { return '📁'; }
+    return { audio: '🎵', video: '🎬', extra: '🖼️' }[pick(e, 'Kind')] || '📄';
+  }
+
+  function breadcrumb() {
+    var crumbs = h('div', { class: 'crumbs' }, [h('a', { text: rootLabel(L.view), onclick: function () { openRoot(L.view, ''); } })]);
+    var acc = '';
+    (L.path ? L.path.split('/') : []).forEach(function (seg) {
+      acc = join(acc, seg);
+      var target = acc;
+      crumbs.appendChild(h('span', { class: 'sep', text: '/' }));
+      crumbs.appendChild(h('a', { text: seg, onclick: function () { openRoot(L.view, target); } }));
+    });
+    return crumbs;
+  }
+
+  function sorted(entries) {
+    var k = L.sort.key, d = L.sort.dir;
+    return entries.slice().sort(function (a, b) {
+      var ad = pick(a, 'IsDir') ? 0 : 1, bd = pick(b, 'IsDir') ? 0 : 1;
+      if (ad !== bd) { return ad - bd; }
+      var r;
+      if (k === 'size') {
+        var sa = pick(a, 'IsDir') ? (L.sizes[pick(a, 'Name')] ? L.sizes[pick(a, 'Name')].bytes : -1) : pick(a, 'Size');
+        var sb = pick(b, 'IsDir') ? (L.sizes[pick(b, 'Name')] ? L.sizes[pick(b, 'Name')].bytes : -1) : pick(b, 'Size');
+        r = sa - sb;
+      } else if (k === 'date') { r = new Date(pick(a, 'Modified')) - new Date(pick(b, 'Modified')); }
+      else { r = pick(a, 'Name').toLowerCase() < pick(b, 'Name').toLowerCase() ? -1 : pick(a, 'Name').toLowerCase() > pick(b, 'Name').toLowerCase() ? 1 : 0; }
+      return r * d;
+    });
+  }
+
+  function sortHead(label, key, cls) {
+    var on = L.sort.key === key;
+    return h('th', { class: 'sortable ' + (cls || ''), text: label + (on ? (L.sort.dir > 0 ? ' ▲' : ' ▼') : ''), onclick: function () { L.sort = { key: key, dir: on ? -L.sort.dir : 1 }; render(); } });
+  }
+
+  function render() {
+    var main = $('main');
+    main.textContent = '';
+    if (!isRoot(L.view)) { return; }
+    var shown = sorted(L.entries.filter(function (e) { return L.showHidden || !pick(e, 'Hidden'); }));
+    var names = selectedNames();
+    var cMove = can('CanMove'), cDel = can('CanDelete'), music = L.view === 'music';
+
+    main.appendChild(h('div', { class: 'bar' }, [breadcrumb()]));
+    var search = h('input', { type: 'text', placeholder: 'Rechercher dans ' + rootLabel(L.view) + '…', class: 'grow', id: 'q', onkeydown: function (ev) { if (ev.key === 'Enter') { doSearch(); } } });
+    main.appendChild(h('div', { class: 'bar' }, [
+      search,
+      h('button', { type: 'button', class: 'secondary', text: 'Rechercher', onclick: doSearch }),
+      cMove ? h('button', { type: 'button', class: 'secondary', text: 'Nouveau dossier', onclick: newFolderDialog }) : null,
+      h('label', { class: 'muted' }, [h('input', { type: 'checkbox', checked: L.showHidden, onchange: function (e) { L.showHidden = e.target.checked; render(); } }), ' fichiers cachés']),
+      h('button', { type: 'button', class: 'secondary small', text: '↻', title: 'Actualiser', onclick: loadList })
+    ]));
+
+    if (L.hits) { main.appendChild(renderHits()); return; }
+
+    var folderBytes = shown.filter(function (e) { return pick(e, 'IsDir') && L.sizes[pick(e, 'Name')]; }).reduce(function (a, e) { return a + L.sizes[pick(e, 'Name')].bytes; }, 0);
+    var fileBytes = shown.filter(function (e) { return !pick(e, 'IsDir'); }).reduce(function (a, e) { return a + pick(e, 'Size'); }, 0);
+    var sizedAll = shown.every(function (e) { return !pick(e, 'IsDir') || L.sizes[pick(e, 'Name')]; });
+    main.appendChild(h('div', { class: 'bar' }, [
+      h('span', { class: 'muted', text: (names.length ? plural(names.length, 'élément sélectionné', 'éléments sélectionnés') : plural(shown.length, 'élément', 'éléments')) + ' · ' + fmtSize(folderBytes + fileBytes) + (sizedAll ? '' : '…') }),
+      h('button', { type: 'button', class: 'secondary small', disabled: !names.length, text: 'Télécharger', onclick: function () { startDownload(downloadUrl(L.view, names.map(function (n) { return join(L.path, n); }))); } }),
+      cMove ? h('button', { type: 'button', class: 'secondary small', disabled: !names.length, text: 'Déplacer…', onclick: function () { moveDialog(names); } }) : null,
+      cMove ? h('button', { type: 'button', class: 'secondary small', disabled: names.length !== 1, text: 'Renommer…', onclick: function () { renameDialog(names[0]); } }) : null,
+      cMove && music ? h('button', { type: 'button', class: 'secondary small', disabled: !names.length, text: 'Tags / fusion…', onclick: function () { tagsDialog(names.map(function (n) { return join(L.path, n); })); } }) : null,
+      cDel ? h('button', { type: 'button', class: 'danger small', disabled: !names.length, text: 'Supprimer…', onclick: function () { deleteDialog(names.map(function (n) { return join(L.path, n); })); } }) : null,
+      names.length ? h('button', { type: 'button', class: 'secondary small', text: 'Tout désélectionner', onclick: function () { L.sel = {}; render(); } }) : null
+    ]));
+
+    var maxFolder = 1;
+    shown.forEach(function (e) { if (pick(e, 'IsDir') && L.sizes[pick(e, 'Name')]) { maxFolder = Math.max(maxFolder, L.sizes[pick(e, 'Name')].bytes); } });
+
+    var allOn = shown.length > 0 && shown.every(function (e) { return L.sel[pick(e, 'Name')]; });
+    var head = h('tr', {}, [
+      h('th', {}, [h('input', { type: 'checkbox', checked: allOn, onchange: function (e) { shown.forEach(function (x) { L.sel[pick(x, 'Name')] = e.target.checked; }); render(); } })]),
+      sortHead('Nom', 'name'), sortHead('Poids', 'size', 'num'), sortHead('Modifié', 'date'), h('th', { text: 'Jellyfin' }), h('th', {})
+    ]);
+    var body = h('tbody', {});
+    if (L.path) {
+      body.appendChild(h('tr', {}, [h('td'), h('td', { class: 'name', colspan: '5' }, [h('a', { text: '⬆ Dossier parent', onclick: function () { openRoot(L.view, parentOf(L.path)); } })])]));
+    }
+    shown.forEach(function (e) {
+      var name = pick(e, 'Name'), isDir = pick(e, 'IsDir'), indexed = pick(e, 'Indexed'), itemId = pick(e, 'ItemId');
+      var nameCell = h('a', { text: icon(e) + ' ' + name, title: isDir ? 'Ouvrir le dossier' : itemId ? 'Lire dans Jellyfin' : 'Aperçu', onclick: function () { if (isDir) { openRoot(L.view, join(L.path, name)); } else if (itemId && (pick(e, 'Kind') === 'audio' || pick(e, 'Kind') === 'video')) { playInJellyfin(itemId, name); } else { previewFile(e); } } });
+      var status = null;
+      if (indexed === false) { status = h('span', { class: 'chip warn', text: 'pas analysé', title: 'Jellyfin ne connaît pas encore ce fichier : lancez un scan de la bibliothèque.' }); }
+      else if (indexed === true) { status = h('a', { class: 'chip ok', text: 'analysé', href: BASE + '/web/#/details?id=' + itemId, target: '_blank', rel: 'noopener', title: 'Ouvrir dans Jellyfin', style: 'text-decoration:none' }); }
+      var sizeCell;
+      if (isDir) {
+        var sz = L.sizes[name];
+        sizeCell = h('td', { class: 'num sizecell' }, sz ? [h('div', { text: fmtSize(sz.bytes) + (sz.partial ? '+' : '') }), h('div', { class: 'muted', text: plural(sz.files, 'fichier', 'fichiers') }), h('div', { class: 'sbar' }, [h('span', { style: 'width:' + Math.max(1, Math.round(sz.bytes * 100 / maxFolder)) + '%' })])] : [h('span', { class: 'muted', text: '…' })]);
+      } else { sizeCell = h('td', { class: 'num sizecell', text: fmtSize(pick(e, 'Size')) }); }
+      var path = join(L.path, name);
+      var actions = h('td', { class: 'num' }, [
+        !isDir && itemId ? h('button', { type: 'button', class: 'act', title: 'Aperçu dans le navigateur (sans Jellyfin)', text: '👁', onclick: function () { previewFile(e); } }) : null,
+        h('button', { type: 'button', class: 'act', title: 'Télécharger' + (isDir ? ' (zip)' : ''), text: '⬇', onclick: function () { startDownload(downloadUrl(L.view, [path])); } }),
+        cMove ? h('button', { type: 'button', class: 'act', title: 'Renommer', text: '✎', onclick: function () { renameDialog(name); } }) : null,
+        cMove ? h('button', { type: 'button', class: 'act', title: 'Déplacer', text: '➜', onclick: function () { moveDialog([name]); } }) : null,
+        cMove && music ? h('button', { type: 'button', class: 'act', title: 'Tags / fusion', text: '🏷', onclick: function () { tagsDialog([path]); } }) : null,
+        cMove && music && isDir ? h('button', { type: 'button', class: 'act', title: 'Chercher une pochette', text: '🖼', onclick: function () { coverDialog(path); } }) : null,
+        cDel ? h('button', { type: 'button', class: 'act', title: 'Supprimer', text: '🗑', onclick: function () { deleteDialog([path]); } }) : null
+      ]);
+      body.appendChild(h('tr', { class: L.sel[name] ? 'sel' : '' }, [
+        h('td', {}, [h('input', { type: 'checkbox', checked: !!L.sel[name], onchange: function (ev) { L.sel[name] = ev.target.checked; render(); } })]),
+        h('td', { class: 'name' + (pick(e, 'Hidden') ? ' hidden' : '') }, [nameCell]),
+        sizeCell,
+        h('td', { class: 'muted', text: fmtDate(pick(e, 'Modified')) }),
+        h('td', {}, [status]),
+        actions
+      ]));
+    });
+    if (!shown.length) { body.appendChild(h('tr', {}, [h('td'), h('td', { class: 'muted', colspan: '5', text: 'Dossier vide.' })])); }
+    main.appendChild(h('table', { class: 'files' }, [h('thead', {}, [head]), body]));
+  }
+
+  // ---------- Recherche ----------
+  function doSearch() {
+    var q = ($('q') || {}).value || '';
+    if (q.trim().length < 2) { toast('Saisissez au moins 2 caractères.', true); return; }
+    api('GET', 'Library/Search?root=' + encodeURIComponent(L.view) + '&q=' + encodeURIComponent(q.trim())).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      L.hits = { q: q.trim(), items: list(pick(res.body, 'Hits')), truncated: !!pick(res.body, 'Truncated') };
+      render();
+    }).catch(function (e) { toast(e.message, true); });
+  }
+
+  function renderHits() {
+    var box = h('div', { class: 'box' }, [
+      h('div', { class: 'bar' }, [
+        h('strong', { text: 'Résultats pour « ' + L.hits.q + ' » : ' + L.hits.items.length + (L.hits.truncated ? '+' : '') }),
+        h('button', { type: 'button', class: 'secondary small', text: 'Fermer la recherche', onclick: function () { L.hits = null; render(); } })
+      ])
+    ]);
+    L.hits.items.forEach(function (it) {
+      var path = pick(it, 'Path'), dir = pick(it, 'IsDir');
+      box.appendChild(h('div', { style: 'padding:.2em 0; word-break:break-all' }, [
+        h('a', { style: 'cursor:pointer;color:#7cc4e8', text: (dir ? '📁 ' : '') + path, onclick: function () { L.hits = null; openRoot(L.view, dir ? path : parentOf(path)); } }),
+        dir ? null : h('span', { class: 'muted', text: '  ' + fmtSize(pick(it, 'Size')) })
+      ]));
+    });
+    if (!L.hits.items.length) { box.appendChild(h('div', { class: 'muted', text: 'Aucun résultat.' })); }
+    return box;
+  }
+
+  // ---------- Fenêtres ----------
+  function closeDialog() { $('dialog').textContent = ''; }
+  function openDialog(title, content, actions, wide) {
+    var d = h('div', { class: 'dialog' + (wide ? ' wide' : '') }, [h('h3', { text: title })].concat(content));
+    d.appendChild(h('div', { class: 'row', style: 'justify-content:flex-end' }, actions));
+    var ov = h('div', { class: 'overlay', onclick: function (ev) { if (ev.target === ov) { closeDialog(); } } }, [d]);
+    $('dialog').textContent = '';
+    $('dialog').appendChild(ov);
+    return d;
+  }
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { closeDialog(); } });
+
+  // ---------- Aperçu et lecture d'un fichier ----------
+  var IMAGES = ['.jpg', '.jpeg', '.png', '.webp', '.gif'], TEXTS = ['.srt', '.vtt', '.lrc', '.nfo', '.txt', '.ass', '.ssa'];
+  function extOf(name) { var i = name.lastIndexOf('.'); return i < 0 ? '' : name.slice(i).toLowerCase(); }
+
+  function previewFile(e) {
+    var name = pick(e, 'Name'), kind = pick(e, 'Kind'), ext = extOf(name), path = join(L.path, name), root = L.view, itemId = pick(e, 'ItemId');
+    var box = h('div', { class: 'preview' });
+    var msg = h('div', { class: 'muted', style: 'margin-top:.6em' });
+    function failure() {
+      msg.className = 'warn';
+      msg.textContent = 'Ce format n\'est pas lisible directement dans le navigateur.' + (itemId ? ' Utilisez « Lire dans Jellyfin » (conversion à la volée) ou téléchargez le fichier.' : ' Téléchargez-le pour le lire.');
+    }
+    if (IMAGES.indexOf(ext) >= 0) {
+      box.appendChild(h('img', { class: 'big', src: fileUrl(root, path), alt: name, onerror: failure }));
+    } else if (kind === 'audio') {
+      if (root === 'music') { box.appendChild(h('img', { class: 'cover', src: coverUrl(root, path), alt: 'Pochette', onerror: function (ev) { ev.target.style.display = 'none'; } })); }
+      var audio = h('audio', { controls: '', autoplay: '', src: fileUrl(root, path), onerror: failure });
+      box.appendChild(audio);
+    } else if (kind === 'video') {
+      box.appendChild(h('video', { controls: '', autoplay: '', src: fileUrl(root, path), onerror: failure }));
+    } else if (TEXTS.indexOf(ext) >= 0) {
+      var pre = h('pre', { text: 'Chargement…' });
+      box.appendChild(pre);
+      fetch(fileUrl(root, path)).then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t.length > 100000 ? t.slice(0, 100000) + '\n… (tronqué)' : t; }).catch(function () { pre.textContent = 'Lecture impossible.'; });
+    } else {
+      box.appendChild(h('div', { class: 'muted', text: 'Pas d\'aperçu pour ce type de fichier.' }));
+    }
+    box.appendChild(msg);
+    box.appendChild(h('div', { class: 'muted', style: 'margin-top:.4em', text: path + ' · ' + fmtSize(pick(e, 'Size')) }));
+    var actions = [
+      itemId ? h('button', { type: 'button', text: '▶ Lire dans Jellyfin', onclick: function () { closeDialog(); playInJellyfin(itemId, name); } }) : null,
+      itemId ? h('a', { href: BASE + '/web/#/details?id=' + itemId, target: '_blank', rel: 'noopener', style: 'color:#7cc4e8;margin-right:auto', text: 'Ouvrir la fiche' }) : null,
+      h('button', { type: 'button', class: 'secondary', text: 'Télécharger', onclick: function () { startDownload(fileUrl(root, path, true)); } }),
+      h('button', { type: 'button', text: 'Fermer', onclick: closeDialog })
+    ];
+    var d = openDialog(name, [box], actions, true);
+    // La lecture s'arrête à la fermeture.
+    var ov = d.parentNode;
+    var obs = new MutationObserver(function () { if (!document.body.contains(ov)) { box.querySelectorAll('audio,video').forEach(function (m) { m.pause(); m.removeAttribute('src'); m.load(); }); obs.disconnect(); } });
+    obs.observe($('dialog'), { childList: true });
+  }
+
+  function newFolderDialog() {
+    var input = h('input', { type: 'text', placeholder: 'Nom du dossier', style: 'width:100%' });
+    openDialog('Nouveau dossier dans « ' + (L.path || rootLabel(L.view)) + ' »', [input], [
+      h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }),
+      h('button', { type: 'button', text: 'Créer', onclick: function () {
+        api('POST', 'Library/Folder', { root: L.view, parent: L.path, name: input.value }).then(function (res) {
+          if (res.status !== 200) { throw new Error(errText(res)); }
+          closeDialog(); toast('Dossier créé.'); loadList();
+        }).catch(function (e) { toast(e.message, true); });
+      } })
+    ]);
+    input.focus();
+  }
+
+  function statusText(r) {
+    var s = pick(r, 'Status');
+    return { ok: 'prêt', merge: 'fusion', conflict: 'conflit', invalid: 'refusé', moved: 'déplacé', merged: 'fusionné', renamed: 'renommé', skipped: 'ignoré', error: 'erreur', trashed: 'corbeille', deleted: 'supprimé' }[s] || s;
+  }
+  function statusClass(r) {
+    var s = pick(r, 'Status');
+    return s === 'invalid' || s === 'error' ? 'bad' : s === 'conflict' || s === 'merge' || s === 'skipped' ? 'mid' : 'ok';
+  }
+
+  function renameDialog(name) {
+    var input = h('input', { type: 'text', value: name, style: 'width:100%' });
+    var out = h('div', { class: 'muted', style: 'min-height:1.4em' });
+    var go = h('button', { type: 'button', text: 'Renommer' });
+    function check() {
+      api('POST', 'Library/Move', { root: L.view, items: [join(L.path, name)], destination: L.path, newName: input.value, policy: 'skip', dryRun: true }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var r = list(pick(res.body, 'Results'))[0];
+        out.textContent = (pick(r, 'Message') || '') + (pick(r, 'Status') === 'ok' ? ' → ' + pick(r, 'Target') : '');
+        out.className = statusClass(r);
+        go.disabled = pick(r, 'Status') === 'invalid';
+      }).catch(function (e) { out.textContent = e.message; out.className = 'bad'; });
+    }
+    var timer = null;
+    input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(check, 300); });
+    go.addEventListener('click', function () {
+      api('POST', 'Library/Move', { root: L.view, items: [join(L.path, name)], destination: L.path, newName: input.value, policy: 'skip' }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var r = list(pick(res.body, 'Results'))[0];
+        if (['moved', 'merged', 'renamed'].indexOf(pick(r, 'Status')) < 0) { throw new Error(pick(r, 'Message') || 'Renommage impossible.'); }
+        closeDialog(); toast('Renommé en « ' + baseName(pick(r, 'Target')) + ' ». Pour renommer un album dans la médiathèque, utilisez « Tags / fusion ».'); L.sel = {}; loadList();
+      }).catch(function (e) { toast(e.message, true); });
+    });
+    var hint = L.view === 'music' ? h('div', { class: 'muted', text: 'Renommer un dossier ne change pas le nom de l\'album dans Jellyfin (il vient des tags) : pour cela, utilisez « Tags / fusion ».' }) : null;
+    openDialog('Renommer « ' + name + ' »', [input, out, hint], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go]);
+    input.focus(); input.select();
+  }
+
+  // Déplacement : choix du dossier de destination dans l'arborescence, aperçu des conflits, puis exécution.
+  function moveDialog(names) {
+    var st = { dest: L.path, dirs: [], policy: 'skip', results: null };
+    var picker = h('div', { class: 'picker' });
+    var crumbs = h('div', { class: 'crumbs bar' });
+    var preview = h('div', {});
+    var go = h('button', { type: 'button', text: 'Déplacer ici' });
+    var policy = h('select', {}, [
+      h('option', { value: 'skip', text: 'Ignorer les fichiers déjà présents' }),
+      h('option', { value: 'rename', text: 'Renommer les fichiers en conflit (suffixe)' }),
+      can('IsAdmin') ? h('option', { value: 'overwrite', text: 'Écraser les fichiers déjà présents' }) : null
+    ]);
+    policy.addEventListener('change', function () { st.policy = policy.value; refreshPreview(); });
+
+    function loadDirs() {
+      api('GET', 'Library/List?root=' + encodeURIComponent(L.view) + '&path=' + encodeURIComponent(st.dest)).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var moving = names.map(function (n) { return join(L.path, n); });
+        st.dirs = list(pick(res.body, 'Entries')).filter(function (e) { return pick(e, 'IsDir') && !pick(e, 'Hidden') && moving.indexOf(join(st.dest, pick(e, 'Name'))) < 0; });
+        drawPicker();
+        refreshPreview();
+      }).catch(function (e) { toast(e.message, true); });
+    }
+    function drawPicker() {
+      crumbs.textContent = '';
+      crumbs.appendChild(h('span', { class: 'muted', text: 'Destination : ' }));
+      crumbs.appendChild(h('a', { text: rootLabel(L.view), onclick: function () { st.dest = ''; loadDirs(); } }));
+      var acc = '';
+      (st.dest ? st.dest.split('/') : []).forEach(function (seg) {
+        acc = join(acc, seg);
+        var t = acc;
+        crumbs.appendChild(h('span', { class: 'sep', text: '/' }));
+        crumbs.appendChild(h('a', { text: seg, onclick: function () { st.dest = t; loadDirs(); } }));
+      });
+      picker.textContent = '';
+      if (st.dest) { picker.appendChild(h('a', { text: '⬆ Dossier parent', onclick: function () { st.dest = parentOf(st.dest); loadDirs(); } })); }
+      st.dirs.forEach(function (e) { picker.appendChild(h('a', { text: '📁 ' + pick(e, 'Name'), onclick: function () { st.dest = join(st.dest, pick(e, 'Name')); loadDirs(); } })); });
+      if (!st.dirs.length) { picker.appendChild(h('div', { class: 'muted', style: 'padding:.4em', text: 'Aucun sous-dossier.' })); }
+    }
+    function refreshPreview() {
+      api('POST', 'Library/Move', { root: L.view, items: names.map(function (n) { return join(L.path, n); }), destination: st.dest, policy: st.policy, dryRun: true }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        st.results = list(pick(res.body, 'Results'));
+        preview.textContent = '';
+        var box = h('div', { class: 'dlist' });
+        st.results.slice(0, 60).forEach(function (r) {
+          box.appendChild(h('div', {}, [h('span', { class: statusClass(r), text: '[' + statusText(r) + '] ' }), pick(r, 'Source') + (pick(r, 'Target') ? ' → ' + pick(r, 'Target') : ''), pick(r, 'Message') ? h('div', { class: 'muted', text: pick(r, 'Message') }) : null]));
+        });
+        preview.appendChild(box);
+        go.disabled = st.results.filter(function (r) { return pick(r, 'Status') !== 'invalid'; }).length === 0;
+      }).catch(function (e) { preview.textContent = e.message; });
+    }
+    go.addEventListener('click', function () {
+      go.disabled = true;
+      api('POST', 'Library/Move', { root: L.view, items: names.map(function (n) { return join(L.path, n); }), destination: st.dest, policy: st.policy }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var rs = list(pick(res.body, 'Results'));
+        var okc = rs.filter(function (r) { return ['moved', 'merged', 'renamed'].indexOf(pick(r, 'Status')) >= 0; }).length;
+        var bad = rs.filter(function (r) { return ['invalid', 'error'].indexOf(pick(r, 'Status')) >= 0; }).length;
+        closeDialog();
+        toast(plural(okc, 'élément déplacé', 'éléments déplacés') + (bad ? ', ' + plural(bad, 'refusé', 'refusés') : '') + '. Jellyfin met sa médiathèque à jour.', bad > 0 && okc === 0);
+        L.sel = {}; loadList();
+      }).catch(function (e) { go.disabled = false; toast(e.message, true); });
+    });
+    var newFolder = h('button', { type: 'button', class: 'secondary small', text: 'Nouveau dossier ici', onclick: function () {
+      var name = window.prompt('Nom du nouveau dossier :');
+      if (!name) { return; }
+      api('POST', 'Library/Folder', { root: L.view, parent: st.dest, name: name }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        st.dest = pick(res.body, 'Path'); loadDirs();
+      }).catch(function (e) { toast(e.message, true); });
+    } });
+    openDialog('Déplacer ' + plural(names.length, 'élément', 'éléments'), [crumbs, picker, h('div', { class: 'row' }, [newFolder, policy]), preview], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go]);
+    loadDirs();
+  }
+
+  // ---------- Suppression : arborescence de ce qui sera supprimé ----------
+  function buildTree(listing) {
+    var root = { dirs: {}, files: [], bytes: 0, count: 0 };
+    list(listing).forEach(function (f) {
+      var parts = pick(f, 'Path').split('/'), node = root, size = pick(f, 'Size') || 0;
+      root.bytes += size; root.count++;
+      for (var i = 0; i < parts.length - 1; i++) {
+        node = node.dirs[parts[i]] = node.dirs[parts[i]] || { dirs: {}, files: [], bytes: 0, count: 0 };
+        node.bytes += size; node.count++;
+      }
+      node.files.push({ name: parts[parts.length - 1], size: size });
+    });
+    return root;
+  }
+  function renderTree(node, open) {
+    var frag = document.createDocumentFragment();
+    Object.keys(node.dirs).sort().forEach(function (name) {
+      var d = node.dirs[name];
+      var details = h('details', { open: open }, [h('summary', { text: '📁 ' + name + ' — ' + plural(d.count, 'fichier', 'fichiers') + ', ' + fmtSize(d.bytes) })]);
+      details.appendChild(renderTree(d, false));
+      frag.appendChild(details);
+    });
+    node.files.forEach(function (f) { frag.appendChild(h('div', { class: 'f', text: '📄 ' + f.name + ' (' + fmtSize(f.size) + ')' })); });
+    return frag;
+  }
+
+  // Suppression : aperçu (arborescence, nombre de fichiers, taille), mot de confirmation au-delà du seuil réglé, puis exécution.
+  function deleteDialog(paths, after, rootKey) {
+    var root = rootKey || L.view;
+    var go = h('button', { type: 'button', class: 'danger', text: 'Supprimer', disabled: true });
+    var content = h('div', {});
+    var word = null;
+    api('POST', 'Library/Delete', { root: root, items: paths, dryRun: true }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      var b = res.body, results = list(pick(b, 'Results')), mode = pick(b, 'Mode'), usable = results.filter(function (r) { return pick(r, 'Status') === 'ok'; });
+      var folders = usable.filter(function (r) { return pick(r, 'IsDir'); }).length;
+      content.appendChild(h('p', {}, [
+        'Vous allez supprimer ',
+        h('strong', { text: plural(usable.length, 'élément', 'éléments') + (folders ? ' (dont ' + plural(folders, 'dossier', 'dossiers') + ')' : '') }),
+        ' : ' + plural(pick(b, 'TotalFiles'), 'fichier', 'fichiers') + ', ' + fmtSize(pick(b, 'TotalBytes')) + '.'
+      ]));
+      content.appendChild(h('p', { class: mode === 'permanent' ? 'bad' : 'muted', text: mode === 'permanent' ? '⚠ Suppression DÉFINITIVE : impossible à annuler.' : 'Les éléments iront dans la corbeille (restauration possible, purge automatique après ' + (pick(L.caps, 'TrashDays') > 0 ? pick(L.caps, 'TrashDays') + ' jours' : 'aucun délai : jamais') + ').' }));
+      var tree = h('div', { class: 'tree' });
+      results.forEach(function (r) {
+        var status = pick(r, 'Status');
+        if (status !== 'ok') {
+          tree.appendChild(h('div', {}, [h('span', { class: statusClass(r), text: '[' + statusText(r) + '] ' }), pick(r, 'Source'), pick(r, 'Message') ? h('span', { class: 'muted', text: ' — ' + pick(r, 'Message') }) : null]));
+          return;
+        }
+        if (!pick(r, 'IsDir')) { tree.appendChild(h('div', { class: 'f', style: 'margin-left:0', text: '📄 ' + pick(r, 'Source') + ' (' + fmtSize(pick(r, 'Bytes')) + ')' })); return; }
+        var node = buildTree(pick(r, 'Listing'));
+        var details = h('details', { open: results.length === 1 }, [h('summary', { text: '📁 ' + pick(r, 'Source') + ' — ' + plural(pick(r, 'Files'), 'fichier', 'fichiers') + ', ' + fmtSize(pick(r, 'Bytes')) })]);
+        details.appendChild(renderTree(node, results.length === 1 && Object.keys(node.dirs).length <= 6));
+        if (pick(r, 'ListingTruncated')) { details.appendChild(h('div', { class: 'muted', style: 'margin-left:1.4em', text: '… liste tronquée : ' + plural(pick(r, 'Files'), 'fichier', 'fichiers') + ' au total.' })); }
+        tree.appendChild(details);
+      });
+      content.appendChild(tree);
+      if (pick(b, 'NeedsConfirm')) {
+        word = h('input', { type: 'text', placeholder: 'Tapez ' + pick(b, 'ConfirmWord') + ' pour confirmer', style: 'width:100%' });
+        word.addEventListener('input', function () { go.disabled = !usable.length || word.value.trim() !== pick(b, 'ConfirmWord'); });
+        content.appendChild(word);
+      } else { go.disabled = !usable.length; }
+    }).catch(function (e) { content.appendChild(h('div', { class: 'bad', text: e.message })); });
+    go.addEventListener('click', function () {
+      go.disabled = true;
+      api('POST', 'Library/Delete', { root: root, items: paths, confirm: word ? word.value.trim() : null }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var rs = list(pick(res.body, 'Results'));
+        var okc = rs.filter(function (r) { return ['trashed', 'deleted'].indexOf(pick(r, 'Status')) >= 0; }).length;
+        var bad = rs.length - okc;
+        closeDialog();
+        toast(plural(okc, 'élément supprimé', 'éléments supprimés') + (pick(res.body, 'Mode') === 'trash' ? ' (corbeille)' : '') + (bad ? ', ' + plural(bad, 'refusé', 'refusés') : '') + '.', bad > 0 && okc === 0);
+        L.sel = {};
+        if (after) { after(); } else { loadList(); }
+      }).catch(function (e) { go.disabled = false; toast(e.message, true); });
+    });
+    openDialog('Supprimer', [content], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go], true);
+  }
+
+  // ---------- Tags, renommage d'album, fusion d'albums ----------
+  // opts.merge : l'album le plus fréquent est proposé pour tous les morceaux (fusion d'un album coupé en deux).
+  function tagsDialog(items, opts) {
+    opts = opts || {};
+    var root = 'music';
+    var st = { fields: {}, dirty: {} };
+    var body = h('div', {}, [h('div', { class: 'muted', text: 'Lecture des tags…' })]);
+    var preview = h('div', {});
+    var reorg = h('input', { type: 'checkbox', checked: true });
+    var policy = h('select', {}, [h('option', { value: 'skip', text: 'ignorer un fichier du même nom déjà présent' }), h('option', { value: 'rename', text: 'renommer avec un suffixe' })]);
+    var go = h('button', { type: 'button', text: 'Appliquer', disabled: true });
+    var timer = null;
+
+    function changes() {
+      var c = {};
+      ['Title', 'Artist', 'AlbumArtist', 'Album', 'Genre'].forEach(function (k) { if (st.dirty[k]) { c[k.charAt(0).toLowerCase() + k.slice(1)] = st.fields[k].value; } });
+      ['Year', 'Track', 'Disc'].forEach(function (k) { if (st.dirty[k]) { var v = parseInt(st.fields[k].value, 10); c[k.charAt(0).toLowerCase() + k.slice(1)] = isNaN(v) ? 0 : v; } });
+      return c;
+    }
+    function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry }; }
+
+    function refresh() {
+      var any = Object.keys(st.dirty).some(function (k) { return st.dirty[k]; });
+      if (!any && !reorg.checked) { preview.textContent = ''; go.disabled = true; return; }
+      api('POST', 'Library/Tags/Apply', request(true)).then(function (res) {
+        if (res.status !== 200 || !res.body) { preview.textContent = ''; preview.appendChild(h('div', { class: 'bad', text: errText(res) })); go.disabled = true; return; }
+        var d = res.body, rows = list(pick(d, 'Rows'));
+        preview.textContent = '';
+        preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'fichier concerné', 'fichiers concernés') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') }));
+        var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['Fichier', 'Album', 'Artiste', 'Destination'].map(function (t) { return h('th', { text: t }); }))])]);
+        var tb = h('tbody', {});
+        rows.slice(0, 14).forEach(function (r) {
+          var b = pick(r, 'Before') || {}, a = pick(r, 'After') || {};
+          tb.appendChild(h('tr', {}, [
+            h('td', { class: pick(r, 'Status') === 'error' ? 'bad' : '', text: baseName(pick(r, 'Path')) + (pick(r, 'Message') ? ' — ' + pick(r, 'Message') : '') }),
+            h('td', { text: (pick(b, 'Album') || '∅') + (pick(a, 'Album') !== pick(b, 'Album') ? ' → ' + (pick(a, 'Album') || '∅') : '') }),
+            h('td', { text: (pick(b, 'AlbumArtist') || pick(b, 'Artist') || '∅') + ((pick(a, 'AlbumArtist') || pick(a, 'Artist')) !== (pick(b, 'AlbumArtist') || pick(b, 'Artist')) ? ' → ' + (pick(a, 'AlbumArtist') || pick(a, 'Artist') || '∅') : '') }),
+            h('td', { class: pick(r, 'Conflict') ? 'mid' : 'muted', text: pick(r, 'Target') ? parentOf(pick(r, 'Target')) + (pick(r, 'Conflict') ? ' (conflit)' : '') : 'reste sur place' })
+          ]));
+        });
+        tbl.appendChild(tb);
+        preview.appendChild(tbl);
+        if (rows.length > 14) { preview.appendChild(h('div', { class: 'muted', text: '… et ' + (pick(d, 'Files') - 14) + ' autres.' })); }
+        go.disabled = pick(d, 'Files') === pick(d, 'Errors');
+      }).catch(function (e) { preview.textContent = e.message; });
+    }
+    function later() { clearTimeout(timer); timer = setTimeout(refresh, 350); }
+    reorg.addEventListener('change', later);
+    policy.addEventListener('change', later);
+
+    api('POST', 'Library/Tags/Read', { root: root, items: items }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      var d = res.body, f = pick(d, 'Fields'), single = pick(d, 'Files') === 1;
+      body.textContent = '';
+      body.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'morceau', 'morceaux') + ' · ' + plural(pick(d, 'WithCover'), 'avec pochette intégrée', 'avec pochette intégrée') + '. Seuls les champs que vous modifiez sont changés ; un champ vide efface la valeur.' }));
+      var grid = h('div', { class: 'fields' });
+      var defs = [['AlbumArtist', 'Artiste de l\'album'], ['Artist', 'Artiste(s) (« ; » entre deux)'], ['Album', 'Album'], ['Year', 'Année'], ['Disc', 'Disque'], ['Genre', 'Genre']];
+      if (single) { defs.unshift(['Title', 'Titre']); defs.splice(4, 0, ['Track', 'Piste']); }
+      defs.forEach(function (def) {
+        var key = def[0], values = list(pick(f, key)), listId = 'dl-' + key;
+        var input = h('input', { type: 'text', list: listId, placeholder: values.length > 1 ? '(plusieurs valeurs : choisissez ou saisissez)' : '' });
+        if (values.length === 1) { input.value = pick(values[0], 'Value'); }
+        st.fields[key] = input;
+        input.addEventListener('input', function () { st.dirty[key] = true; input.className = 'dirty'; later(); });
+        grid.appendChild(h('label', { text: def[1] }));
+        grid.appendChild(h('div', {}, [input, h('datalist', { id: listId }, values.map(function (v) { return h('option', { value: pick(v, 'Value'), label: pick(v, 'Count') + ' morceau(x)' }); }))]));
+      });
+      body.appendChild(grid);
+      // Fusion : l'album et l'artiste de l'album les plus fréquents sont proposés d'office.
+      if (opts.merge || list(pick(f, 'Album')).length > 1) {
+        var topAlbum = list(pick(f, 'Album'))[0], topArtist = list(pick(f, 'AlbumArtist'))[0];
+        if (opts.album) { st.fields.Album.value = opts.album; st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
+        else if (topAlbum && opts.merge) { st.fields.Album.value = pick(topAlbum, 'Value'); st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
+        if (topArtist && list(pick(f, 'AlbumArtist')).length > 1) { st.fields.AlbumArtist.value = pick(topArtist, 'Value'); st.dirty.AlbumArtist = true; st.fields.AlbumArtist.className = 'dirty'; }
+        if (list(pick(f, 'Album')).length > 1) { body.appendChild(h('div', { class: 'mid', text: 'Ces morceaux ont ' + list(pick(f, 'Album')).length + ' noms d\'album différents : choisissez celui à garder pour les fusionner.' })); }
+      }
+      body.appendChild(h('div', { class: 'row' }, [h('label', {}, [reorg, ' Ranger les fichiers dans le dossier « Artiste/Album » d\'après leurs tags, et supprimer les dossiers vidés (nécessaire pour fusionner des albums coupés en deux) ; en cas de conflit : ']), policy]));
+      body.appendChild(h('div', { class: 'muted', text: 'Les tags sont écrits dans les fichiers eux-mêmes. Jellyfin met sa médiathèque à jour ensuite (quelques secondes à quelques minutes selon sa taille).' }));
+      refresh();
+    }).catch(function (e) { body.textContent = ''; body.appendChild(h('div', { class: 'bad', text: e.message })); });
+
+    go.addEventListener('click', function () {
+      go.disabled = true;
+      api('POST', 'Library/Tags/Apply', request(false)).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var d = res.body;
+        closeDialog();
+        toast(plural(pick(d, 'Done'), 'fichier mis à jour', 'fichiers mis à jour') + (pick(d, 'Errors') ? ', ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + (pick(d, 'Skipped') ? ', ' + plural(pick(d, 'Skipped'), 'non rangé (nom déjà pris)', 'non rangés (nom déjà pris)') : '') + '.', pick(d, 'Done') === 0);
+        L.sel = {}; L.sizes = {};
+        if (isRoot(L.view)) { loadList(); } else if (L.view === 'health') { openHealth(); }
+      }).catch(function (e) { go.disabled = false; toast(e.message, true); });
+    });
+    openDialog('Tags et fusion — ' + plural(items.length, 'élément', 'éléments'), [body, preview], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go], true);
+  }
+
+  // ---------- Pochette d'un album : recherche en ligne ou image de l'ordinateur ----------
+  function coverDialog(folder, after) {
+    var st = { chosen: null, upload: null };
+    var artist = h('input', { type: 'text', placeholder: 'Artiste', style: 'width:100%' });
+    var album = h('input', { type: 'text', placeholder: 'Album', style: 'width:100%' });
+    var grid = h('div', { class: 'covers' });
+    var status = h('div', { class: 'muted', style: 'min-height:1.3em' });
+    var file = h('input', { type: 'file', accept: 'image/jpeg,image/png' });
+    var saveFile = h('input', { type: 'checkbox', checked: true }), embed = h('input', { type: 'checkbox', checked: true }), overwrite = h('input', { type: 'checkbox' });
+    var go = h('button', { type: 'button', text: 'Appliquer', disabled: true });
+
+    function select(card, cand) {
+      Array.prototype.forEach.call(grid.querySelectorAll('.ccard'), function (c) { c.classList.remove('on'); });
+      if (card) { card.classList.add('on'); }
+      st.chosen = cand; st.upload = null; file.value = ''; go.disabled = !cand;
+    }
+    function search() {
+      if (!album.value.trim()) { status.textContent = 'Indiquez le titre de l\'album.'; return; }
+      status.textContent = 'Recherche sur Cover Art Archive (MusicBrainz) et iTunes…';
+      grid.textContent = ''; select(null, null);
+      api('GET', 'Library/Cover/Search?artist=' + encodeURIComponent(artist.value.trim()) + '&album=' + encodeURIComponent(album.value.trim())).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var cands = list(pick(res.body, 'Candidates'));
+        status.textContent = cands.length ? plural(cands.length, 'pochette trouvée', 'pochettes trouvées') + ' : cliquez pour choisir.' : 'Aucune pochette trouvée : essayez un autre titre, ou envoyez une image.';
+        cands.forEach(function (c) {
+          var card = h('div', { class: 'ccard', title: pick(c, 'Title') }, [
+            h('img', { src: pick(c, 'Thumb'), alt: '', referrerpolicy: 'no-referrer' }),
+            h('div', { class: 'ct', text: pick(c, 'Title') }),
+            h('div', { class: 'muted', text: [pick(c, 'Artist'), pick(c, 'Year')].filter(Boolean).join(' · ') }),
+            h('span', { class: 'chip', text: pick(c, 'Source') === 'itunes' ? 'iTunes' : 'Cover Art Archive' })
+          ]);
+          card.addEventListener('click', function () { select(card, c); });
+          grid.appendChild(card);
+        });
+      }).catch(function (e) { status.textContent = e.message; });
+    }
+    file.addEventListener('change', function () {
+      var f = file.files && file.files[0];
+      if (!f) { return; }
+      if (f.size > 8 * 1024 * 1024) { status.textContent = 'Image trop grosse (8 Mo au plus).'; file.value = ''; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        Array.prototype.forEach.call(grid.querySelectorAll('.ccard'), function (c) { c.classList.remove('on'); });
+        st.chosen = null; st.upload = reader.result; go.disabled = false;
+        status.textContent = 'Image choisie : ' + f.name;
+      };
+      reader.readAsDataURL(f);
+    });
+    go.addEventListener('click', function () {
+      go.disabled = true;
+      var body = { root: 'music', path: folder, saveFile: saveFile.checked, embed: embed.checked, overwrite: overwrite.checked };
+      if (st.upload) { body.imageBase64 = st.upload; }
+      else if (st.chosen) { body.source = pick(st.chosen, 'Source'); body.id = pick(st.chosen, 'Id'); body.url = pick(st.chosen, 'Full'); }
+      api('POST', 'Library/Cover/Apply', body).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var d = res.body;
+        closeDialog();
+        toast((pick(d, 'Saved') ? pick(d, 'FileName') + ' enregistré' : 'aucun fichier cover enregistré') + ' · ' + plural(pick(d, 'Embedded'), 'morceau avec pochette intégrée', 'morceaux avec pochette intégrée') + (pick(d, 'Skipped') ? ' · ' + pick(d, 'Skipped') + ' déjà pourvu(s)' : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + '. Jellyfin met sa médiathèque à jour.', pick(d, 'Errors') > 0 && !pick(d, 'Embedded') && !pick(d, 'Saved'));
+        if (after) { after(); } else if (isRoot(L.view)) { loadList(); }
+      }).catch(function (e) { go.disabled = false; toast(e.message, true); });
+    });
+    var enter = function (ev) { if (ev.key === 'Enter') { search(); } };
+    artist.addEventListener('keydown', enter); album.addEventListener('keydown', enter);
+
+    openDialog('Pochette — ' + folder, [
+      h('div', { class: 'fields' }, [h('label', { text: 'Artiste' }), artist, h('label', { text: 'Album' }), album]),
+      h('div', { class: 'row' }, [h('button', { type: 'button', class: 'secondary small', text: 'Chercher', onclick: search }), h('span', { class: 'muted', text: 'ou' }), file]),
+      status, grid,
+      h('div', { class: 'row' }, [
+        h('label', {}, [saveFile, ' Enregistrer cover.jpg dans le dossier']),
+        h('label', {}, [embed, ' Intégrer aux morceaux']),
+        h('label', {}, [overwrite, ' Remplacer les pochettes déjà présentes'])
+      ])
+    ], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go], true);
+
+    // Préremplissage d'après les tags des morceaux du dossier, puis recherche automatique.
+    api('POST', 'Library/Tags/Read', { root: 'music', items: [folder] }).then(function (res) {
+      if (res.status === 200 && res.body) {
+        var f = pick(res.body, 'Fields'), a = list(pick(f, 'AlbumArtist'))[0] || list(pick(f, 'Artist'))[0], b = list(pick(f, 'Album'))[0];
+        if (a) { artist.value = pick(a, 'Value'); }
+        if (b) { album.value = pick(b, 'Value'); }
+      }
+      if (!album.value) { album.value = baseName(folder); }
+      search();
+    }).catch(function () { album.value = baseName(folder); search(); });
+  }
+
+  // ---------- Corbeille ----------
+  function openTrash() {
+    L.view = 'trash'; renderTabs();
+    $('main').textContent = 'Chargement…';
+    return api('GET', 'Library/Trash').then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      L.trash = { days: pick(res.body, 'Days'), entries: list(pick(res.body, 'Entries')) };
+      renderTrash();
+    }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
+  }
+
+  function renderTrash() {
+    var main = $('main');
+    main.textContent = '';
+    if (L.view !== 'trash') { return; }
+    var cDel = can('CanDelete'), cPurge = can('CanPurge');
+    main.appendChild(h('div', { class: 'muted', style: 'margin:.8em 0', text: L.trash.days > 0 ? 'Les éléments supprimés restent ' + L.trash.days + ' jours dans la corbeille, puis sont effacés automatiquement (tâche planifiée « Vider la corbeille »).' : 'La purge automatique de la corbeille est désactivée : les éléments restent jusqu\'à une purge manuelle.' }));
+    if (!L.trash.entries.length) { main.appendChild(h('div', { class: 'box muted', text: 'La corbeille est vide.' })); return; }
+    var roots = {};
+    L.trash.entries.forEach(function (e) { roots[pick(e, 'Root')] = true; });
+    if (cPurge) {
+      main.appendChild(h('div', { class: 'bar' }, [h('button', { type: 'button', class: 'danger small', text: 'Vider toute la corbeille…', onclick: function () {
+        if (!window.confirm('Supprimer définitivement TOUT le contenu de la corbeille (' + L.trash.entries.length + ' éléments) ? Cette action est irréversible.')) { return; }
+        Promise.all(Object.keys(roots).map(function (r) { return api('POST', 'Library/Trash/Purge', { root: r, all: true }); })).then(function () { toast('Corbeille vidée.'); openTrash(); }).catch(function (e) { toast(e.message, true); });
+      } })]));
+    }
+    var body = h('tbody', {});
+    L.trash.entries.forEach(function (e) {
+      var id = pick(e, 'Id'), root = pick(e, 'Root');
+      body.appendChild(h('tr', {}, [
+        h('td', { class: 'name', text: (pick(e, 'IsDir') ? '📁 ' : '📄 ') + pick(e, 'OriginalPath') }),
+        h('td', { class: 'muted', text: rootLabel(root) }),
+        h('td', { class: 'num', text: plural(pick(e, 'Files'), 'fichier', 'fichiers') + ' · ' + fmtSize(pick(e, 'Bytes')) }),
+        h('td', { class: 'muted', text: fmtDate(pick(e, 'DeletedAt')) + ' · ' + pick(e, 'DeletedBy') }),
+        h('td', { class: 'muted', text: pick(e, 'DaysLeft') === null || pick(e, 'DaysLeft') === undefined ? '' : pick(e, 'DaysLeft') + ' j restants' }),
+        h('td', { class: 'num' }, [
+          cDel ? h('button', { type: 'button', class: 'secondary small', text: 'Restaurer', onclick: function () {
+            api('POST', 'Library/Trash/Restore', { root: root, ids: [id] }).then(function (res) {
+              if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+              var r = list(pick(res.body, 'Results'))[0];
+              var okr = ['moved', 'renamed'].indexOf(pick(r, 'Status')) >= 0;
+              toast(okr ? 'Restauré : ' + pick(r, 'Target') : (pick(r, 'Message') || 'Restauration impossible.'), !okr);
+              openTrash();
+            }).catch(function (er) { toast(er.message, true); });
+          } }) : null,
+          cPurge ? h('button', { type: 'button', class: 'act', title: 'Supprimer définitivement', text: '🗑', onclick: function () {
+            if (!window.confirm('Supprimer définitivement « ' + pick(e, 'OriginalPath') + ' » ?')) { return; }
+            api('POST', 'Library/Trash/Purge', { root: root, ids: [id] }).then(function () { toast('Supprimé définitivement.'); openTrash(); }).catch(function (er) { toast(er.message, true); });
+          } }) : null
+        ])
+      ]));
+    });
+    main.appendChild(h('table', { class: 'files' }, [h('thead', {}, [h('tr', {}, ['Élément', 'Bibliothèque', 'Contenu', 'Supprimé', 'Purge', ''].map(function (t) { return h('th', { text: t }); }))]), body]));
+  }
+
+  // ---------- Santé : toutes les bibliothèques ensemble ----------
+  function openHealth() {
+    L.view = 'health'; renderTabs();
+    $('main').textContent = 'Analyse de toutes les bibliothèques en cours…';
+    return api('GET', 'Library/Health').then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      L.health = list(pick(res.body, 'Reports'));
+      renderHealth();
+    }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
+  }
+
+  function renderHealth() {
+    var main = $('main');
+    main.textContent = '';
+    if (L.view !== 'health') { return; }
+    var cDel = can('CanDelete'), cMove = can('CanMove');
+    main.appendChild(h('div', { class: 'bar' }, [h('strong', { text: 'Santé des bibliothèques' }), h('button', { type: 'button', class: 'secondary small', text: 'Réanalyser', onclick: openHealth })]));
+    var total = 0;
+
+    // Une section par type d'anomalie, avec les bibliothèques concernées dedans.
+    function section(title, hint, pickList, opts) {
+      var groups = L.health.map(function (r) { return { key: pick(r, 'Key'), label: pick(r, 'Label'), items: pickList(pick(r, 'Report'), pick(r, 'Key')) }; }).filter(function (g) { return g.items.length; });
+      var count = groups.reduce(function (a, g) { return a + g.items.length; }, 0);
+      total += count;
+      var box = h('div', { class: 'box healthlist' }, [h('strong', { text: title + ' (' + count + ')' }), h('div', { class: 'muted', text: hint })]);
+      if (!count) { box.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); return box; }
+      groups.forEach(function (g) {
+        box.appendChild(h('div', { class: 'bar' }, [
+          h('span', { class: 'muted', text: g.label + ' : ' + g.items.length }),
+          opts.deletable && cDel ? h('button', { type: 'button', class: 'danger small', text: 'Supprimer ' + plural(g.items.length, 'cet élément', 'ces ' + g.items.length + ' éléments') + '…', onclick: function () { deleteDialog(g.items, openHealth, g.key); } }) : null
+        ]));
+        var listBox = h('div', { class: 'dlist' });
+        g.items.slice(0, 200).forEach(function (p) {
+          listBox.appendChild(h('div', {}, [h('a', { text: p, onclick: function () { openRoot(g.key, opts.folder ? p : parentOf(p)); } }), opts.cover && cMove ? h('button', { type: 'button', class: 'small', style: 'margin-left:.6em', text: 'Chercher la pochette…', onclick: function () { coverDialog(p, openHealth); } }) : null]));
+        });
+        box.appendChild(listBox);
+      });
+      return box;
+    }
+
+    // Albums coupés en deux : fusion en un clic.
+    var dupBox = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Albums probablement coupés en deux' }), h('div', { class: 'muted', text: 'Dossiers voisins dont les noms ne diffèrent que par la ponctuation ou la casse (« X (Official Soundtrack) » et « X: Official Soundtrack »). Jellyfin les affiche comme deux albums.' })]);
+    var dups = [];
+    L.health.forEach(function (r) { if (pick(r, 'Key') === 'music') { dups = list(pick(pick(r, 'Report'), 'DuplicateAlbums')); } });
+    total += dups.length;
+    if (!dups.length) { dupBox.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); }
+    dups.forEach(function (g) {
+      var folders = list(pick(g, 'Folders')), parent = pick(g, 'Parent');
+      var items = folders.map(function (f) { return join(parent, f); });
+      dupBox.appendChild(h('div', { class: 'bar' }, [
+        h('div', { class: 'grow' }, [h('div', { text: (parent || 'racine') + ' :' })].concat(folders.map(function (f) { return h('div', { class: 'muted', style: 'margin-left:1em', text: '📁 ' + f }); }))),
+        cMove ? h('button', { type: 'button', class: 'small', text: 'Fusionner…', onclick: function () { tagsDialog(items, { merge: true }); } }) : null
+      ]));
+    });
+    main.appendChild(dupBox);
+
+    main.appendChild(section('Dossiers sans pochette', 'Au moins un morceau n\'a ni pochette intégrée, ni image cover / folder / poster dans son dossier (un morceau seul avec pochette intégrée n\'est pas signalé).', function (rep, key) { return key === 'music' ? list(pick(rep, 'NoCover')) : []; }, { folder: true, cover: true }));
+    main.appendChild(section('Dossiers vides', 'Dossiers qui ne contiennent aucun fichier.', function (rep) { return list(pick(rep, 'EmptyDirs')); }, { deletable: true, folder: true }));
+    main.appendChild(section('Fichiers partiels abandonnés', 'Restes d\'envois interrompus (.part, de plus d\'une heure).', function (rep) { return list(pick(rep, 'OrphanParts')); }, { deletable: true }));
+    main.appendChild(section('Fichiers de type inconnu', 'Extension absente des listes du plugin : Jellyfin les ignore probablement.', function (rep) { return list(pick(rep, 'Unknown')); }, {}));
+    if (L.health.some(function (r) { return pick(pick(r, 'Report'), 'Truncated'); })) { main.appendChild(h('div', { class: 'muted', text: 'Analyse partielle : une bibliothèque est très grande.' })); }
+  }
+
+  // ---------- Démarrage ----------
+  function init() {
+    api('GET', 'Library/Capabilities').then(function (res) {
+      if (res.status === 401) { showWarn('Session expirée : reconnectez-vous à Jellyfin.'); return; }
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      L.caps = res.body;
+      if (!pick(L.caps, 'LibraryEnabled')) { showWarn('La gestion de la bibliothèque est désactivée par l\'administrateur.'); return; }
+      if (!pick(L.caps, 'CanView')) { showWarn('Votre compte n\'a pas accès à cette page (réglage de l\'administrateur dans les paramètres du plugin).'); return; }
+      var roots = list(pick(L.caps, 'Roots'));
+      if (!roots.length) { showWarn('Aucun dossier de bibliothèque configuré.'); return; }
+      renderTabs();
+      return openRoot(pick(roots[0], 'Key'), '');
+    }).catch(function (e) { showWarn(e.message); });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -42,6 +42,7 @@
                 <button type="button" class="mu-tab" data-tab="upload">Envoi</button>
                 <button type="button" class="mu-tab" data-tab="import">Import</button>
                 <button type="button" class="mu-tab" data-tab="rate">Cadence</button>
+                <button type="button" class="mu-tab" data-tab="library">Bibliothèque</button>
                 <button type="button" class="mu-tab" data-tab="rules">Règles de détection</button>
                 <button type="button" class="mu-tab" data-tab="api">API</button>
             </div>
@@ -75,12 +76,16 @@
 
                     <h3 style="margin-top:2em;">3. Intégration à l'accueil</h3>
             <p class="fieldDescription">Après avoir installé <strong>File Transformation</strong> et <strong>Custom Tabs</strong> (voir le README), créez un onglet dans Tableau de bord &gt; Mes plugins &gt; Custom Tabs et collez ce contenu HTML :</p>
+            <div class="fieldDescription"><strong>Onglet « Upload »</strong> (envoi de fichiers, import Spotify / YouTube) :</div>
             <pre id="muEmbedCode" class="fieldDescription" style="white-space:pre-wrap; user-select:all;"></pre>
+            <div class="fieldDescription"><strong>Onglet « Bibliothèque »</strong> (gestion des fichiers) :</div>
+            <pre id="muEmbedCode2" class="fieldDescription" style="white-space:pre-wrap; user-select:all;"></pre>
             <div id="muEmbedStatus" class="fieldDescription" style="margin:.5em 0;"></div>
-            <button is="emby-button" type="button" class="raised emby-button button-submit" id="muEmbedApply" disabled><span>Créer / mettre à jour l'onglet « Upload »</span></button>
-            <button is="emby-button" type="button" class="raised emby-button" id="muEmbedCopy"><span>Copier le code</span></button>
+            <button is="emby-button" type="button" class="raised emby-button button-submit" id="muEmbedApply" disabled><span>Créer / mettre à jour les onglets « Upload » et « Bibliothèque »</span></button>
+            <button is="emby-button" type="button" class="raised emby-button" id="muEmbedCopy"><span>Copier « Upload »</span></button>
+            <button is="emby-button" type="button" class="raised emby-button" id="muEmbedCopy2"><span>Copier « Bibliothèque »</span></button>
             <span id="muEmbedMsg" class="fieldDescription"></span>
-            <p class="fieldDescription">L'adresse tient compte d'un éventuel préfixe d'URL du serveur. Sans Custom Tabs, partagez simplement le lien : <a id="muEmbedLink" target="_blank" rel="noopener"></a></p>
+            <p class="fieldDescription">Les adresses tiennent compte d'un éventuel préfixe d'URL du serveur. Sans Custom Tabs, partagez simplement les liens : <a id="muEmbedLink" target="_blank" rel="noopener"></a> · <a id="muEmbedLink2" target="_blank" rel="noopener"></a></p>
                 </div>
 
                 <div data-panel="upload">
@@ -255,6 +260,73 @@
                 </div>
                 </div>
 
+                <div data-panel="library">
+                    <div class="fieldDescription" style="margin-bottom:1em;">
+                        La page « Bibliothèque » (onglet de l'accueil ou adresse /MediaUploader/LibraryUi) permet de parcourir les dossiers média, de déplacer, renommer et supprimer des fichiers ou des dossiers entiers, de restaurer depuis la corbeille et de repérer les anomalies.
+                        Chaque action importante est écrite dans le journal d'activité de Jellyfin (Tableau de bord &gt; Activité).
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="muLibEnabled" type="checkbox" is="emby-checkbox" />
+                            <span>Activer la page « Bibliothèque »</span>
+                        </label>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="muLibView">Qui peut parcourir la bibliothèque</label>
+                        <select is="emby-select" id="muLibView">
+                            <option value="admins">Les administrateurs seulement</option>
+                            <option value="uploaders">Tous ceux qui peuvent envoyer des fichiers</option>
+                        </select>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="muLibMove">Qui peut déplacer, renommer et créer des dossiers</label>
+                        <select is="emby-select" id="muLibMove">
+                            <option value="admins">Les administrateurs seulement</option>
+                            <option value="viewers">Tous ceux qui peuvent parcourir</option>
+                        </select>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="muLibDelete">Qui peut supprimer</label>
+                        <select is="emby-select" id="muLibDelete">
+                            <option value="none">Personne (suppression désactivée)</option>
+                            <option value="admins">Les administrateurs seulement</option>
+                            <option value="jellyfin">Les administrateurs et les utilisateurs ayant le droit de supprimer du contenu dans Jellyfin</option>
+                        </select>
+                        <div class="fieldDescription">Vider la corbeille (suppression définitive) reste réservé aux administrateurs. Écraser des fichiers lors d'un déplacement aussi.</div>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="muLibMode">Mode de suppression</label>
+                        <select is="emby-select" id="muLibMode">
+                            <option value="trash">Corbeille : les éléments sont mis de côté et peuvent être restaurés</option>
+                            <option value="permanent">Définitif : les éléments sont effacés tout de suite, sans retour possible</option>
+                        </select>
+                        <div class="fieldDescription">La corbeille est un dossier caché « .mu-corbeille » à la racine de chaque bibliothèque (ignoré par Jellyfin).</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="muLibDays">Conservation de la corbeille (jours, 0 : jamais purgée automatiquement)</label>
+                        <input id="muLibDays" type="number" min="0" max="3650" is="emby-input" />
+                        <div class="fieldDescription">La purge tourne chaque nuit à 4 h (tâche planifiée « Vider la corbeille de la bibliothèque », modifiable dans Tableau de bord &gt; Tâches planifiées).</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="muLibConfirm">Confirmation renforcée à partir de (fichiers à supprimer, 0 : toujours)</label>
+                        <input id="muLibConfirm" type="number" min="0" max="1000000" is="emby-input" />
+                        <div class="fieldDescription">Au-delà de ce nombre de fichiers, il faut taper le mot SUPPRIMER pour confirmer.</div>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="muLibRefresh">Après chaque action, mise à jour de la médiathèque Jellyfin</label>
+                        <select is="emby-select" id="muLibRefresh">
+                            <option value="targeted">Ciblée (recommandé) : les éléments supprimés ou déplacés disparaissent tout de suite, la bibliothèque concernée est actualisée</option>
+                            <option value="full">Scan complet de toutes les bibliothèques (plus lent)</option>
+                            <option value="none">Aucune : lancez vous-même un scan dans Jellyfin</option>
+                        </select>
+                        <div class="fieldDescription">Sans cela, un élément supprimé resterait affiché dans Jellyfin (sa lecture échouerait) jusqu'au prochain scan. Les morceaux déplacés sont aussi remis à leur place dans les listes de lecture.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="muLibMax">Nombre maximal d'éléments par action</label>
+                        <input id="muLibMax" type="number" min="1" max="5000" is="emby-input" />
+                    </div>
+                </div>
+
                 <div class="mu-save" id="muSaveBar">
                     <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                         <span>Enregistrer les paramètres</span>
@@ -310,14 +382,14 @@
             var page = document.querySelector('#MediaUploaderSettingsPage');
             var $ = function (id) { return page.querySelector('#' + id); };
             var PLUGIN_ID = '7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41';
-            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt', YtDlpPath: 'muYtDlpPath', ImportCookiesPath: 'muCookiesPath', ImportAudioFormat: 'muImpFormat' };
-            var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always', ImportAudioFormat: 'm4a' };
-            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx', ImportEnabled: 'muImpEnabled', ImportCreatePlaylist: 'muImpPlaylist', ImportPlaylistPublic: 'muImpPlaylistPublic' };
+            var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt', YtDlpPath: 'muYtDlpPath', ImportCookiesPath: 'muCookiesPath', ImportAudioFormat: 'muImpFormat', LibraryViewAccess: 'muLibView', LibraryMoveAccess: 'muLibMove', LibraryDeleteAccess: 'muLibDelete', LibraryDeleteMode: 'muLibMode', LibraryRefresh: 'muLibRefresh' };
+            var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always', ImportAudioFormat: 'm4a', LibraryViewAccess: 'admins', LibraryMoveAccess: 'admins', LibraryDeleteAccess: 'admins', LibraryDeleteMode: 'trash', LibraryRefresh: 'targeted' };
+            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx', ImportEnabled: 'muImpEnabled', LibraryEnabled: 'muLibEnabled', ImportCreatePlaylist: 'muImpPlaylist', ImportPlaylistPublic: 'muImpPlaylistPublic' };
             var KIND_LABELS = { movie: 'Film', series: 'Série / animé', music: 'Musique' };
 
             // ---------- Onglets ----------
             var TAB_KEY = 'mediaUploaderSettingsTab';
-            var FORM_TABS = { setup: 1, upload: 1, import: 1, rate: 1 };
+            var FORM_TABS = { setup: 1, upload: 1, import: 1, rate: 1, library: 1 };
             function showTab(name) {
                 if (!page.querySelector('[data-tab="' + name + '"]')) { name = 'setup'; }
                 Array.prototype.forEach.call(page.querySelectorAll('.mu-tab'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === name); });
@@ -385,6 +457,9 @@
                     $('muImpMaxDelay').value = config.ImportMaxDelaySeconds || 25;
                     $('muImpPerHour').value = config.ImportMaxPerHour === undefined ? 100 : config.ImportMaxPerHour;
                     $('muImpPerDay').value = config.ImportMaxPerDay === undefined ? 400 : config.ImportMaxPerDay;
+                    $('muLibDays').value = config.LibraryTrashDays === undefined ? 14 : config.LibraryTrashDays;
+                    $('muLibConfirm').value = config.LibraryConfirmThreshold === undefined ? 20 : config.LibraryConfirmThreshold;
+                    $('muLibMax').value = config.LibraryMaxItems || 500;
                     Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
                 });
             }
@@ -409,6 +484,9 @@
                     config.ImportMaxDelaySeconds = Math.min(1800, Math.max(config.ImportMinDelaySeconds, parseInt($('muImpMaxDelay').value, 10) || 25));
                     config.ImportMaxPerHour = Math.min(1000, Math.max(0, parseInt($('muImpPerHour').value, 10) || 0));
                     config.ImportMaxPerDay = Math.min(10000, Math.max(0, parseInt($('muImpPerDay').value, 10) || 0));
+                    config.LibraryTrashDays = Math.min(3650, Math.max(0, parseInt($('muLibDays').value, 10) || 0));
+                    config.LibraryConfirmThreshold = Math.min(1000000, Math.max(0, parseInt($('muLibConfirm').value, 10) || 0));
+                    config.LibraryMaxItems = Math.min(5000, Math.max(1, parseInt($('muLibMax').value, 10) || 500));
                     Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
                     return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
                 }).then(function (result) {
@@ -425,14 +503,22 @@
 
             // ---------- Intégration à l'accueil ----------
             (function () {
-                var url = ApiClient.getUrl('MediaUploader/Ui');
-                var path = url.replace(/^https?:\/\/[^/]+/, '');
-                var code = '<iframe src="' + path + '" style="width:100%;height:calc(100vh - 8em);min-height:640px;border:0;" allow="clipboard-write"></iframe>';
-                $('muEmbedCode').textContent = code;
-                $('muEmbedLink').textContent = url;
-                $('muEmbedLink').href = url;
+                function iframe(url) {
+                    var path = url.replace(/^https?:\/\/[^/]+/, '');
+                    return '<iframe src="' + path + '" style="width:100%;height:calc(100vh - 8em);min-height:640px;border:0;" allow="clipboard-write"></iframe>';
+                }
+                var TABS = [
+                    { title: 'Upload', marker: '/MediaUploader/Ui', route: 'MediaUploader/Ui', pre: 'muEmbedCode', link: 'muEmbedLink', copy: 'muEmbedCopy' },
+                    { title: 'Bibliothèque', marker: '/MediaUploader/LibraryUi', route: 'MediaUploader/LibraryUi', pre: 'muEmbedCode2', link: 'muEmbedLink2', copy: 'muEmbedCopy2' }
+                ];
+                TABS.forEach(function (t) {
+                    t.url = ApiClient.getUrl(t.route);
+                    t.code = iframe(t.url);
+                    $(t.pre).textContent = t.code;
+                    $(t.link).textContent = t.title;
+                    $(t.link).href = t.url;
+                });
                 var CUSTOM_TABS_ID = 'fbacd0b6-fd46-4a05-b0a4-2045d6a135b0';
-                var TAB_TITLE = 'Upload';
                 var ready = false;
                 function setEmbed(text, bad) { $('muEmbedMsg').style.color = bad ? '#e57373' : ''; $('muEmbedMsg').textContent = text ? ' ' + text : ''; }
 
@@ -450,34 +536,43 @@
                     check(tabs, 'Custom Tabs');
                     ready = !problems.length;
                     $('muEmbedStatus').style.color = ready ? '' : '#e57373';
-                    $('muEmbedStatus').textContent = ready ? 'File Transformation et Custom Tabs sont installés : l\'onglet peut être créé automatiquement.' : problems.join(' ; ') + '.';
+                    $('muEmbedStatus').textContent = ready ? 'File Transformation et Custom Tabs sont installés : les onglets peuvent être créés automatiquement.' : problems.join(' ; ') + '.';
                     $('muEmbedApply').disabled = !ready;
-                }).catch(function () { $('muEmbedStatus').textContent = 'Impossible de lire la liste des plugins : copiez le code à la main.'; });
+                }).catch(function () { $('muEmbedStatus').textContent = 'Impossible de lire la liste des plugins : copiez les codes à la main.'; });
 
+                // Un onglet existant (même titre ou même adresse) est mis à jour, sinon il est créé ; les autres onglets ne sont pas touchés.
                 $('muEmbedApply').addEventListener('click', function () {
                     if (!ready) { return; }
                     var button = this;
                     button.disabled = true;
                     setEmbed('');
+                    var created = [], updated = [];
                     ApiClient.getPluginConfiguration(CUSTOM_TABS_ID).then(function (config) {
                         var tabs = (config.Tabs || []).slice();
-                        var index = -1;
-                        tabs.forEach(function (t, i) { if (index < 0 && (t.Title === TAB_TITLE || (t.ContentHtml || '').indexOf('/MediaUploader/Ui') >= 0)) { index = i; } });
-                        var tab = { Title: TAB_TITLE, ContentHtml: code };
-                        if (index >= 0) { tabs[index] = tab; } else { tabs.push(tab); }
+                        TABS.forEach(function (t) {
+                            var index = -1;
+                            tabs.forEach(function (x, i) { if (index < 0 && (x.Title === t.title || (x.ContentHtml || '').indexOf(t.marker) >= 0)) { index = i; } });
+                            var tab = { Title: t.title, ContentHtml: t.code };
+                            if (index >= 0) { tabs[index] = tab; updated.push('« ' + t.title + ' »'); } else { tabs.push(tab); created.push('« ' + t.title + ' »'); }
+                        });
                         config.Tabs = tabs;
-                        return ApiClient.updatePluginConfiguration(CUSTOM_TABS_ID, config).then(function () { return index >= 0; });
-                    }).then(function (updated) {
-                        setEmbed((updated ? 'Onglet « Upload » mis à jour.' : 'Onglet « Upload » créé.') + ' Rechargez l\'accueil avec Ctrl+F5 ; si l\'onglet n\'apparaît pas, redémarrez Jellyfin.');
+                        return ApiClient.updatePluginConfiguration(CUSTOM_TABS_ID, config);
+                    }).then(function () {
+                        var parts = [];
+                        if (created.length) { parts.push('Créé : ' + created.join(', ') + '.'); }
+                        if (updated.length) { parts.push('Mis à jour : ' + updated.join(', ') + '.'); }
+                        setEmbed(parts.join(' ') + ' Rechargez l\'accueil avec Ctrl+F5 ; si les onglets n\'apparaissent pas, redémarrez Jellyfin.');
                     }).catch(function () {
-                        setEmbed('Impossible de modifier la configuration de Custom Tabs : copiez le code à la main.', true);
+                        setEmbed('Impossible de modifier la configuration de Custom Tabs : copiez les codes à la main.', true);
                     }).then(function () { button.disabled = !ready; });
                 });
 
-                $('muEmbedCopy').addEventListener('click', function () {
-                    var done = function (ok) { $('muEmbedMsg').textContent = ok ? ' Copié.' : ' Sélectionnez le code ci-dessus et copiez-le (Ctrl+C).'; };
-                    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(function () { done(true); }, function () { done(false); }); }
-                    else { done(false); }
+                TABS.forEach(function (t) {
+                    $(t.copy).addEventListener('click', function () {
+                        var done = function (ok) { $('muEmbedMsg').textContent = ok ? ' Copié.' : ' Sélectionnez le code ci-dessus et copiez-le (Ctrl+C).'; };
+                        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t.code).then(function () { done(true); }, function () { done(false); }); }
+                        else { done(false); }
+                    });
                 });
             })();
 

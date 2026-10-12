@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.MediaUploader.Configuration;
+using Jellyfin.Plugin.MediaUploader.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jellyfin.Plugin.MediaUploader.Api;
@@ -20,6 +21,12 @@ public abstract class MediaUploaderControllerBase : ControllerBase
     /// <summary>Gets l'identifiant de l'utilisateur (ou de la clé API) à l'origine d'un envoi.</summary>
     protected string CurrentOwner =>
         User.FindFirst("Jellyfin-UserId")?.Value ?? User.FindFirst("Jellyfin-Token")?.Value ?? string.Empty;
+
+    /// <summary>Gets le nom affiché dans le journal d'activité pour l'utilisateur courant (ou une clé d'API).</summary>
+    protected string CurrentUserName => User.Identity?.Name is { Length: > 0 } name ? name : "Une clé d'API";
+
+    /// <summary>Gets l'identifiant Jellyfin de l'utilisateur courant (Guid.Empty pour une clé d'API).</summary>
+    protected Guid CurrentUserId => PluginActivity.UserIdOf(User.FindFirst("Jellyfin-UserId")?.Value);
 
     /// <summary>
     /// Taille de morceau conseillée en Mo (1 à 90).

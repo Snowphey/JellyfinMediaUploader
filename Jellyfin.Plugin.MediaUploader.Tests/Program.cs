@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Jellyfin.Plugin.MediaUploader.Configuration;
 using Jellyfin.Plugin.MediaUploader.Services;
 using Jellyfin.Plugin.MediaUploader.Services.Import;
+using Jellyfin.Plugin.MediaUploader.Services.Library;
 
 // Tests du moteur de détection et du planificateur (sans Jellyfin, sans NuGet).
 // Lancer : dotnet run   (depuis ce dossier). Code de sortie non nul si un test échoue.
@@ -591,6 +592,29 @@ ImportThrottle.Reset();
 ImportThrottle.Clock = () => DateTime.UtcNow;
 ImportThrottle.Pick = (min, max) => min + (Random.Shared.NextDouble() * (max - min));
 
+var actMusic = ActivityText.Summarize(new (string?, string)[] { ("music", "La Secte Phonétik/Text Addicts/01 - A.m4a"), ("music", "La Secte Phonétik/Text Addicts/02 - B.m4a") });
+Check("activité : libellé", actMusic.What, "2 fichiers");
+Check("activité : musique = artiste / album", actMusic.Summary, "musique : La Secte Phonétik / Text Addicts");
+Check("activité : détail = un fichier par ligne", actMusic.Detail, "La Secte Phonétik/Text Addicts/01 - A.m4a\nLa Secte Phonétik/Text Addicts/02 - B.m4a");
+var actSeries = ActivityText.Summarize(new (string?, string)[] { ("series", "Show (2019)/Season 01/S01E01.mkv"), ("series", "Show (2019)/Season 01/S01E02.mkv"), ("movie", "Film (2020)/Film.mkv") });
+Check("activité : séries et films = titre", actSeries.Summary, "série/film : Show (2019) ; Film (2020)");
+Check("activité : un seul fichier", ActivityText.Summarize(new (string?, string)[] { ("movie", "Film (2020)/Film.mkv") }).What, "1 fichier");
+var actMany = ActivityText.Summarize(Enumerable.Range(1, 60).Select(i => ((string?)"music", $"A{i}/B/{i}.mp3")).ToList());
+True("activité : détail borné", actMany.Detail.Split('\n').Length == 41 && actMany.Detail.EndsWith("20 autre(s)") && actMany.Summary.Contains("(+57)"));
+Check("activité : racine", ActivityText.Summarize(new (string?, string)[] { ("music", "vrac.mp3") }).Summary, "musique : racine de la bibliothèque");
+
+var mbSearch = CoverSearch.ParseMusicBrainz("""{"release-groups":[{"id":"3f2b663b-c9d4-4bc3-9adf-8911a142d095","title":"Expedition 33","first-release-date":"2025-04-24","artist-credit":[{"name":"Lorien Testard","joinphrase":" & ","artist":{"name":"Lorien Testard"}},{"name":"Alice Duport-Percier","artist":{"name":"Alice Duport-Percier"}}]},{"id":"pas-un-guid","title":"X"},{"title":"sans id"}]}""");
+Check("pochettes MB : seul l'identifiant valide est gardé", mbSearch.Count, 1);
+Check("pochettes MB : titre, artistes joints, année", (mbSearch[0].Title, mbSearch[0].Artist, mbSearch[0].Year), ("Expedition 33", "Lorien Testard & Alice Duport-Percier", (string?)"2025"));
+True("pochettes MB : adresses Cover Art Archive", mbSearch[0].Thumb.EndsWith("/front-250") && mbSearch[0].Full.EndsWith("/front-1200") && mbSearch[0].Fallback!.EndsWith("/front-500"));
+var itSearch = CoverSearch.ParseItunes("""{"resultCount":2,"results":[{"collectionId":123,"collectionName":"Discovery","artistName":"Daft Punk","artworkUrl100":"https://is1-ssl.mzstatic.com/image/thumb/Music/x/100x100bb.jpg","releaseDate":"2001-03-12T08:00:00Z"},{"collectionName":"Mauvais hôte","artworkUrl100":"https://evil.example/100x100bb.jpg"}]}""");
+Check("pochettes iTunes : hôte non autorisé écarté", itSearch.Count, 1);
+True("pochettes iTunes : haute définition", itSearch[0].Full.Contains("1000x1000bb") && itSearch[0].Thumb.Contains("300x300bb") && itSearch[0].Year == "2001");
+Check("image : JPEG reconnu", CoverHosts.ImageMime(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0 }), "image/jpeg");
+Check("image : PNG reconnu", CoverHosts.ImageMime(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0, 0 }), "image/png");
+Check("image : autre refusé", CoverHosts.ImageMime(new byte[] { 0x47, 0x49, 0x46, 0x38, 0, 0, 0, 0, 0 }), null);
+True("pochette : hôte iTunes accepté", CoverHosts.Allowed("https://is1-ssl.mzstatic.com/x.jpg", out _));
+
 // ---------- Import : outils ----------
 
 Check("asset yt-dlp linux", ToolInstaller.YtDlpAsset(ToolPlatform.LinuxX64), "yt-dlp_linux.zip");
@@ -598,6 +622,165 @@ Check("asset yt-dlp arm", ToolInstaller.YtDlpAsset(ToolPlatform.LinuxArm64), "yt
 Check("asset deno", ToolInstaller.DenoAsset(ToolPlatform.LinuxX64), "deno-x86_64-unknown-linux-gnu.zip");
 Check("format normalisé", ToolContext.NormalizeFormat("FLAC"), "m4a");
 Check("format opus", ToolContext.NormalizeFormat(" Opus "), "opus");
+
+// ---------- Bibliothèque : gestion de fichiers ----------
+
+{
+    var libDir = Path.Combine(Path.GetTempPath(), "mu-lib-" + Guid.NewGuid().ToString("N"));
+    var musicDir = Path.Combine(libDir, "music");
+    Directory.CreateDirectory(musicDir);
+    void Touch(string rel, int size = 10, DateTime? when = null)
+    {
+        var p = Path.Combine(musicDir, rel.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+        File.WriteAllBytes(p, new byte[size]);
+        if (when is not null) { File.SetLastWriteTimeUtc(p, when.Value); }
+    }
+
+    bool Exists(string rel) => File.Exists(Path.Combine(musicDir, rel)) || Directory.Exists(Path.Combine(musicDir, rel));
+    string Kind(string ext) => ext switch { ".mp3" or ".m4a" => "audio", ".jpg" or ".png" => "extra", _ => "other" };
+    Func<string, bool> notBusy = _ => false;
+
+    var roots = LibraryFs.Roots(musicDir, Path.Combine(libDir, "absent"), "");
+    Check("biblio : seules les racines existantes", roots.Select(r => r.Key).ToArray(), new[] { "music" });
+    var root = roots[0];
+
+    // chemins
+    True("biblio : « .. » refusé", !LibraryFs.TryResolve(root, "A/../../x", out _, out _));
+    True("biblio : racine autorisée", LibraryFs.TryResolve(root, "", out var rootFull, out _) && rootFull == root.Path);
+    True("biblio : séparateurs Windows normalisés", LibraryFs.TryResolve(root, "A\\B", out var ab, out _) && ab.EndsWith(Path.Combine("A", "B")));
+    True("biblio : éléments internes refusés", !LibraryFs.TryResolve(root, ".mu-corbeille/x", out _, out _) && LibraryFs.TryResolve(root, ".mu-corbeille/x", out _, out _, allowInternal: true));
+    True("biblio : un chemin « absolu » reste sous la racine", LibraryFs.TryResolve(root, "/etc/passwd", out var etc, out _) && etc.StartsWith(root.Path));
+
+    // liste
+    Touch("Artiste/Album/01.mp3", 100); Touch("Artiste/Album/cover.jpg", 50); Touch("Artiste/Album/.mu-x.part", 5); Touch("Zebre.mp3", 7); Directory.CreateDirectory(Path.Combine(musicDir, ".mu-corbeille"));
+    True("biblio : liste racine", LibraryFs.TryList(root, "", Kind, out var rootList, out _));
+    Check("biblio : dossiers d'abord, corbeille masquée", rootList.Select(e => e.Name).ToArray(), new[] { "Artiste", "Zebre.mp3" });
+    True("biblio : liste album", LibraryFs.TryList(root, "Artiste/Album", Kind, out var albumList, out _));
+    Check("biblio : types et fichiers cachés", albumList.Select(e => (e.Name, e.Kind, e.Hidden)).ToArray(), new[] { (".mu-x.part", "other", true), ("01.mp3", "audio", false), ("cover.jpg", "extra", false) });
+    var stats = LibraryFs.Stats(Path.Combine(musicDir, "Artiste"));
+    Check("biblio : statistiques d'un dossier", (stats.Files, stats.Dirs, stats.Bytes), (3, 1, 155L));
+
+    // déplacement
+    var dry = LibraryFs.Move(root, new[] { "Zebre.mp3" }, "Artiste/Album", null, "skip", true, notBusy);
+    Check("biblio : aperçu de déplacement", (dry[0].Status, Exists("Zebre.mp3")), ("ok", true));
+    var moved = LibraryFs.Move(root, new[] { "Zebre.mp3" }, "Autre/Dossier", null, "skip", false, notBusy);
+    Check("biblio : déplacement vers un nouveau dossier", (moved[0].Status, Exists("Autre/Dossier/Zebre.mp3"), Exists("Zebre.mp3")), ("moved", true, false));
+    var renamedDir = LibraryFs.Move(root, new[] { "Autre/Dossier" }, "Autre", "Dossier renommé", "skip", false, notBusy);
+    Check("biblio : renommage d'un dossier", (renamedDir[0].Status, Exists("Autre/Dossier renommé/Zebre.mp3")), ("moved", true));
+    True("biblio : renommage multiple refusé", LibraryFs.Move(root, new[] { "A", "B" }, "", "X", "skip", true, notBusy).All(r => r.Status == "invalid"));
+    True("biblio : dans lui-même refusé", LibraryFs.Move(root, new[] { "Artiste" }, "Artiste/Album", null, "skip", true, notBusy)[0].Status == "invalid");
+    True("biblio : même endroit refusé", LibraryFs.Move(root, new[] { "Artiste/Album/01.mp3" }, "Artiste/Album", null, "skip", true, notBusy)[0].Status == "invalid");
+    True("biblio : en cours d'utilisation refusé", LibraryFs.Move(root, new[] { "Artiste/Album/01.mp3" }, "Autre", null, "skip", true, p => p.EndsWith("01.mp3"))[0].Status == "invalid");
+    True("biblio : hors racine refusé", LibraryFs.Move(root, new[] { "../dehors" }, "Autre", null, "skip", true, notBusy)[0].Status == "invalid");
+    True("biblio : la racine ne se déplace pas", LibraryFs.Move(root, new[] { "" }, "Autre", null, "skip", true, notBusy)[0].Status == "invalid");
+
+    // fusion
+    Touch("Fusion/Source/a.mp3", 1); Touch("Fusion/Source/b.mp3", 2); Touch("Fusion/Source/Sous/c.mp3", 3);
+    Touch("Fusion/Cible/a.mp3", 99); Touch("Fusion/Cible/Sous/d.mp3", 4);
+    // Le dossier « Source » est fusionné dans « Cible » en le renommant : on déplace son contenu vers Fusion en le nommant « Cible ».
+    var mergePreview = LibraryFs.Move(root, new[] { "Fusion/Source" }, "Fusion", "Cible", "skip", true, notBusy);
+    Check("biblio : fusion annoncée dans l'aperçu", mergePreview[0].Status, "merge");
+    var merged = LibraryFs.Move(root, new[] { "Fusion/Source" }, "Fusion", "Cible", "skip", false, notBusy);
+    Check("biblio : fusion exécutée (le fichier en conflit reste à la source)", (merged[0].Status, Exists("Fusion/Source/a.mp3"), Exists("Fusion/Cible/b.mp3"), Exists("Fusion/Cible/Sous/c.mp3"), Exists("Fusion/Cible/Sous/d.mp3")), ("merged", true, true, true, true));
+    Check("biblio : fichier existant conservé (politique skip)", new FileInfo(Path.Combine(musicDir, "Fusion", "Cible", "a.mp3")).Length, 99L);
+
+    Touch("Conflit/x.mp3", 5); Touch("Dest/x.mp3", 9);
+    var conflictPreview = LibraryFs.Move(root, new[] { "Conflit/x.mp3" }, "Dest", null, "rename", true, notBusy);
+    Check("biblio : conflit annoncé", conflictPreview[0].Status, "conflict");
+    var renamedFile = LibraryFs.Move(root, new[] { "Conflit/x.mp3" }, "Dest", null, "rename", false, notBusy);
+    Check("biblio : conflit résolu par suffixe", (renamedFile[0].Status, Exists("Dest/x (2).mp3"), new FileInfo(Path.Combine(musicDir, "Dest", "x.mp3")).Length), ("renamed", true, 9L));
+    Touch("Conflit/y.mp3", 5); Touch("Dest/y.mp3", 9);
+    var overwritten = LibraryFs.Move(root, new[] { "Conflit/y.mp3" }, "Dest", null, "overwrite", false, notBusy);
+    Check("biblio : conflit résolu par écrasement", (overwritten[0].Status, new FileInfo(Path.Combine(musicDir, "Dest", "y.mp3")).Length), ("moved", 5L));
+    Touch("Conflit/z.mp3", 5); Touch("Dest/z.mp3", 9);
+    var skippedFile = LibraryFs.Move(root, new[] { "Conflit/z.mp3" }, "Dest", null, "skip", false, notBusy);
+    Check("biblio : conflit ignoré", (skippedFile[0].Status, Exists("Conflit/z.mp3")), ("skipped", true));
+
+    // suppression : corbeille
+    Touch("Poubelle/Album/1.mp3", 20); Touch("Poubelle/Album/2.mp3", 30);
+    var now = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
+    var delPreview = LibraryFs.Delete(root, new[] { "Poubelle/Album" }, "trash", "Alice", true, notBusy, now);
+    Check("biblio : aperçu de suppression", (delPreview[0].Status, delPreview[0].Files, delPreview[0].Bytes, Exists("Poubelle/Album")), ("ok", 2, 50L, true));
+    Check("biblio : l'aperçu liste les fichiers supprimés", delPreview[0].Listing!.Select(f => f.Path).ToArray(), new[] { "1.mp3", "2.mp3" });
+    var trashed = LibraryFs.Delete(root, new[] { "Poubelle/Album" }, "trash", "Alice", false, notBusy, now);
+    Check("biblio : la liste des fichiers est aussi dans le résultat réel", trashed[0].Listing!.Count, 2);
+    Check("biblio : mis à la corbeille", (trashed[0].Status, Exists("Poubelle/Album")), ("trashed", false));
+    True("biblio : corbeille ignorée de Jellyfin (.ignore)", File.Exists(Path.Combine(musicDir, LibraryFs.TrashDirName, ".ignore")));
+    var trash = LibraryFs.ListTrash(root);
+    Check("biblio : contenu de la corbeille", trash.Select(t => (t.OriginalPath, t.Files, t.Bytes, t.DeletedBy)).ToArray(), new[] { ("Poubelle/Album", 2, 50L, "Alice") });
+    var restored = LibraryFs.Restore(root, new[] { trash[0].Id });
+    Check("biblio : restauration", (restored[0].Status, Exists("Poubelle/Album/2.mp3"), LibraryFs.ListTrash(root).Count), ("moved", true, 0));
+    LibraryFs.Delete(root, new[] { "Poubelle/Album" }, "trash", "Alice", false, notBusy, now);
+    Touch("Poubelle/Album/autre.mp3", 1);
+    var restoredBusy = LibraryFs.Restore(root, new[] { LibraryFs.ListTrash(root)[0].Id });
+    Check("biblio : restauration sous un autre nom si la place est prise", (restoredBusy[0].Status, Exists("Poubelle/Album (restauré)/1.mp3")), ("renamed", true));
+    True("biblio : identifiant de corbeille invalide refusé", LibraryFs.Restore(root, new[] { "../../x" })[0].Status == "invalid");
+    var old = LibraryFs.Delete(root, new[] { "Dest/x (2).mp3" }, "trash", "Bob", false, notBusy, now.AddDays(-30));
+    LibraryFs.Delete(root, new[] { "Dest/y.mp3" }, "trash", "Bob", false, notBusy, now.AddDays(-1));
+    var purgedAuto = LibraryFs.PurgeOlderThan(roots, 14, now);
+    Check("biblio : purge automatique des éléments de plus de 14 jours", (purgedAuto.Count, LibraryFs.ListTrash(root).Count), (1, 1));
+    Check("biblio : purge désactivée à 0 jour", LibraryFs.PurgeOlderThan(roots, 0, now).Count, 0);
+    var purgedManual = LibraryFs.Purge(root, LibraryFs.ListTrash(root).Select(t => t.Id).ToList());
+    Check("biblio : purge manuelle", (purgedManual.Count, LibraryFs.ListTrash(root).Count), (1, 0));
+
+    // suppression définitive et garde-fous
+    Touch("Def/f.mp3", 3);
+    Check("biblio : suppression définitive", (LibraryFs.Delete(root, new[] { "Def" }, "permanent", "Alice", false, notBusy, now)[0].Status, Exists("Def")), ("deleted", false));
+    True("biblio : la racine ne se supprime pas", LibraryFs.Delete(root, new[] { "" }, "permanent", "Alice", false, notBusy, now)[0].Status == "invalid" && Directory.Exists(root.Path));
+    True("biblio : suppression hors racine refusée", LibraryFs.Delete(root, new[] { "../x" }, "permanent", "Alice", false, notBusy, now)[0].Status == "invalid");
+    Touch("Occupe/f.mp3", 3);
+    True("biblio : suppression refusée pendant un envoi", LibraryFs.Delete(root, new[] { "Occupe" }, "permanent", "Alice", false, p => p.EndsWith("Occupe"), now)[0].Status == "invalid" && Exists("Occupe/f.mp3"));
+    if (OperatingSystem.IsLinux())
+    {
+        var outside = Path.Combine(libDir, "dehors"); Directory.CreateDirectory(outside); File.WriteAllText(Path.Combine(outside, "secret.txt"), "x");
+        Directory.CreateSymbolicLink(Path.Combine(musicDir, "lien"), outside);
+        True("biblio : lien symbolique détecté", LibraryFs.HasLink(root, Path.Combine(musicDir, "lien", "secret.txt")));
+        True("biblio : suppression via un lien refusée", LibraryFs.Delete(root, new[] { "lien/secret.txt" }, "permanent", "Alice", false, notBusy, now)[0].Status == "invalid" && File.Exists(Path.Combine(outside, "secret.txt")));
+        True("biblio : déplacement via un lien refusé", LibraryFs.Move(root, new[] { "lien/secret.txt" }, "Autre", null, "skip", false, notBusy)[0].Status == "invalid");
+    }
+
+    // création de dossier
+    True("biblio : création de dossier", LibraryFs.TryCreateFolder(root, "Autre", "Nouveau   dossier", out var createdRel, out _) && Directory.Exists(Path.Combine(musicDir, "Autre", "Nouveau dossier")) && createdRel == "Autre/Nouveau dossier");
+    True("biblio : nom vide refusé", !LibraryFs.TryCreateFolder(root, "", "...", out _, out _));
+
+    // santé
+    Directory.CreateDirectory(Path.Combine(musicDir, "Vide", "Sous-vide"));
+    Touch("Sans Pochette/01.mp3", 5); Touch("Avec Pochette/01.mp3", 5); Touch("Avec Pochette/folder.jpg", 5);
+    Touch("Sans Pochette/notes.xyz", 5);
+    Touch("Reste/.mu-abc.part", 5, now.AddHours(-3)); Touch("Reste/.mu-frais.part", 5, now.AddMinutes(-5));
+    var health = LibraryFs.Health(root, Kind, notBusy, now, true, null);
+    True("biblio : dossiers vides repérés", health.EmptyDirs.Contains("Vide/Sous-vide"));
+    Check("biblio : albums sans pochette", health.NoCover.Contains("Sans Pochette") && !health.NoCover.Contains("Avec Pochette"), true);
+    Check("biblio : fichiers partiels abandonnés (pas les récents)", health.OrphanParts.ToArray(), new[] { "Reste/.mu-abc.part" });
+    True("biblio : fichiers inconnus", health.Unknown.Contains("Sans Pochette/notes.xyz"));
+
+
+    // clés d'album, fichiers audio, pochettes intégrées, albums en double
+    True("biblio : clé d'album insensible à la ponctuation", LibraryFs.AlbumKey("Clair Obscur (Official Soundtrack)") == LibraryFs.AlbumKey("Clair Obscur: Official Soundtrack"));
+    Check("biblio : clé d'album sans accents ni casse", LibraryFs.AlbumKey("  Éléphant – LIVE!  "), "elephant live");
+    True("biblio : clé d'un nom sans lettre", LibraryFs.AlbumKey("(…)") == string.Empty);
+    Touch("Mix/Solo/a.mp3", 5); Touch("Mix/Solo/b.mp3", 5); Touch("Mix/Solo/c.jpg", 5);
+    var audio = LibraryFs.AudioFiles(root, new[] { "Mix/Solo", "Mix/Solo/a.mp3", "Mix/Solo/c.jpg" }, Kind, 100, out var audioCut);
+    Check("biblio : fichiers audio d'un dossier et d'un fichier (sans doublon)", audio.ToArray(), new[] { "Mix/Solo/a.mp3", "Mix/Solo/b.mp3" });
+    Check("biblio : liste audio bornée", (LibraryFs.AudioFiles(root, new[] { "Mix/Solo" }, Kind, 1, out var cut1).Count, cut1), (1, true));
+    Touch("Singles/Artiste/un.mp3", 5); Touch("Singles/Artiste/deux.mp3", 5);
+    var healthEmbedded = LibraryFs.Health(root, Kind, notBusy, now, true, f => true);
+    True("biblio : pochette intégrée = pas signalé", !healthEmbedded.NoCover.Contains("Singles/Artiste"));
+    var healthOneMissing = LibraryFs.Health(root, Kind, notBusy, now, true, f => !f.EndsWith("deux.mp3"));
+    True("biblio : un morceau sans pochette = signalé", healthOneMissing.NoCover.Contains("Singles/Artiste"));
+    var healthNoMusic = LibraryFs.Health(root, Kind, notBusy, now, false, null);
+    True("biblio : pas de contrôle de pochette hors musique", healthNoMusic.NoCover.Count == 0 && healthNoMusic.DuplicateAlbums.Count == 0);
+    Touch("Artiste Dbl/Album (Official Soundtrack)/1.mp3", 5); Touch("Artiste Dbl/Album: Official Soundtrack/2.mp3", 5); Touch("Artiste Dbl/Autre Album/3.mp3", 5);
+    var healthDup = LibraryFs.Health(root, Kind, notBusy, now, true, f => true);
+    var dupGroup = healthDup.DuplicateAlbums.FirstOrDefault(g => g.Parent == "Artiste Dbl");
+    True("biblio : album coupé en deux détecté", dupGroup is not null && dupGroup.Folders.SequenceEqual(new[] { "Album (Official Soundtrack)", "Album: Official Soundtrack" }));
+    var mergeDup = LibraryFs.Move(root, new[] { "Artiste Dbl/Album: Official Soundtrack" }, "Artiste Dbl", "Album (Official Soundtrack)", "skip", false, notBusy);
+    Check("biblio : les deux moitiés se fusionnent", (mergeDup[0].Status, Exists("Artiste Dbl/Album (Official Soundtrack)/2.mp3"), Exists("Artiste Dbl/Album: Official Soundtrack")), ("merged", true, false));
+    True("biblio : le journal d'un dossier déplacé liste ses fichiers", mergeDup[0].Listing is { Count: 1 });
+
+    Directory.Delete(libDir, recursive: true);
+}
 
 // Processus réels (Linux) : faux yt-dlp qui imite les sorties du vrai outil.
 if (OperatingSystem.IsLinux())

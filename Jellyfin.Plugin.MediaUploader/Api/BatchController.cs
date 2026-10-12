@@ -2,6 +2,7 @@ using System.Net.Mime;
 using Jellyfin.Plugin.MediaUploader.Services;
 using Jellyfin.Plugin.MediaUploader.Services.Import;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Activity;
 using MediaBrowser.Controller.Playlists;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -32,9 +33,11 @@ public class BatchController : MediaUploaderControllerBase
     /// </summary>
     /// <param name="libraryManager">Gestionnaire de bibliothèque.</param>
     /// <param name="playlistManager">Gestionnaire de listes de lecture.</param>
+    /// <param name="activityManager">Journal d'activité de Jellyfin.</param>
     /// <param name="logger">Logger.</param>
-    public BatchController(ILibraryManager libraryManager, IPlaylistManager playlistManager, ILogger<BatchController> logger)
+    public BatchController(ILibraryManager libraryManager, IPlaylistManager playlistManager, IActivityManager activityManager, ILogger<BatchController> logger)
     {
+        PluginActivity.Attach(activityManager, logger);
         _libraryManager = libraryManager;
         _playlistManager = playlistManager;
         _logger = logger;
@@ -393,6 +396,16 @@ public class BatchController : MediaUploaderControllerBase
                 scanQueued = true;
             }
 
+            if (saved > 0)
+            {
+                var files = work.Select((w, i) => (w.Item.Kind, Result: results[i]))
+                    .Where(x => x.Result.Status == "saved" && x.Result.Destination is not null)
+                    .Select(x => (x.Kind, x.Result.Destination!))
+                    .ToList();
+                var text = ActivityText.Summarize(files);
+                PluginActivity.Log($"{CurrentUserName} a envoyé {text.What}", "MediaUploaderUpload", CurrentUserId, text.Summary, text.Detail);
+            }
+
             // Import de playlist : la liste de lecture Jellyfin est créée dès que le scan a fait apparaître les morceaux.
             if (saved > 0 && batch.Playlist is { } playlist)
             {
@@ -426,6 +439,17 @@ public class BatchController : MediaUploaderControllerBase
         if (batch is null)
         {
             return error!;
+        }
+
+        int pending;
+        lock (batch.Sync)
+        {
+            pending = batch.Items.Count;
+        }
+
+        if (pending > 0)
+        {
+            PluginActivity.Log($"{CurrentUserName} a annulé un lot de {pending} fichier{(pending > 1 ? "s" : string.Empty)}", "MediaUploaderCancel", CurrentUserId, "Rien n'est entré dans la bibliothèque.", null);
         }
 
         UploadStore.Batches.TryRemove(batch.Id, out _);

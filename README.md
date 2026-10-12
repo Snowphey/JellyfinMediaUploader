@@ -33,8 +33,7 @@ dotnet publish Jellyfin.Plugin.MediaUploader -c Release -o out
 ```
 
 Copier `out/Jellyfin.Plugin.MediaUploader.dll` et `out/TagLibSharp.dll` dans :
-`<dossier-données-jellyfin>/plugins/MediaUploader_1.2.0.0/` puis redémarrer Jellyfin
-(supprimez les anciens dossiers `MediaUploader_1.0.0.0`, `MediaUploader_1.1.0.0` et `MediaUploader_1.1.1.0` s'il existe).
+`<dossier-données-jellyfin>/plugins/MediaUploader_X.X.X.X/` puis redémarrer Jellyfin
 
 Tests du moteur de détection et du rangement (aucune dépendance à Jellyfin) : `dotnet run --project Jellyfin.Plugin.MediaUploader.Tests`.
 
@@ -198,6 +197,13 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | GET / DELETE | `/MediaUploader/Import/Jobs/{id}` | État d'un import / arrêt |
 | POST | `/MediaUploader/Import/Jobs/{id}/Start` | Lance les téléchargements : `{trackIds, layout, createPlaylist, playlistPublic}` |
 | GET | `/MediaUploader/Browse/Artists?q=` · `/Browse/Artists/{id}/Albums` | Recherche d'artistes et albums (MusicBrainz) |
+| GET | `/MediaUploader/Library/Capabilities` | Droits de l'utilisateur et réglages de la page « Bibliothèque » |
+| GET | `/MediaUploader/Library/List?root=&path=` · `/Library/Search?root=&q=` · `/Library/Size?root=&path=` | Contenu d'un dossier, recherche par nom, poids d'un élément |
+| GET | `/MediaUploader/Library/File` · `/Library/Cover` · `/Library/Download` (`root`, `path`, `ApiKey`) | Lecture d'un fichier (par plages), pochette intégrée, téléchargement (zip pour un dossier ou une sélection) |
+| POST | `/MediaUploader/Library/Tags/Read` · `/Library/Tags/Apply` | Tags d'éléments / modification des tags avec rangement « Artiste/Album » (`dryRun` : aperçu) |
+| POST | `/MediaUploader/Library/Move` · `/Library/Delete` · `/Library/Folder` | Déplacer / renommer, supprimer (`dryRun` : aperçu), créer un dossier |
+| GET / POST | `/MediaUploader/Library/Trash` · `/Library/Trash/Restore` · `/Library/Trash/Purge` | Corbeille : contenu, restauration, purge (administrateurs) |
+| GET | `/MediaUploader/Library/Health` | Anomalies de toutes les bibliothèques |
 | GET / PUT | `/MediaUploader/Rules` | Lit / enregistre les règles de détection (administrateurs) |
 | POST | `/MediaUploader/Rules/Test` | Essaie des noms de fichiers sur les règles (administrateurs) |
 
@@ -245,6 +251,39 @@ curl -X POST "http://SERVEUR:8096/MediaUploader/Upload" \
   -H "X-Emby-Token: CLE" -F files=@"Titre [id].opus"
 ```
 
+## Gestion de la bibliothèque (page « Bibliothèque »)
+
+Une seconde page, `/MediaUploader/LibraryUi` (onglet « Bibliothèque » de l'accueil, créé en un clic depuis les paramètres comme l'onglet « Upload »), facilite la gestion des fichiers des trois dossiers média,
+là où l'interface de Jellyfin est laborieuse :
+
+- **Parcourir** l'arborescence, rechercher par nom, trier par nom, poids ou date. Le **poids de chaque dossier** s'affiche dans la liste (avec une barre), ainsi que, pour chaque morceau ou vidéo, si Jellyfin l'a **déjà analysé** (lien vers sa fiche).
+- **Lire** : un clic sur un morceau ou une vidéo que Jellyfin connaît lance la lecture **dans le lecteur de Jellyfin** (comme un clic là-bas : l'ordre est envoyé à votre session « Jellyfin Web » ouverte, en priorité l'onglet où la page est intégrée ; sans session ouverte, la fiche du média s'ouvre). Le bouton 👁 donne un aperçu dans le navigateur (image, pochette, lecteur audio ou vidéo, texte des sous-titres et paroles) ; un fichier pas encore analysé s'ouvre directement ainsi.
+- **Télécharger** un fichier, un dossier entier ou une sélection (archive zip, sans recompression).
+- **Déplacer et renommer** un ou plusieurs éléments, avec choix du dossier de destination, aperçu des conflits et **fusion** de dossiers du même nom (fichiers déjà présents ignorés, renommés ou, pour un administrateur, écrasés).
+- **Tags, renommage d'album et fusion** (bibliothèque musique) : modifie artiste, artiste de l'album, album, année, disque, genre (et titre/piste pour un seul morceau) d'un morceau ou de tout un dossier, dans les fichiers eux-mêmes, avec aperçu avant/après. Option « ranger dans Artiste/Album » : les fichiers sont déplacés dans le dossier correspondant à leurs nouveaux tags
+  (pochette comprise) et les dossiers vidés disparaissent. C'est ce qui permet de renommer un album **dans Jellyfin** (qui lit l'album dans les tags, pas dans le nom du dossier) et de **fusionner un album coupé en deux**
+  (« X (Official Soundtrack) » et « X: Official Soundtrack ») : sélectionnez les deux dossiers, choisissez le nom à garder.
+- **Pochettes** : pour un album sans pochette (liste « Santé » ou bouton 🖼 d'un dossier), recherche automatique sur Cover Art Archive (MusicBrainz) et iTunes d'après les tags, choix visuel, ou image de votre ordinateur ; elle est enregistrée dans le dossier (`cover.jpg`) et/ou intégrée à chaque morceau.
+- **Supprimer** des fichiers ou des dossiers entiers par lots : aperçu avec l'**arborescence** de ce qui sera supprimé (« 25 fichiers, 87 Mo »), mot de confirmation à taper au-delà d'un seuil, puis **corbeille** (dossier caché `.mu-corbeille`, restauration possible, purge automatique chaque nuit) ou suppression définitive selon le réglage.
+- **Santé**, pour toutes les bibliothèques à la fois : albums probablement coupés en deux (avec bouton de fusion), dossiers sans pochette (un morceau seul avec pochette intégrée n'est pas signalé ; contrôle réservé à la musique), dossiers vides, fichiers partiels abandonnés, fichiers d'extension inconnue.
+
+Chaque déplacement, renommage, modification de tags, suppression, restauration, purge et téléchargement de dossier est écrit dans le journal d'activité de Jellyfin (qui, quoi, combien, et **la liste des fichiers concernés**, y compris le contenu d'un dossier supprimé).
+
+**Médiathèque Jellyfin à jour tout de suite** : après une action, les éléments qui n'existent plus sont retirés de la médiathèque (ils ne restent donc pas affichés avec une lecture en erreur), puis la bibliothèque concernée est actualisée (nouveaux emplacements en quelques secondes, tags relus ensuite). Les morceaux déplacés ou renommés sont remis à leur place dans les listes de lecture.
+Favoris et historique de lecture sont conservés par Jellyfin lors d'un renommage ou d'un déplacement. Réglable (actualisation ciblée, scan complet, ou aucune).
+
+Tout se règle dans l'onglet **Bibliothèque** des paramètres : activation de la page, qui peut parcourir (administrateurs ou tous ceux qui peuvent envoyer), qui peut déplacer et modifier les tags, qui peut supprimer (personne, administrateurs, ou aussi les utilisateurs ayant le droit de supprimer du contenu dans Jellyfin),
+corbeille ou suppression définitive, durée de conservation de la corbeille, seuil de confirmation renforcée, nombre maximal d'éléments par action, mise à jour de la médiathèque. Par défaut : réservé aux administrateurs, corbeille de 14 jours.
+
+Garde-fous : aucune action ne sort des trois dossiers configurés, les liens symboliques et les éléments en cours d'envoi ou d'import sont refusés, la racine d'une bibliothèque ne peut ni être déplacée ni supprimée.
+Les lecteurs et téléchargements passent le jeton de la session dans l'adresse (`ApiKey=`), comme le fait l'interface de Jellyfin elle-même.
+
+## Journal d'activité
+
+Les actions du plugin apparaissent dans Tableau de bord > Activité, avec l'utilisateur concerné : envois confirmés (une ligne par envoi, dossiers touchés en résumé et liste des fichiers en détail),
+envois par l'API, lots annulés, imports lancés puis terminés, arrêtés ou en échec, suspension des téléchargements après un blocage YouTube, et installation ou mise à jour des outils, et toutes les actions de la page « Bibliothèque » (déplacements, renommages, suppressions, restaurations, purges de la corbeille).
+Les suppressions faites dans Jellyfin lui-même (hors de la page « Bibliothèque ») n'y figurent pas.
+
 ## Publier une release (mainteneur)
 
 Une release se fait en poussant un tag : le workflow `.github/workflows/release.yml` compile le plugin, crée la
@@ -257,17 +296,17 @@ Prérequis (une seule fois) : Settings > Actions > General > Workflow permission
 3. Commiter et pousser les changements : `git add -A && git commit -m "..." && git push`
 4. Créer le tag, **avec 4 chiffres** (format de version Jellyfin) et un numéro jamais utilisé :
    ```bash
-   git tag v1.2.0.0
-   git push origin v1.2.0.0
+   git tag vX.X.X.X
+   git push origin vX.X.X.X
    ```
-5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_1.2.0.0.zip`
-   (le plugin + TagLibSharp), et un commit « Manifest : version 1.2.0.0 » est ajouté sur `main`.
+5. Suivre l'onglet **Actions** : au bout d'1 à 2 minutes, la Release apparaît avec `Jellyfin.Plugin.MediaUploader_X.X.X.X.zip`
+   (le plugin + TagLibSharp), et un commit « Manifest : version X.X.X.X » est ajouté sur `main`.
 6. `git pull` pour récupérer ce commit, et vérifier que `manifest.json` contient la nouvelle version.
 
 Jellyfin propose ensuite la mise à jour dans Tableau de bord > Extensions > Catalogue / Mes plugins.
 
 Si un run échoue, corriger puis supprimer et recréer le tag :
-`git tag -d v1.2.0.0 && git push origin :refs/tags/v1.2.0.0`, puis refaire l'étape 4.
+`git tag -d vX.X.X.X && git push origin :refs/tags/vX.X.X.X`, puis refaire l'étape 4.
 Si la cible change de version de Jellyfin, adapter `targetAbi` dans `Jellyfin.Plugin.MediaUploader/build.yaml` avant de tagger.
 
 ## Licence

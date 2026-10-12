@@ -39,6 +39,9 @@ public sealed class ImportJob
     /// <summary>Gets le propriétaire (utilisateur ou clé d'API).</summary>
     public required string Owner { get; init; }
 
+    /// <summary>Gets or sets le nom du propriétaire, pour le journal d'activité.</summary>
+    public string OwnerName { get; set; } = "Un utilisateur";
+
     /// <summary>Gets l'origine : "youtube", "spotify" ou "browse".</summary>
     public required string Source { get; init; }
 
@@ -442,7 +445,13 @@ public static class ImportManager
         catch (ImportException ex) when (!lastChance && (ImportThrottle.IsBlock(ex.Message) || ImportThrottle.IsBlock(ex.Details)))
         {
             // YouTube limite ou soupçonne le serveur : tout est suspendu, et ce morceau est remis en file pour être retenté après la pause.
+            var firstOfIncident = ImportThrottle.PausedUntil() is null;
             var pause = ImportThrottle.ReportBlocked();
+            if (firstOfIncident)
+            {
+                PluginActivity.Log($"Téléchargements suspendus {(int)Math.Ceiling(pause.TotalMinutes)} min", "MediaUploaderThrottle", Guid.Empty, "YouTube a signalé une limitation ou une vérification anti-robot : reprise automatique.", ex.Message, LogLevel.Warning);
+            }
+
             logger.LogWarning("MediaUploader: YouTube limite le serveur (« {Message} ») : téléchargements suspendus {Minutes} min", ex.Message, (int)pause.TotalMinutes);
             var note = $"YouTube limite les requêtes : reprise automatique après {(int)Math.Ceiling(pause.TotalMinutes)} min.";
             Set(job, t, "queued", note);
@@ -618,6 +627,7 @@ public static class ImportManager
 
     private static void Finish(ImportJob job, string state, string message)
     {
+        List<ImportTrackState> tracks;
         lock (job.Sync)
         {
             if (job.State is "done" or "failed" or "cancelled")
@@ -628,7 +638,27 @@ public static class ImportManager
             job.State = state;
             job.Message = message;
             job.Updated = DateTime.UtcNow;
+            tracks = job.Tracks.Where(t => t.Selected).ToList();
         }
+
+        // Journal d'activité : seulement pour un import qui a réellement commencé à télécharger.
+        if (job.BatchId is null)
+        {
+            return;
+        }
+
+        var ok = tracks.Count(t => t.State == "done");
+        var failed = tracks.Where(t => t.State == "failed").ToList();
+        var verb = state switch { "done" => "terminé", "cancelled" => "arrêté", _ => "en échec" };
+        var summary = $"{ok} reçu{(ok > 1 ? "s" : string.Empty)} sur {tracks.Count}" + (failed.Count > 0 ? $", {failed.Count} échec{(failed.Count > 1 ? "s" : string.Empty)}" : string.Empty);
+        var detail = failed.Count > 0 ? string.Join("\n", failed.Take(20).Select(t => $"{t.Spec.Title} : {t.Message}")) : null;
+        PluginActivity.Log(
+            $"Import « {job.Title} » {verb} ({job.OwnerName})",
+            "MediaUploaderImport",
+            PluginActivity.UserIdOf(job.Owner),
+            summary,
+            detail,
+            state == "failed" ? LogLevel.Error : failed.Count > 0 ? LogLevel.Warning : LogLevel.Information);
     }
 
     private static void TryDeleteDir(string dir)

@@ -44,6 +44,15 @@ public class PluginConfiguration : BasePluginConfiguration
         ImportMaxPerDay = 400;
         ImportCreatePlaylist = true;
         ImportPlaylistPublic = true;
+        LibraryEnabled = true;
+        LibraryViewAccess = "admins";
+        LibraryMoveAccess = "admins";
+        LibraryDeleteAccess = "admins";
+        LibraryDeleteMode = "trash";
+        LibraryTrashDays = 14;
+        LibraryConfirmThreshold = 20;
+        LibraryMaxItems = 500;
+        LibraryRefresh = "targeted";
     }
 
     /// <summary>
@@ -201,6 +210,52 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Obtient ou définit une valeur indiquant si la liste de lecture créée est publique par défaut (visible de tous les utilisateurs) ou privée.
     /// </summary>
     public bool ImportPlaylistPublic { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit une valeur indiquant si l'onglet « Bibliothèque » (gestion des fichiers des dossiers média) est disponible.
+    /// </summary>
+    public bool LibraryEnabled { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit qui peut parcourir la bibliothèque : "admins" (administrateurs) ou "uploaders" (tous ceux qui peuvent envoyer des fichiers).
+    /// </summary>
+    public string LibraryViewAccess { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit qui peut déplacer et renommer : "admins" ou "viewers" (tous ceux qui peuvent parcourir).
+    /// </summary>
+    public string LibraryMoveAccess { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit qui peut supprimer : "none" (personne), "admins", ou "jellyfin" (administrateurs et utilisateurs ayant le droit de supprimer du contenu dans Jellyfin).
+    /// </summary>
+    public string LibraryDeleteAccess { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le mode de suppression : "trash" (corbeille, restauration possible) ou "permanent" (définitif).
+    /// </summary>
+    public string LibraryDeleteMode { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre de jours de conservation de la corbeille (0 : jamais purgée automatiquement).
+    /// </summary>
+    public int LibraryTrashDays { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre de fichiers à partir duquel une suppression demande de taper un mot de confirmation (0 : toujours).
+    /// </summary>
+    public int LibraryConfirmThreshold { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit le nombre maximal d'éléments par action (déplacement ou suppression).
+    /// </summary>
+    public int LibraryMaxItems { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit ce que Jellyfin fait après une action sur la bibliothèque : "targeted" (seuls les dossiers touchés sont actualisés), "full" (scan complet) ou "none".
+    /// Les éléments supprimés ou déplacés sont de toute façon retirés de la médiathèque tout de suite, sauf avec "none".
+    /// </summary>
+    public string LibraryRefresh { get; set; }
 
     /// <summary>
     /// Obtient ou définit le fichier de cookies (format Netscape) transmis à yt-dlp, par exemple pour YouTube Music Premium. Facultatif.

@@ -14,6 +14,10 @@
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Configuration\DetectionRule.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Configuration\DefaultRules.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\PathBuilder.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\ActivityText.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\LibraryFs.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\LibraryModels.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\CoverSearch.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Detection\*.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Planner\*.cs" />
     <!-- Import : tout sauf ce qui dépend de Jellyfin ou de TagLib (ImportManager, TrackTagger, PlaylistBuilder). -->

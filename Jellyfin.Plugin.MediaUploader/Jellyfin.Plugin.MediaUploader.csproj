@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.MediaUploader</RootNamespace>
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.0</FileVersion>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -20,6 +20,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Web\settings.html" />
     <EmbeddedResource Include="Web\ui.html" />
+    <EmbeddedResource Include="Web\library.html" />
   </ItemGroup>
 
 </Project>

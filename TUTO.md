@@ -25,7 +25,7 @@ cd JellyfinMediaUploader   # dossier du dépôt cloné (celui qui contient docke
 docker compose up -d --build
 ```
 
-Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_1.2.0.0/`,
+Ce que ça fait : compile le plugin, copie ses DLL (le plugin et TagLibSharp, qui lit les tags) dans `jellyfin/config/plugins/MediaUploader_X.X.X.X`,
 puis démarre Jellyfin. Suivre les logs : `docker compose logs -f jellyfin`.
 
 Si le build du plugin échoue lancez

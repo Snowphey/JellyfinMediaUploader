@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using Jellyfin.Plugin.MediaUploader.Services;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Activity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,9 +28,11 @@ public class UploadController : MediaUploaderControllerBase
     /// Initialise une nouvelle instance de la classe <see cref="UploadController"/>.
     /// </summary>
     /// <param name="libraryManager">Gestionnaire de bibliothèque.</param>
+    /// <param name="activityManager">Journal d'activité de Jellyfin.</param>
     /// <param name="logger">Logger.</param>
-    public UploadController(ILibraryManager libraryManager, ILogger<UploadController> logger)
+    public UploadController(ILibraryManager libraryManager, IActivityManager activityManager, ILogger<UploadController> logger)
     {
+        PluginActivity.Attach(activityManager, logger);
         _libraryManager = libraryManager;
         _logger = logger;
     }
@@ -277,6 +280,16 @@ public class UploadController : MediaUploaderControllerBase
             }
 
             var saved = results.Values.Count(r => r.Status == "saved");
+            if (saved > 0)
+            {
+                var files = items.Select((x, i) => (x.Item.Kind, Result: committed[i]))
+                    .Where(x => x.Result.Status == "saved" && x.Result.Destination is not null)
+                    .Select(x => (x.Kind, x.Result.Destination!))
+                    .ToList();
+                var text = ActivityText.Summarize(files);
+                PluginActivity.Log($"{CurrentUserName} a envoyé {text.What} (API)", "MediaUploaderUpload", CurrentUserId, text.Summary, text.Detail);
+            }
+
             var scanQueued = false;
             if (saved > 0 && (request.Scan ?? config.AutoScan))
             {
@@ -478,6 +491,7 @@ public class UploadController : MediaUploaderControllerBase
             }
 
             UploadFileResult result;
+            string? kind = null;
             try
             {
                 var options = PlanFactory.Options(config);
@@ -492,7 +506,9 @@ public class UploadController : MediaUploaderControllerBase
                 };
                 var overrides = BuildOverrides(new[] { file.Id }, session.Title, session.Year, session.Season, session.Artist, session.Album, session.Force);
                 var plan = Planner.Build(new[] { file }, overrides, session.Mode, options, PlanFactory.Engine(config), PlanFactory.Probe());
-                result = UploadCommitter.Commit(new[] { (plan.Groups.SelectMany(g => g.Items).First(), (string?)session.TempPath) }, config, _logger)[0];
+                var planItem = plan.Groups.SelectMany(g => g.Items).First();
+                kind = planItem.Kind;
+                result = UploadCommitter.Commit(new[] { (planItem, (string?)session.TempPath) }, config, _logger)[0];
             }
             catch (Exception ex)
             {
@@ -504,6 +520,12 @@ public class UploadController : MediaUploaderControllerBase
             UploadStore.TryDelete(session.TempPath);
 
             var saved = result.Status == "saved" ? 1 : 0;
+            if (saved > 0 && result.Destination is not null)
+            {
+                var text = ActivityText.Summarize(new[] { (kind, result.Destination) });
+                PluginActivity.Log($"{CurrentUserName} a envoyé {text.What} (API)", "MediaUploaderUpload", CurrentUserId, text.Summary, text.Detail);
+            }
+
             var scanQueued = false;
             if (saved > 0 && (session.Scan ?? config.AutoScan))
             {

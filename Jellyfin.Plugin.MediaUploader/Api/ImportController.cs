@@ -2,6 +2,7 @@ using System.Net.Mime;
 using Jellyfin.Plugin.MediaUploader.Services;
 using Jellyfin.Plugin.MediaUploader.Services.Import;
 using MediaBrowser.Controller.MediaEncoding;
+using MediaBrowser.Model.Activity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -103,9 +104,11 @@ public class ImportController : MediaUploaderControllerBase
     /// Initialise une nouvelle instance de la classe <see cref="ImportController"/>.
     /// </summary>
     /// <param name="encoder">Encodeur multimédia de Jellyfin (fournit le chemin de ffmpeg).</param>
+    /// <param name="activityManager">Journal d'activité de Jellyfin.</param>
     /// <param name="logger">Logger.</param>
-    public ImportController(IMediaEncoder encoder, ILogger<ImportController> logger)
+    public ImportController(IMediaEncoder encoder, IActivityManager activityManager, ILogger<ImportController> logger)
     {
+        PluginActivity.Attach(activityManager, logger);
         _encoder = encoder;
         _logger = logger;
     }
@@ -211,6 +214,11 @@ public class ImportController : MediaUploaderControllerBase
                 done.Add(name);
             }
 
+            if (done.Count > 0)
+            {
+                PluginActivity.Log($"{CurrentUserName} a installé ou mis à jour {string.Join(" et ", done)}", "MediaUploaderTools", CurrentUserId, null, null);
+            }
+
             return Ok(new { installed = done });
         }
         catch (ImportException ex)
@@ -283,6 +291,12 @@ public class ImportController : MediaUploaderControllerBase
         }
 
         var artist = (request.Artist ?? string.Empty).Trim();
+        PluginActivity.Log(
+            $"{CurrentUserName} a lancé l'import de {ids.Count} album{(ids.Count > 1 ? "s" : string.Empty)}" + (artist.Length > 0 ? $" de {artist}" : string.Empty),
+            "MediaUploaderImport",
+            CurrentUserId,
+            null,
+            null);
         var job = NewJob("browse");
         job.AutoStart = true;
         job.Layout = "source";
@@ -352,6 +366,19 @@ public class ImportController : MediaUploaderControllerBase
             return BadRequest(new { error = ex.Message });
         }
 
+        int count;
+        lock (job.Sync)
+        {
+            count = job.Tracks.Count(t => t.Selected);
+        }
+
+        var what = job.Kind switch { "playlist" => "la playlist", "album" => "l'album", _ => "le titre" };
+        PluginActivity.Log(
+            $"{CurrentUserName} a lancé l'import de {what} « {job.Title} »",
+            "MediaUploaderImport",
+            CurrentUserId,
+            $"{count} morceau{(count > 1 ? "x" : string.Empty)}" + (job.CreatePlaylist && job.Kind == "playlist" ? $" · liste de lecture {(job.PlaylistPublic ? "publique" : "privée")}" : string.Empty),
+            null);
         return View(job);
     }
 
@@ -511,7 +538,7 @@ public class ImportController : MediaUploaderControllerBase
         return null;
     }
 
-    private ImportJob NewJob(string source) => new() { Id = Guid.NewGuid().ToString("N"), Owner = CurrentOwner, Source = source };
+    private ImportJob NewJob(string source) => new() { Id = Guid.NewGuid().ToString("N"), Owner = CurrentOwner, OwnerName = CurrentUserName, Source = source };
 
     private ImportJob? Find(string id, out ActionResult? error)
     {

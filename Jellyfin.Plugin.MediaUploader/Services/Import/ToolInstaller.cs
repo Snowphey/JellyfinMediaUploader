@@ -471,7 +471,7 @@ public static class ToolInstaller
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("JellyfinMediaUploader/1.2");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgents.Plugin);
         return client;
     }
 }

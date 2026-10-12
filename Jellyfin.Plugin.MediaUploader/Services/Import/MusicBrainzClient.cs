@@ -46,6 +46,19 @@ public static class MusicBrainzClient
     }
 
     /// <summary>
+    /// Cherche des groupes de sorties (albums) par titre et artiste ; renvoie la réponse brute.
+    /// </summary>
+    /// <param name="artist">Artiste (facultatif).</param>
+    /// <param name="album">Titre de l'album.</param>
+    /// <param name="ct">Annulation.</param>
+    /// <returns>JSON de MusicBrainz.</returns>
+    public static Task<string> SearchReleaseGroupsAsync(string? artist, string album, CancellationToken ct)
+    {
+        var query = $"releasegroup:\"{EscapeLucene(album)}\"" + (string.IsNullOrWhiteSpace(artist) ? string.Empty : $" AND artist:\"{EscapeLucene(artist)}\"");
+        return GetAsync($"release-group?query={Uri.EscapeDataString(query)}&fmt=json&limit=8", ct);
+    }
+
+    /// <summary>
     /// Liste les albums, EP et singles d'un artiste.
     /// </summary>
     /// <param name="artistId">MBID de l'artiste.</param>
@@ -325,7 +338,7 @@ public static class MusicBrainzClient
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("JellyfinMediaUploader/1.2 (+https://github.com/Snowphey/JellyfinMediaUploader)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgents.Plugin);
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         return client;
     }
