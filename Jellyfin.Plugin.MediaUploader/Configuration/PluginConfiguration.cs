@@ -53,6 +53,7 @@ public class PluginConfiguration : BasePluginConfiguration
         LibraryConfirmThreshold = 20;
         LibraryMaxItems = 500;
         LibraryRefresh = "targeted";
+        HealthIgnored = new List<string>();
     }
 
     /// <summary>
@@ -261,4 +262,10 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Obtient ou définit le fichier de cookies (format Netscape) transmis à yt-dlp, par exemple pour YouTube Music Premium. Facultatif.
     /// </summary>
     public string ImportCookiesPath { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit les éléments de l'onglet « Santé » que l'utilisateur a écartés (« ce n'est pas un problème ») : ils ne sont plus signalés.
+    /// Chaque entrée identifie un contrôle et les chemins concernés ; si ces chemins changent, l'élément est de nouveau signalé.
+    /// </summary>
+    public List<string> HealthIgnored { get; set; }
 }

@@ -189,7 +189,9 @@ public static class NameTools
 
             if (char.IsLetterOrDigit(c))
             {
-                sb.Append(char.ToLowerInvariant(c));
+                // Ligatures : « CŒUR » et « COEUR » ont la même clé.
+                var lower = char.ToLowerInvariant(c);
+                sb.Append(lower switch { 'œ' => "oe", 'æ' => "ae", 'ß' => "ss", _ => lower.ToString() });
             }
         }
 

@@ -36,10 +36,10 @@ public static class DuplicateMatcher
     private static readonly Regex Brackets = new(@"[\(\[\{（【]([^\)\]\}）】]*)[\)\]\}）】]", RegexOptions.Compiled);
     private static readonly Regex Featuring = new(@"\s+(feat\.?|ft\.?|featuring|avec)\s.*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     // Tiret séparateur : espacé des deux côtés, ou au moins d'un (« Titre -Archetype Mix Ver. ») ; « Spider-Man » n'est pas coupé.
-    private static readonly Regex Dash = new(@"\s+[-–—|]\s*|\s*[-–—|]\s+", RegexOptions.Compiled);
+    private static readonly Regex Dash = new(@"\s+[-‐‑–—|]\s*|\s*[-‐‑–—|]\s+", RegexOptions.Compiled);
     private static readonly Regex Tildes = new(@"[～~〜]([^～~〜]+)[～~〜]", RegexOptions.Compiled);
-    private static readonly Regex GuestBracket = new(@"^\s*(feat\.?|ft\.?|featuring|with|avec)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex SourceTail = new(@"^\s*(from|de|du|des|extrait|taken from|tiré)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex GuestBracket = new(@"^\s*(feat\.?|ft\.?|featuring|with|avec|prod\.?|produced)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex SourceTail = new(@"^\s*(from|de|du|des|extrait|taken from|tiré|theme from|bande originale|ost|original soundtrack|original motion picture)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex ArtistSplit = new(@"\s*(?:,|;|&|/|\+|\bx\b|\bvs\.?(?=\s)|\bfeat\.?|\bft\.?(?=\s)|\bfeaturing\b|\bwith\b|\band\b|\bet\b)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex ArtistNoise = new(@"(\s*-\s*topic|vevo|\s+official)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Numbered = new(@"\b(part|pt|vol|volume|chapter|chapitre|no|n°|op|act|acte)\.?\s*\d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -113,8 +113,17 @@ public static class DuplicateMatcher
         t = Brackets.Replace(t, m =>
         {
             var inner = m.Groups[1].Value;
+
+            // Mention de la source (« (from the series Arcane) », « (Bande originale du film) ») ou des invités : sans importance.
+            if (SourceTail.IsMatch(inner) || GuestBracket.IsMatch(inner))
+            {
+                return " ";
+            }
+
             if (AddMarkers(inner, markers))
             {
+                // « (rain, instrumental version) » : la mention de version est retenue, et ses autres mots aussi.
+                AddExtra(inner, extra);
                 return " ";
             }
 
@@ -123,12 +132,9 @@ public static class DuplicateMatcher
                 return " " + inner + " ";
             }
 
-            if (!IsNoise(inner) && !GuestBracket.IsMatch(inner))
+            if (!IsNoise(inner))
             {
-                foreach (var w in Words.Matches(inner).Select(x => NameTools.TitleKey(x.Value)).Where(w => w.Length > 0 && !NoiseWords.Contains(w)))
-                {
-                    extra.Add(w);
-                }
+                AddExtra(inner, extra);
             }
 
             return " ";
@@ -146,8 +152,23 @@ public static class DuplicateMatcher
 
             for (var i = parts.Count - 1; i >= 1; i--)
             {
-                if (AddMarkers(parts[i], markers) || IsNoise(parts[i]) || SourceTail.IsMatch(parts[i]))
+                // L'artiste en queue (« Gustave - Lorien Testard ») tombe comme en tête.
+                var tail = ArtistKey(ArtistNoise.Replace(parts[i], string.Empty));
+                if (tail.Length > 0 && (tail == full || artists.Contains(tail)))
                 {
+                    parts.RemoveAt(i);
+                    continue;
+                }
+
+                if (SourceTail.IsMatch(parts[i]) || IsNoise(parts[i]))
+                {
+                    parts.RemoveAt(i);
+                    continue;
+                }
+
+                if (AddMarkers(parts[i], markers))
+                {
+                    AddExtra(parts[i], extra);
                     parts.RemoveAt(i);
                 }
             }
@@ -210,10 +231,14 @@ public static class DuplicateMatcher
             return false;
         }
 
-        // Deux mentions descriptives différentes (« (Intro) » / « (Start a Band) ») : deux morceaux ; l'une peut compléter l'autre.
-        if (a.Extra.Count > 0 && b.Extra.Count > 0 && !a.Extra.IsSubsetOf(b.Extra) && !b.Extra.IsSubsetOf(a.Extra))
+        // Mentions descriptives : « (Intro) » / « (Start a Band) », « Lune » / « Lune (music box) », « The Land » / « The Land (Choir) » font
+        // des morceaux distincts ; l'une peut seulement compléter l'autre (« (We Never Run) » / « (We Never Run) (Extended Credits) » non).
+        if (a.Extra.Count != b.Extra.Count || !a.Extra.SetEquals(b.Extra))
         {
-            return false;
+            if (a.Extra.Count == 0 || b.Extra.Count == 0 || (!a.Extra.IsSubsetOf(b.Extra) && !b.Extra.IsSubsetOf(a.Extra)))
+            {
+                return false;
+            }
         }
 
         if (a.Title == b.Title)
@@ -237,8 +262,19 @@ public static class DuplicateMatcher
             return true;
         }
 
-        // Fautes de frappe, apostrophes ou espaces différents (« Dont Stop Me Now » / « Don't Stop Me Now »).
-        return s.Length >= 5 && Similarity(s, l) >= 0.85;
+        // Faute de frappe (« Prise De Consciense » / « Prise de conscience ») : un seul mot diffère, de peu, et commence par la même lettre.
+        // Une ressemblance globale ne suffit pas : « L'Amour d'un Père » / « L'Amour d'une Mère », « 脱出 » / « 逃走 » sont des morceaux distincts.
+        // (Apostrophes, ponctuation et espaces ne comptent déjà pas : « Dont Stop Me Now » et « Don't Stop Me Now » ont la même clé.)
+        if (a.TitleWords.Count != b.TitleWords.Count)
+        {
+            return false;
+        }
+
+        var differing = a.TitleWords.Zip(b.TitleWords).Where(p => p.First != p.Second).ToList();
+        return differing.Count == 1
+            && differing[0].First.Length >= 5 && differing[0].Second.Length >= 5
+            && differing[0].First[0] == differing[0].Second[0]
+            && Similarity(differing[0].First, differing[0].Second) >= 0.75;
     }
 
     /// <summary>
@@ -311,6 +347,14 @@ public static class DuplicateMatcher
         }
 
         return found;
+    }
+
+    private static void AddExtra(string text, HashSet<string> extra)
+    {
+        foreach (var w in Words.Matches(text).Select(x => NameTools.TitleKey(x.Value)).Where(w => w.Length > 0 && !NoiseWords.Contains(w) && !MarkerWords.ContainsKey(w)))
+        {
+            extra.Add(w);
+        }
     }
 
     private static bool IsNoise(string text)

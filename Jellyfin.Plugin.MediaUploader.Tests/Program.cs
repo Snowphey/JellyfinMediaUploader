@@ -304,6 +304,26 @@ True("distinct : reprise", !Dup("Andrew Prahlow", "Outer Wilds - Reprise", "Andr
 True("distinct : ～EDM ARRANGE VER.～", !Dup("Jin Hashimoto", "CRAZY NOISY BIZARRE TOWN ～EDM ARRANGE VER.～", "Jin Hashimoto", "CRAZY NOISY BIZARRE TOWN"));
 True("distinct : -Archetype Mix Ver.", !Dup("Coda", "JOJO SONO CHINO SADAME -Archetype Mix Ver.", "Coda", "JOJO SONO CHINO SADAME"));
 True("distinct : sous-titre après tiret", !Dup("Hiroaki Tsutsumi", "Jujutsu Sorcerer - Nobara Kugisaki", "Hiroaki Tsutsumi", "Jujutsu Sorcerer"));
+// Cas réels (onglet Santé d'une vraie bibliothèque) : faux doublons…
+True("distinct : 脱出 / 逃走 -another version-", !Dup("ATLUS Sound Team", "脱出 -another version-", "ATLUS Sound Team", "逃走 -another version-"));
+True("distinct : (intro) d'un seul côté", !Dup("d4vd", "Remember Me (intro)", "d4vd", "Remember Me"));
+True("distinct : L'Amour d'un Père / d'une Mère", !Dup("Lorien Testard", "L’Amour d’un Père", "Lorien Testard", "L’Amour d’une Mère"));
+True("distinct : (music box)", !Dup("Lorien Testard", "Lune (music box)", "Lorien Testard", "Lune"));
+True("distinct : (music box) / - Artiste", !Dup("Lorien Testard", "Gustave (music box)", "Lorien Testard", "Gustave - Lorien Testard"));
+True("distinct : Masque de Colère / de Joie", !Dup("Lorien Testard", "Visages ‐ Aria pour un Masque de Colère", "Lorien Testard", "Visages ‐ Aria pour un Masque de Joie"));
+True("distinct : Gestral Market / Arena", !Dup("Lorien Testard", "Gestral Village ‐ Gestral Market", "Lorien Testard", "Gestral Village ‐ Gestral Arena"));
+True("distinct : -rain, instrumental version-", !Dup("Lyn", "Beneath the Mask -instrumental version-", "Lyn", "Beneath the Mask -rain, instrumental version-"));
+True("distinct : (Solo)", !Dup("Olivier Deriviere", "The Depart", "Olivier Deriviere", "The Depart (Solo)"));
+True("distinct : (Bouzouki) / (Choir)", !Dup("Olivier Deriviere", "The Land (Bouzouki)", "Olivier Deriviere", "The Land (Choir)"));
+True("distinct : (opening title version)", !Dup("Imagine Dragons", "Enemy (opening title version)", "Imagine Dragons", "Enemy"));
+True("distinct : (Interlude)", !Dup("Damso", "THEVIE RADIO (Interlude)", "Damso", "Φ. THEVIE RADIO"));
+// … et vrais doublons.
+True("même : - Artiste en queue", Dup("Lorien Testard", "Alicia - Lorien Testard", "Lorien Testard", "Alicia"));
+True("même : faute de frappe sur un mot", Dup("Damso", "Prise De Consciense", "Damso", "Prise de conscience"));
+True("même : (feat. …) du titre", Dup("Daft Punk", "Get Lucky (feat. Pharrell Williams and Nile Rodgers)", "Daft Punk", "Get Lucky"));
+True("même : - from the series …", Dup("King Princess", "Fantastic - from the series Arcane League of Legends", "King Princess", "Fantastic"));
+True("même : ponctuation (It's Called: Freefall)", Dup("Rainbow Kitten Surprise", "It's Called: Freefall", "Rainbow Kitten Surprise", "It's Called Freefall"));
+True("même : COEUR / CŒUR", Dup("Damso", "COEUR EN MIETTES", "Damso", "CŒUR EN MIETTES"));
 // … et vrais doublons à garder.
 True("même : - From Saturday Night Fever Soundtrack", Dup("Bee Gees", "Stayin' Alive - From Saturday Night Fever Soundtrack", "Bee Gees", "Stayin Alive"));
 True("même : sous-titre complété", Dup("Arcane", "Renegade (We Never Run) (from the series Arcane League of Legends)", "Arcane", "Renegade (We Never Run)"));

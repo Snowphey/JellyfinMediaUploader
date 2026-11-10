@@ -227,6 +227,7 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | GET / POST | `/MediaUploader/Library/Trash` · `/Library/Trash/Restore` · `/Library/Trash/Purge` | Corbeille : contenu, restauration, purge (administrateurs) |
 | GET | `/MediaUploader/Library/Health` | Anomalies de toutes les bibliothèques (`Music` : artistes et albums répartis, morceaux en double) |
 | POST | `/MediaUploader/Library/Duplicates/Resolve` | Garde une copie d'un morceau en double, retire les autres : `{root, keep, remove}` ; les listes de lecture renvoient vers la copie gardée |
+| POST | `/MediaUploader/Library/Health/Ignore` | Écarte un élément de l'onglet Santé (`{key}`), le fait réapparaître (`{key, restore: true}`) ou les fait tous réapparaître (`{reset: true}`) |
 | GET / PUT | `/MediaUploader/Rules` | Lit / enregistre les règles de détection (administrateurs) |
 | POST | `/MediaUploader/Rules/Test` | Essaie des noms de fichiers sur les règles (administrateurs) |
 
@@ -293,6 +294,8 @@ là où l'interface de Jellyfin est laborieuse :
   - **albums répartis entre plusieurs artistes** (chaque morceau rangé sous ses invités) : « Regrouper » leur donne le même album et le même artiste de l'album (l'artiste commun, sinon « Various Artists ») ; un titre courant (« Greatest Hits ») d'artistes sans rapport n'est pas signalé ;
   - **morceaux en double** (même comparaison souple qu'à l'envoi, d'après l'index de Jellyfin) : la copie conseillée est sans perte, sinon la plus grosse ; les autres vont à la corbeille ;
   - **listes de lecture préservées** : un morceau déplacé ou regroupé reste à sa place dans les listes de lecture de tous les utilisateurs, et une copie retirée y est remplacée par la copie gardée (sans doublon si la liste la contenait déjà). Avec l'actualisation « Aucune », les listes sont réparées dès que Jellyfin a scanné les fichiers déplacés (jusqu'à 24 h).
+
+  - **« Ignorer »** sur chaque élément signalé (ce n'est pas un problème : deux morceaux différents, un dossier vide voulu…) : il n'est plus affiché, pour tous les administrateurs ; « Tout réafficher » en bas de page annule. Si les dossiers ou fichiers concernés changent, l'élément est de nouveau signalé.
 
   Et aussi : albums probablement coupés en deux (avec bouton de fusion), dossiers sans pochette (un morceau seul avec pochette intégrée n'est pas signalé ; contrôle réservé à la musique), dossiers vides, fichiers partiels abandonnés, fichiers d'extension inconnue.
 

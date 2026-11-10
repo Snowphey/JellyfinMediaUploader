@@ -126,6 +126,19 @@ public class LibraryDuplicateRequest
     public List<string>? Remove { get; set; }
 }
 
+/// <summary>Élément de l'onglet « Santé » à écarter ou à faire réapparaître.</summary>
+public class LibraryHealthIgnoreRequest
+{
+    /// <summary>Gets or sets l'identifiant de l'élément (contrôle et chemins concernés).</summary>
+    public string? Key { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether l'élément est de nouveau signalé (au lieu d'être écarté).</summary>
+    public bool Restore { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether tous les éléments écartés sont de nouveau signalés.</summary>
+    public bool Reset { get; set; }
+}
+
 /// <summary>Lecture ou modification des tags des morceaux d'éléments (fichiers ou dossiers entiers).</summary>
 public class LibraryTagsRequest
 {
@@ -794,7 +807,50 @@ public class LibraryController : MediaUploaderControllerBase
             Report = LibraryFs.Health(r, kindOf, IsBusy, DateTime.UtcNow, r.Key == "music", r.Key == "music" ? LibraryTags.HasCover : null),
             Music = r.Key == "music" ? MusicHealth.Analyze(r.Path, LibraryMusicIndex.Under(r.Path), System.IO.File.Exists, FileSize) : null
         }).ToList();
-        return Ok(new { Reports = reports });
+        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>() });
+    }
+
+    /// <summary>
+    /// Écarte un élément de l'onglet « Santé » (il n'est plus signalé), le fait réapparaître, ou fait réapparaître tous les éléments écartés.
+    /// </summary>
+    /// <param name="request">Élément et action.</param>
+    /// <returns>Éléments écartés.</returns>
+    [HttpPost("Library/Health/Ignore")]
+    public ActionResult HealthIgnore([FromBody] LibraryHealthIgnoreRequest request)
+    {
+        if (!CanMove)
+        {
+            return Forbid();
+        }
+
+        var key = request.Key?.Trim();
+        if (!request.Reset && (string.IsNullOrEmpty(key) || key.Length > 8000))
+        {
+            return BadRequest(new { error = "Élément invalide." });
+        }
+
+        var config = Config;
+        var list = config.HealthIgnored ?? new List<string>();
+        if (request.Reset)
+        {
+            list.Clear();
+        }
+        else if (request.Restore)
+        {
+            list.Remove(key!);
+        }
+        else if (!list.Contains(key!, StringComparer.Ordinal))
+        {
+            list.Add(key!);
+            if (list.Count > 5000)
+            {
+                list.RemoveAt(0);
+            }
+        }
+
+        config.HealthIgnored = list;
+        Plugin.Instance!.UpdateConfiguration(config);
+        return Ok(new { Ignored = list });
     }
 
     /// <summary>

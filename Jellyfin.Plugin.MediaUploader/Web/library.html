@@ -948,6 +948,7 @@
     return api('GET', 'Library/Health').then(function (res) {
       if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
       L.health = list(pick(res.body, 'Reports'));
+      L.ignored = list(pick(res.body, 'Ignored'));
       renderHealth();
     }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
   }
@@ -960,9 +961,27 @@
     main.appendChild(h('div', { class: 'bar' }, [h('strong', { text: 'Santé des bibliothèques' }), h('button', { type: 'button', class: 'secondary small', text: 'Réanalyser', onclick: openHealth })]));
     var total = 0;
 
+    // Éléments écartés (« ce n'est pas un problème ») : identifiés par le contrôle et les chemins concernés ; si ceux-ci changent, l'élément revient.
+    var ignored = {}, hidden = 0;
+    list(L.ignored).forEach(function (k) { ignored[k] = true; });
+    function hkey(kind, paths) { return kind + '|' + paths.slice().sort().join('\n'); }
+    function visible(k) { if (ignored[k]) { hidden++; return false; } return true; }
+    function setIgnored(body) {
+      api('POST', 'Library/Health/Ignore', body).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        L.ignored = list(pick(res.body, 'Ignored'));
+        renderHealth();
+      }).catch(function (e) { toast(e.message, true); });
+    }
+    function ignoreBtn(k) { return cMove ? h('button', { type: 'button', class: 'secondary small', style: 'margin-left:.4em', title: 'Ce n\'est pas un problème : ne plus le signaler (réversible en bas de page)', text: 'Ignorer', onclick: function () { setIgnored({ key: k }); } }) : null; }
+
     // Une section par type d'anomalie, avec les bibliothèques concernées dedans.
     function section(title, hint, pickList, opts) {
-      var groups = L.health.map(function (r) { return { key: pick(r, 'Key'), label: pick(r, 'Label'), items: pickList(pick(r, 'Report'), pick(r, 'Key')) }; }).filter(function (g) { return g.items.length; });
+      var groups = L.health.map(function (r) {
+        var lib = pick(r, 'Key');
+        var items = pickList(pick(r, 'Report'), lib).filter(function (p) { return !opts.kind || visible(hkey(opts.kind + ':' + lib, [p])); });
+        return { key: lib, label: pick(r, 'Label'), items: items };
+      }).filter(function (g) { return g.items.length; });
       var count = groups.reduce(function (a, g) { return a + g.items.length; }, 0);
       total += count;
       var box = h('div', { class: 'box healthlist' }, [h('strong', { text: title + ' (' + count + ')' }), h('div', { class: 'muted', text: hint })]);
@@ -974,7 +993,7 @@
         ]));
         var listBox = h('div', { class: 'dlist' });
         g.items.slice(0, 200).forEach(function (p) {
-          listBox.appendChild(h('div', {}, [h('a', { text: p, onclick: function () { openRoot(g.key, opts.folder ? p : parentOf(p)); } }), opts.cover && cMove ? h('button', { type: 'button', class: 'small', style: 'margin-left:.6em', text: 'Chercher la pochette…', onclick: function () { coverDialog(p, openHealth); } }) : null]));
+          listBox.appendChild(h('div', {}, [h('a', { text: p, onclick: function () { openRoot(g.key, opts.folder ? p : parentOf(p)); } }), opts.cover && cMove ? h('button', { type: 'button', class: 'small', style: 'margin-left:.6em', text: 'Chercher la pochette…', onclick: function () { coverDialog(p, openHealth); } }) : null, opts.kind ? ignoreBtn(hkey(opts.kind + ':' + g.key, [p])) : null]));
         });
         box.appendChild(listBox);
       });
@@ -986,14 +1005,15 @@
     L.health.forEach(function (r) { if (pick(r, 'Key') === 'music' && pick(r, 'Music')) { music = pick(r, 'Music'); } });
     if (music) {
       var link = function (p) { return h('div', { style: 'margin-left:1em' }, [h('a', { text: '📁 ' + p, onclick: function () { openRoot('music', p); } })]); };
-      var groupBox = function (title, hint, groups, button) {
+      var groupBox = function (title, hint, groups, button, kind) {
+        groups = groups.filter(function (g) { return visible(hkey(kind, list(pick(g, 'Items')))); });
         total += groups.length;
         var box = h('div', { class: 'box healthlist' }, [h('strong', { text: title + ' (' + groups.length + ')' }), h('div', { class: 'muted', text: hint })]);
         if (!groups.length) { box.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); return box; }
         groups.slice(0, 200).forEach(function (g) {
           box.appendChild(h('div', { class: 'bar' }, [
             h('div', { class: 'grow' }, [h('div', { text: pick(g, 'Name') })].concat(list(pick(g, 'Items')).map(link))),
-            cMove ? button(g) : null
+            h('div', {}, [cMove ? button(g) : null, ignoreBtn(hkey(kind, list(pick(g, 'Items'))))])
           ]));
         });
         return box;
@@ -1001,14 +1021,15 @@
       main.appendChild(groupBox('Artistes répartis sur plusieurs dossiers',
         'Le même artiste principal a plusieurs dossiers (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan »). Regrouper écrit « artiste de l\'album » dans les tags et range ses morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas et les listes de lecture suivent.',
         list(pick(music, 'ScatteredArtists')),
-        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist') }); } }); }));
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist') }); } }); }, 'artists'));
       main.appendChild(groupBox('Albums répartis entre plusieurs artistes',
         'Le même album est rangé sous plusieurs artistes (chaque morceau sous ses propres invités) : Jellyfin en montre plusieurs. Regrouper donne à tous ses morceaux le même album et le même « artiste de l\'album » (l\'artiste commun, sinon « Various Artists »).',
         list(pick(music, 'ScatteredAlbums')),
-        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { merge: true, album: pick(g, 'Album'), albumArtist: pick(g, 'Artist') }); } }); }));
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { merge: true, album: pick(g, 'Album'), albumArtist: pick(g, 'Artist') }); } }); }, 'albums'));
 
       // Morceaux en double : une copie gardée (sans perte, sinon la plus grosse, proposée d'office), les autres à la corbeille.
-      var songs = list(pick(music, 'DuplicateSongs'));
+      var songKey = function (g) { return hkey('songs', list(pick(g, 'Copies')).map(function (c) { return pick(c, 'Path'); })); };
+      var songs = list(pick(music, 'DuplicateSongs')).filter(function (g) { return visible(songKey(g)); });
       total += songs.length;
       var dupSongs = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Morceaux en double (' + songs.length + ')' }),
         h('div', { class: 'muted', text: 'Le même morceau (même artiste, même titre, même version) est présent plusieurs fois. Choisissez la copie à garder : les autres vont à la corbeille, et les listes de lecture qui les contenaient renvoient vers la copie gardée, à la même place.' })]);
@@ -1040,7 +1061,7 @@
             }).catch(function (e) { ok.disabled = false; toast(e.message, true); });
           });
         } }) : null;
-        dupSongs.appendChild(h('div', { class: 'bar' }, [h('div', { class: 'grow' }, [h('div', { text: pick(g, 'Label') })].concat(radios.map(function (r) { return r.row; }))), keepBtn]));
+        dupSongs.appendChild(h('div', { class: 'bar' }, [h('div', { class: 'grow' }, [h('div', { text: pick(g, 'Label') })].concat(radios.map(function (r) { return r.row; }))), h('div', {}, [keepBtn, ignoreBtn(songKey(g))])]));
       });
       main.appendChild(dupSongs);
       if (pick(music, 'Truncated')) { main.appendChild(h('div', { class: 'muted', text: 'Contrôles de la musique partiels : bibliothèque très grande.' })); }
@@ -1050,6 +1071,8 @@
     var dupBox = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Albums probablement coupés en deux' }), h('div', { class: 'muted', text: 'Dossiers voisins dont les noms ne diffèrent que par la ponctuation ou la casse (« X (Official Soundtrack) » et « X: Official Soundtrack »). Jellyfin les affiche comme deux albums.' })]);
     var dups = [];
     L.health.forEach(function (r) { if (pick(r, 'Key') === 'music') { dups = list(pick(pick(r, 'Report'), 'DuplicateAlbums')); } });
+    var splitKey = function (g) { return hkey('albumsplit', list(pick(g, 'Folders')).map(function (f) { return join(pick(g, 'Parent'), f); })); };
+    dups = dups.filter(function (g) { return visible(splitKey(g)); });
     total += dups.length;
     if (!dups.length) { dupBox.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); }
     dups.forEach(function (g) {
@@ -1057,15 +1080,21 @@
       var items = folders.map(function (f) { return join(parent, f); });
       dupBox.appendChild(h('div', { class: 'bar' }, [
         h('div', { class: 'grow' }, [h('div', { text: (parent || 'racine') + ' :' })].concat(folders.map(function (f) { return h('div', { class: 'muted', style: 'margin-left:1em', text: '📁 ' + f }); }))),
-        cMove ? h('button', { type: 'button', class: 'small', text: 'Fusionner…', onclick: function () { tagsDialog(items, { merge: true }); } }) : null
+        h('div', {}, [cMove ? h('button', { type: 'button', class: 'small', text: 'Fusionner…', onclick: function () { tagsDialog(items, { merge: true }); } }) : null, ignoreBtn(splitKey(g))])
       ]));
     });
     main.appendChild(dupBox);
 
-    main.appendChild(section('Dossiers sans pochette', 'Au moins un morceau n\'a ni pochette intégrée, ni image cover / folder / poster dans son dossier (un morceau seul avec pochette intégrée n\'est pas signalé).', function (rep, key) { return key === 'music' ? list(pick(rep, 'NoCover')) : []; }, { folder: true, cover: true }));
-    main.appendChild(section('Dossiers vides', 'Dossiers qui ne contiennent aucun fichier.', function (rep) { return list(pick(rep, 'EmptyDirs')); }, { deletable: true, folder: true }));
+    main.appendChild(section('Dossiers sans pochette', 'Au moins un morceau n\'a ni pochette intégrée, ni image cover / folder / poster dans son dossier (un morceau seul avec pochette intégrée n\'est pas signalé).', function (rep, key) { return key === 'music' ? list(pick(rep, 'NoCover')) : []; }, { folder: true, cover: true, kind: 'nocover' }));
+    main.appendChild(section('Dossiers vides', 'Dossiers qui ne contiennent aucun fichier.', function (rep) { return list(pick(rep, 'EmptyDirs')); }, { deletable: true, folder: true, kind: 'empty' }));
     main.appendChild(section('Fichiers partiels abandonnés', 'Restes d\'envois interrompus (.part, de plus d\'une heure).', function (rep) { return list(pick(rep, 'OrphanParts')); }, { deletable: true }));
-    main.appendChild(section('Fichiers de type inconnu', 'Extension absente des listes du plugin : Jellyfin les ignore probablement.', function (rep) { return list(pick(rep, 'Unknown')); }, {}));
+    main.appendChild(section('Fichiers de type inconnu', 'Extension absente des listes du plugin : Jellyfin les ignore probablement.', function (rep) { return list(pick(rep, 'Unknown')); }, { kind: 'unknown' }));
+    if (hidden) {
+      main.appendChild(h('div', { class: 'box healthlist' }, [h('div', { class: 'bar' }, [
+        h('span', { class: 'muted grow', text: plural(hidden, 'élément écarté (« ce n\'est pas un problème ») n\'est', 'éléments écartés (« ce n\'est pas un problème ») ne sont') + ' pas affiché' + (hidden > 1 ? 's' : '') + '.' }),
+        cMove ? h('button', { type: 'button', class: 'secondary small', text: 'Tout réafficher', onclick: function () { setIgnored({ reset: true }); } }) : null
+      ])]));
+    }
     if (L.health.some(function (r) { return pick(pick(r, 'Report'), 'Truncated'); })) { main.appendChild(h('div', { class: 'muted', text: 'Analyse partielle : une bibliothèque est très grande.' })); }
   }
 
