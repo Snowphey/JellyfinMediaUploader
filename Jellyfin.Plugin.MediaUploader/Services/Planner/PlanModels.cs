@@ -26,6 +26,13 @@ public interface IFileProbe
     /// <param name="path">Chemin complet.</param>
     /// <returns>Tags, ou null si illisibles.</returns>
     TagInfo? ReadTags(string path);
+
+    /// <summary>
+    /// Morceaux déjà connus de la bibliothèque musique (index de Jellyfin), pour chercher les doublons ailleurs que dans le dossier de l'artiste.
+    /// </summary>
+    /// <param name="root">Dossier musique.</param>
+    /// <returns>Chemins complets et tags (vide si inconnu).</returns>
+    IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => Enumerable.Empty<(string, TagInfo)>();
 }
 
 /// <summary>Implémentation réelle : le disque.</summary>
@@ -33,15 +40,21 @@ public sealed class DiskFileProbe : IFileProbe
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, TagInfo? Tags)> TagCache = new();
     private readonly Func<string, TagInfo?>? _tagReader;
+    private readonly Func<string, IReadOnlyList<(string Path, TagInfo Tags)>>? _known;
 
     /// <summary>
     /// Initialise une nouvelle instance de la classe <see cref="DiskFileProbe"/>.
     /// </summary>
     /// <param name="tagReader">Lecteur de tags (null : pas de détection de doublons dans la bibliothèque).</param>
-    public DiskFileProbe(Func<string, TagInfo?>? tagReader = null)
+    /// <param name="known">Morceaux connus de Jellyfin dans un dossier musique (null : seulement le dossier de l'artiste).</param>
+    public DiskFileProbe(Func<string, TagInfo?>? tagReader = null, Func<string, IReadOnlyList<(string Path, TagInfo Tags)>>? known = null)
     {
         _tagReader = tagReader;
+        _known = known;
     }
+
+    /// <inheritdoc />
+    public IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => _known is null ? Enumerable.Empty<(string, TagInfo)>() : _known(root);
 
     /// <inheritdoc />
     public IEnumerable<string> ListFilesDeep(string directory)
@@ -219,7 +232,7 @@ public sealed class ItemOverride
 }
 
 /// <summary>
-/// Doublon détecté pour un morceau : même artiste et même titre (tags, comparés sans casse, accents ni ponctuation).
+/// Doublon détecté pour un morceau : même artiste et même titre (tags, comparés avec souplesse, voir <see cref="DuplicateMatcher"/>).
 /// </summary>
 public sealed class PlanDuplicate
 {
@@ -228,6 +241,13 @@ public sealed class PlanDuplicate
 
     /// <summary>Gets or sets l'origine : "batch" ou "library".</summary>
     public string Source { get; set; } = "library";
+
+    /// <summary>Gets or sets l'identifiant du morceau du lot dont celui-ci est le doublon (origine "batch").</summary>
+    public string? WithId { get; set; }
+
+    /// <summary>Gets or sets le chemin complet du morceau existant (origine "library"), auquel une liste de lecture renverra.</summary>
+    [JsonIgnore]
+    public string? WithPath { get; set; }
 
     /// <summary>Gets or sets a value indicating whether l'utilisateur a forcé l'enregistrement.</summary>
     public bool Forced { get; set; }

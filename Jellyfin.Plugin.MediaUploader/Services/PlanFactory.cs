@@ -69,10 +69,10 @@ public static class PlanFactory
     }
 
     /// <summary>
-    /// Accès au disque, avec lecture des tags (détection des doublons de musique dans la bibliothèque).
+    /// Accès au disque, avec lecture des tags et index des morceaux de Jellyfin (détection des doublons de musique dans la bibliothèque).
     /// </summary>
     /// <returns>Sonde.</returns>
-    public static DiskFileProbe Probe() => new(p => AudioTagReader.ReadInfo(p, Path.GetExtension(p).ToLowerInvariant()));
+    public static DiskFileProbe Probe() => new(p => AudioTagReader.ReadInfo(p, Path.GetExtension(p).ToLowerInvariant()), Library.LibraryMusicIndex.Under);
 
     /// <summary>
     /// Découpe une liste d'extensions séparées par des virgules.

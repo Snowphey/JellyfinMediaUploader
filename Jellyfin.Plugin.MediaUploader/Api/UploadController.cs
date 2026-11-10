@@ -33,6 +33,7 @@ public class UploadController : MediaUploaderControllerBase
     public UploadController(ILibraryManager libraryManager, IActivityManager activityManager, ILogger<UploadController> logger)
     {
         PluginActivity.Attach(activityManager, logger);
+        Services.Library.LibraryMusicIndex.Attach(libraryManager, logger);
         _libraryManager = libraryManager;
         _logger = logger;
     }

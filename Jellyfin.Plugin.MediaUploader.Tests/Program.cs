@@ -278,6 +278,54 @@ var dupLib = Planner.Build(new List<PlanFile> { Song("a", "nouveau.flac", "Artis
 Check("doublon avec la bibliothèque (autre album, autre nom)", (Item(dupLib, "nouveau.flac").Status, Item(dupLib, "nouveau.flac").Duplicate!.With), ("duplicate", "Artiste/Autre Album/Ancien nom.flac"));
 Check("un doublon d'un autre artiste n'est pas signalé", Planner.Build(new List<PlanFile> { Song("a", "n.flac", "Autre", "Mon Titre") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, libFs).Summary.ToReview, 0);
 
+// Doublons souples : mentions YouTube, rééditions, invités, artiste en tête du titre ; les versions différentes restent distinctes.
+bool Dup(string a1, string t1, string a2, string t2) => DuplicateMatcher.Key(a1, t1) is { } k1 && DuplicateMatcher.Key(a2, t2) is { } k2 && DuplicateMatcher.Same(k1, k2);
+True("souple : (Official Video)", Dup("Daft Punk", "One More Time (Official Video)", "Daft Punk", "One More Time"));
+True("souple : - Remastered 2011", Dup("Queen", "Don't Stop Me Now - Remastered 2011", "Queen", "Don’t Stop Me Now"));
+True("souple : artiste en tête du titre", Dup("Daft Punk - Topic", "Daft Punk - Get Lucky [HD]", "Daft Punk, Pharrell Williams", "Get Lucky"));
+True("souple : feat. dans le titre", Dup("Kendrick Lamar", "Money Trees (feat. Jay Rock)", "Kendrick Lamar feat. Jay Rock", "Money Trees"));
+True("souple : un artiste commun suffit", Dup("Daft Punk & Pharrell Williams", "Get Lucky", "Pharrell Williams", "Get Lucky (Radio Edit)"));
+True("souple : article", Dup("The Weeknd", "Blinding Lights", "Weeknd", "Blinding lights"));
+True("souple : coquille", Dup("Stromae", "Alors on danse", "Stromae", "Alors on dance"));
+True("souple : accents et casse", Dup("Édith Piaf", "La Vie en rose", "EDITH PIAF", "la vie en rosé"));
+True("souple : VEVO", Dup("AdeleVEVO", "Adele - Hello", "Adele", "Hello"));
+True("distinct : live", !Dup("Nirvana", "Smells Like Teen Spirit (Live)", "Nirvana", "Smells Like Teen Spirit"));
+True("distinct : remix", !Dup("Daft Punk", "One More Time (Romanthony's Unplugged)", "Daft Punk", "One More Time"));
+True("distinct : club mix", !Dup("Artiste", "Titre (Club Mix)", "Artiste", "Titre"));
+True("même version : original mix", Dup("Artiste", "Titre (Original Mix)", "Artiste", "Titre"));
+True("distinct : part 1 / part 2", !Dup("Pink Floyd", "Another Brick in the Wall, Pt. 1", "Pink Floyd", "Another Brick in the Wall, Pt. 2"));
+True("distinct : autre artiste", !Dup("Adele", "Hello", "Lionel Richie", "Hello"));
+True("distinct : titres proches mais différents", !Dup("Artiste", "Intro", "Artiste", "Outro"));
+True("titre « Live Forever » : pas une version live", Dup("Oasis", "Live Forever", "Oasis", "Live Forever (Remastered)"));
+True("sans artiste : rien", DuplicateMatcher.Key(null, "Titre") is null);
+
+// Doublon dans toute la bibliothèque (index de Jellyfin) : rangé sous un autre artiste, et chemin gardé pour la liste de lecture.
+var idxFs = new FakeFs(new[] { Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a" });
+idxFs.Known.Add((Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a", new TagInfo("Daft Punk, Pharrell Williams", "Ma Playlist", "Get Lucky")));
+var idxDup = Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky (Official Audio)") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxFs);
+Check("doublon dans un autre dossier (index)", (Item(idxDup, "gl.m4a").Status, Item(idxDup, "gl.m4a").Duplicate!.WithPath), ("duplicate", Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a"));
+var idxGone = new FakeFs(Array.Empty<string>());
+idxGone.Known.Add((Music + "/X/disparu.m4a", new TagInfo("Daft Punk", "A", "Get Lucky")));
+Check("index périmé (fichier supprimé) : pas un doublon", Item(Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxGone), "gl.m4a").Status, "ready");
+Check("doublon dans le lot : identifiant du premier", Item(dupBatch, "01-Titre (copie).flac").Duplicate!.WithId, "a");
+
+// Ordre d'une liste de lecture d'après un .m3u : nom de fichier, sans extension, #EXTINF, ou nom « Artiste - Titre ».
+var m3uItems = new List<M3uCandidate>
+{
+    new("a", "Album/01 - One More Time.m4a", "Daft Punk", "One More Time"),
+    new("b", "Get Lucky [abc123].m4a", "Daft Punk, Pharrell Williams", "Get Lucky"),
+    new("c", "Album/03 - Digital Love.flac", "Daft Punk", "Digital Love"),
+    new("d", "x.m4a", "Stromae", "Alors on danse"),
+    new("e", "pas dans la liste.m4a", "Autre", "Autre")
+};
+var m3u = M3uOrder.Match("\uFEFF#EXTM3U\r\n#PLAYLIST:Ma liste\r\n#EXTINF:240,Stromae - Alors On Danse (Radio Edit)\r\nhttp://x/y.mp3\r\n"
+    + "C:\\Music\\Daft Punk\\Discovery\\03 - Digital Love.mp3\r\n/music/01%20-%20One%20More%20Time.m4a\r\n#EXTINF:-1,Inconnu - Rien\r\nrien.mp3\r\n../Pharrell/Daft Punk - Get Lucky.opus\r\n", m3uItems);
+Check("m3u : ordre", m3u.Order.ToArray(), new[] { "d", "c", "a", "b" });
+Check("m3u : entrées, manquantes, nom", (m3u.Entries, string.Join("|", m3u.Missing), m3u.Name), (5, "Inconnu - Rien", "Ma liste"));
+Check("m3u : chaque morceau une seule fois", M3uOrder.Match("01 - One More Time.m4a\n01 - One More Time.m4a\n", m3uItems).Order.ToArray(), new[] { "a" });
+Check("m3u : titre seul (artiste supposé)", M3uOrder.Match("05. Digital Love.mp3\n", m3uItems).Order.ToArray(), new[] { "c" });
+Check("m3u : vide", M3uOrder.Match("#EXTM3U\n", m3uItems).Entries, 0);
+
 // Musiques sans metadata : repérées, regroupables, et reclassées une fois renseignées.
 PlanFile NoTags(string id, string path) => new() { Id = id, ClientPath = path, Analyzed = true, Tags = null };
 var miss = Run(new List<PlanFile> { NoTags("a", "Vrac/01.flac"), NoTags("b", "Vrac/02.flac"), NoTags("c", "Autre/03.flac"), Song("d", "Ok/04.flac", "Vrai", "T"),
@@ -840,11 +888,18 @@ sealed class FakeFs : IFileProbe
         _tags = tags ?? new();
     }
 
-    public IEnumerable<string> ListFilesDeep(string directory) => _files.Where(f => f.StartsWith(directory + "/"));
+    // Chemins comparés avec « / » : les tests passent aussi sous Windows, où Path.Combine met des « \ ».
+    private static string N(string p) => p.Replace('\\', '/');
 
-    public TagInfo? ReadTags(string path) => _tags.TryGetValue(path, out var t) ? t : null;
+    public IEnumerable<string> ListFilesDeep(string directory) => _files.Where(f => f.StartsWith(N(directory) + "/"));
 
-    public bool Exists(string path) => _files.Contains(path);
+    public TagInfo? ReadTags(string path) => _tags.TryGetValue(N(path), out var t) ? t : null;
 
-    public IEnumerable<string> ListFiles(string directory) => _files.Where(f => Path.GetDirectoryName(f) == directory);
+    public bool Exists(string path) => _files.Contains(N(path));
+
+    public IEnumerable<string> ListFiles(string directory) => _files.Where(f => f.LastIndexOf('/') > 0 && f[..f.LastIndexOf('/')] == N(directory));
+
+    public List<(string Path, TagInfo Tags)> Known { get; } = new();
+
+    public IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => Known.Where(k => k.Path.StartsWith(root));
 }

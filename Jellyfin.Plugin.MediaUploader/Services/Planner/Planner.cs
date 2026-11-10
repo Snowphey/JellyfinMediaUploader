@@ -75,7 +75,7 @@ public static class Planner
             PlaceOwn(w, o, fs, taken);
         }
 
-        // 1 bis. Doublons de musique (même artiste et même titre dans les tags), dans le lot et dans la bibliothèque.
+        // 1 bis. Doublons de musique (même artiste et même titre, comparés avec souplesse), dans le lot et dans toute la bibliothèque musique.
         DetectDuplicates(works, o, fs, taken);
 
         // 2. Sous-titres : rattachés à leur vidéo (même dossier, nom de la vidéo), sinon rangés seuls.
@@ -742,60 +742,49 @@ public static class Planner
         }
     }
 
-    private static string? MusicKey(string? artist, string? title)
-    {
-        var a = NameTools.TitleKey(artist);
-        var t = NameTools.TitleKey(title);
-        return a.Length > 0 && t.Length > 0 ? a + "|" + t : null;
-    }
-
     private static void DetectDuplicates(List<Work> works, PlannerOptions o, IFileProbe fs, HashSet<string> taken)
     {
-        var seen = new Dictionary<string, Work>(StringComparer.Ordinal);
-        var library = new Dictionary<string, List<(string Rel, string Key)>>(StringComparer.Ordinal);
+        var seen = new List<(SongKey Key, Work Work)>();
+        LibrarySongs? library = null;
+        var scannedDirs = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var w in works.Where(w => w.Item.Role == "main" && w.IsAudio && !w.Rejected && w.Placed && w.File.Analyzed))
         {
             var title = !Blank(w.Ov?.Title) ? w.Ov!.Title : w.File.Tags?.Title;
-            var key = MusicKey(NameTools.DedupeArtists(w.File.Tags?.Artist) ?? w.Item.Artist, title);
-            if (key is null)
+            var key = DuplicateMatcher.Key(NameTools.DedupeArtists(w.File.Tags?.Artist) ?? w.Item.Artist, title);
+
+            // Artiste corrigé à la main (ou unifié pour l'album) : il compte aussi, pour retrouver « Daft punk » rangé sous « Daft Punk ».
+            var alt = !Blank(w.Item.Artist) && !string.Equals(w.Item.Artist, w.File.Tags?.Artist, StringComparison.OrdinalIgnoreCase) ? DuplicateMatcher.Key(w.Item.Artist, title) : null;
+            if (key is null && alt is null)
             {
                 continue;
             }
 
             PlanDuplicate? dup = null;
-            if (seen.TryGetValue(key, out var first))
+            var first = seen.FirstOrDefault(s => (key is not null && DuplicateMatcher.Same(s.Key, key)) || (alt is not null && DuplicateMatcher.Same(s.Key, alt)));
+            if (first.Work is not null)
             {
-                dup = new PlanDuplicate { With = first.Item.Name, Source = "batch" };
+                dup = new PlanDuplicate { With = first.Work.Item.Name, Source = "batch", WithId = first.Work.Item.Id };
             }
             else
             {
-                seen[key] = w;
+                seen.Add((key ?? alt!, w));
                 var root = w.Item.Root!;
+                library ??= new LibrarySongs(root, fs, o);
+
+                // Fichiers tout juste rangés que Jellyfin n'a pas encore indexés : le dossier de l'artiste est relu sur le disque.
                 var dir = o.MusicStructured && !string.IsNullOrWhiteSpace(w.Item.Artist)
                     ? Path.Combine(root, PathBuilder.SanitizeSegment(w.Item.Artist, "Unknown Artist"))
                     : root;
-                if (!library.TryGetValue(dir, out var known))
+                if (scannedDirs.Add(dir))
                 {
-                    var files = o.MusicStructured && dir != root ? fs.ListFilesDeep(dir) : fs.ListFiles(dir);
-                    known = new List<(string, string)>();
-                    foreach (var path in files.Where(p => o.Audio.Contains(Path.GetExtension(p).ToLowerInvariant())))
-                    {
-                        var tags = fs.ReadTags(path);
-                        var k = MusicKey(NameTools.DedupeArtists(tags?.Artist), tags?.Title);
-                        if (k is not null)
-                        {
-                            known.Add((Path.GetRelativePath(root, path).Replace('\\', '/'), k));
-                        }
-                    }
-
-                    library[dir] = known;
+                    library.AddFolder(dir, o.MusicStructured && dir != root);
                 }
 
-                var hit = known.FirstOrDefault(e => e.Key == key);
-                if (hit.Rel is not null)
+                var hit = (key is null ? null : library.Find(key)) ?? (alt is null ? null : library.Find(alt));
+                if (hit is not null)
                 {
-                    dup = new PlanDuplicate { With = hit.Rel, Source = "library" };
+                    dup = new PlanDuplicate { With = Path.GetRelativePath(root, hit).Replace('\\', '/'), Source = "library", WithPath = hit };
                 }
             }
 
@@ -809,14 +798,108 @@ public static class Planner
             if (w.Ov?.Force == true)
             {
                 dup.Forced = true;
-                w.Item.Notes.Add($"Doublon forcé : même artiste et même titre que « {dup.With} » ({where})");
+                w.Item.Notes.Add($"Doublon forcé : sans doute le même morceau que « {dup.With} » ({where})");
                 Raise(w.Item, "guess");
             }
             else
             {
                 w.Item.Status = "duplicate";
-                w.Item.Notes.Add($"Doublon : même artiste et même titre que « {dup.With} » ({where}). Ne sera pas enregistré, sauf si vous forcez.");
+                w.Item.Notes.Add($"Doublon : sans doute le même morceau que « {dup.With} » ({where}). Il ne sera pas enregistré (une liste de lecture créée avec ce lot renverra vers l'existant), sauf si vous forcez.");
                 taken.Remove(w.Item.DestFull!);
+            }
+        }
+    }
+
+    // Morceaux de la bibliothèque musique, rangés par artiste pour comparer vite : index de Jellyfin, plus les dossiers relus sur le disque.
+    private sealed class LibrarySongs
+    {
+        private readonly Dictionary<string, List<(SongKey Key, string Path)>> _byArtist = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _paths = new(StringComparer.Ordinal);
+        private readonly string _root;
+        private readonly IFileProbe _fs;
+        private readonly PlannerOptions _o;
+
+        public LibrarySongs(string root, IFileProbe fs, PlannerOptions o)
+        {
+            _root = root;
+            _fs = fs;
+            _o = o;
+            foreach (var (path, tags) in fs.KnownMusic(root))
+            {
+                Add(path, tags);
+            }
+        }
+
+        public void AddFolder(string dir, bool deep)
+        {
+            var files = deep ? _fs.ListFilesDeep(dir) : _fs.ListFiles(dir);
+            foreach (var path in files.Where(p => _o.Audio.Contains(Path.GetExtension(p).ToLowerInvariant()) && !_paths.Contains(p)))
+            {
+                var tags = _fs.ReadTags(path);
+                if (tags is not null)
+                {
+                    Add(path, tags);
+                }
+            }
+        }
+
+        public string? Find(SongKey key)
+        {
+            foreach (var bucket in Buckets(key))
+            {
+                if (_byArtist.TryGetValue(bucket, out var list))
+                {
+                    foreach (var (k, path) in list)
+                    {
+                        if (DuplicateMatcher.Same(k, key) && _fs.Exists(path))
+                        {
+                            return path;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // Un morceau est rangé sous chacun de ses artistes, et sous les 4 premières lettres du nom complet (« Daft Punk » / « Daft Punk Official »).
+        private static IEnumerable<string> Buckets(SongKey key)
+        {
+            var all = new HashSet<string>(key.Artists, StringComparer.Ordinal);
+            if (key.ArtistFull.Length > 0)
+            {
+                all.Add(key.ArtistFull);
+            }
+
+            if (key.ArtistFull.Length >= 4)
+            {
+                all.Add("~" + key.ArtistFull[..4]);
+            }
+
+            return all;
+        }
+
+        private void Add(string path, TagInfo tags)
+        {
+            if (!path.StartsWith(_root, StringComparison.Ordinal) || !_paths.Add(path))
+            {
+                return;
+            }
+
+            var key = DuplicateMatcher.Key(NameTools.DedupeArtists(tags.Artist), tags.Title);
+            if (key is null)
+            {
+                return;
+            }
+
+            foreach (var bucket in Buckets(key))
+            {
+                if (!_byArtist.TryGetValue(bucket, out var list))
+                {
+                    _byArtist[bucket] = list = new List<(SongKey, string)>();
+                }
+
+                list.Add((key, path));
             }
         }
     }

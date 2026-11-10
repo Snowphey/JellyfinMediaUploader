@@ -126,6 +126,29 @@ public static class AudioTagReader
         return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title);
     }
 
+    /// <summary>
+    /// Intègre une pochette (couverture avant) à un fichier audio, même sous un nom temporaire.
+    /// </summary>
+    /// <param name="path">Chemin du fichier.</param>
+    /// <param name="originalExtension">Extension d'origine.</param>
+    /// <param name="data">Image.</param>
+    /// <param name="mime">Type de l'image.</param>
+    /// <returns>Null si c'est fait, sinon le message d'erreur.</returns>
+    public static string? WriteCover(string path, string originalExtension, byte[] data, string mime)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(new NamedFile(path, "file" + originalExtension));
+            file.Tag.Pictures = new TagLib.IPicture[] { new TagLib.Picture(new TagLib.ByteVector(data)) { Type = TagLib.PictureType.FrontCover, MimeType = mime } };
+            file.Save();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
     private static string? Clean(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();

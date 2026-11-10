@@ -118,7 +118,7 @@
                         <option value="doubtful">Seulement en cas de doute : envoyer directement si tout est reconnu avec certitude</option>
                         <option value="never">Jamais : envoyer directement, sans aperçu à valider</option>
                     </select>
-                    <div class="fieldDescription">L'API pour scripts n'a jamais de confirmation.</div>
+                    <div class="fieldDescription">L'API pour scripts n'a jamais de confirmation. Les imports (Spotify, YouTube, artistes et albums) attendent toujours la vérification de l'utilisateur, quel que soit ce réglage.</div>
                 </div>
                 <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="muTtl">Conservation d'un lot non confirmé (heures, 1 à 72)</label>
@@ -205,7 +205,7 @@
                         <input id="muImpPlaylist" type="checkbox" is="emby-checkbox" />
                         <span>Créer une liste de lecture Jellyfin pour chaque playlist importée</span>
                     </label>
-                    <div class="fieldDescription">Proposé par défaut à chaque import, modifiable au moment de lancer le téléchargement. La liste apparaît quand Jellyfin a fini de scanner les nouveaux morceaux.</div>
+                    <div class="fieldDescription">Proposé d'office pour un lien de playlist ; nom et visibilité se changent à la vérification du lot, où l'on peut aussi créer une liste pour n'importe quel autre envoi de musique. La liste apparaît quand Jellyfin a fini de scanner les nouveaux morceaux.</div>
                 </div>
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label class="emby-checkbox-label">

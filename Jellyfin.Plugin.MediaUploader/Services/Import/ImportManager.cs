@@ -230,7 +230,7 @@ public static class ImportManager
             }
 
             job.Layout = ImportNaming.NormalizeLayout(layout);
-            batch = new Batch { Id = Guid.NewGuid().ToString("N"), Owner = job.Owner, Mode = "music" };
+            batch = new Batch { Id = Guid.NewGuid().ToString("N"), Owner = job.Owner, Mode = "music", FromImport = true, SuggestedName = job.Title };
             lock (batch.Sync)
             {
                 var number = 0;
@@ -261,10 +261,11 @@ public static class ImportManager
                     }
                 }
 
-                // Seul un utilisateur Jellyfin (pas une clé d'API) peut posséder une liste de lecture.
+                // Seul un utilisateur Jellyfin (pas une clé d'API) peut posséder une liste de lecture ; elle reste modifiable dans l'aperçu.
+                batch.Order = order;
                 if (job.CreatePlaylist && job.Kind == "playlist" && Guid.TryParse(job.Owner, out var userId))
                 {
-                    batch.Playlist = new PlaylistRequest { Name = job.Title, UserId = userId, Public = job.PlaylistPublic, Order = order };
+                    batch.Playlist = new PlaylistRequest { Name = job.Title, UserId = userId, Public = job.PlaylistPublic };
                 }
             }
 

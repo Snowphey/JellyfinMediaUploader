@@ -1304,54 +1304,13 @@ public class LibraryController : MediaUploaderControllerBase
             return BadRequest(new { error = error ?? "Choisissez le dossier d'un album." });
         }
 
-        byte[]? image = null;
-        string label;
-        if (!string.IsNullOrEmpty(request.ImageBase64))
+        var (cover, problem, remote) = await CoverImage.ResolveAsync(request.Source, request.Id, request.Url, request.ImageBase64, _logger, HttpContext.RequestAborted).ConfigureAwait(false);
+        if (cover is null)
         {
-            var text = request.ImageBase64;
-            var comma = text.IndexOf(',', StringComparison.Ordinal);
-            if (text.StartsWith("data:", StringComparison.Ordinal) && comma > 0)
-            {
-                text = text[(comma + 1)..];
-            }
-
-            if (text.Length > 12_000_000)
-            {
-                return BadRequest(new { error = "Image trop grosse (8 Mo au plus)." });
-            }
-
-            try
-            {
-                image = Convert.FromBase64String(text);
-            }
-            catch (FormatException)
-            {
-                return BadRequest(new { error = "Image illisible." });
-            }
-
-            label = "image envoyée";
-        }
-        else if (request.Source == "musicbrainz" && Guid.TryParse(request.Id, out var mbid))
-        {
-            image = await Services.Import.TrackTagger.FetchCoverAsync($"https://coverartarchive.org/release-group/{mbid}/front-1200", HttpContext.RequestAborted, _logger).ConfigureAwait(false)
-                ?? await Services.Import.TrackTagger.FetchCoverAsync($"https://coverartarchive.org/release-group/{mbid}/front-500", HttpContext.RequestAborted, _logger).ConfigureAwait(false);
-            label = "Cover Art Archive (MusicBrainz " + mbid + ")";
-        }
-        else if (request.Source == "itunes" && Services.Import.CoverHosts.Allowed(request.Url, out var iuri))
-        {
-            image = await Services.Import.TrackTagger.FetchCoverAsync(iuri!.ToString(), HttpContext.RequestAborted, _logger).ConfigureAwait(false);
-            label = "iTunes";
-        }
-        else
-        {
-            return BadRequest(new { error = "Choisissez une pochette proposée ou envoyez une image." });
+            return remote ? StatusCode(StatusCodes.Status502BadGateway, new { error = problem }) : BadRequest(new { error = problem });
         }
 
-        var mime = image is null || image.Length > 8 * 1024 * 1024 ? null : Services.Import.CoverHosts.ImageMime(image);
-        if (image is null || mime is null)
-        {
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Image introuvable ou format non pris en charge (JPEG ou PNG)." });
-        }
+        var (image, mime, label) = (cover.Data, cover.Mime, cover.Label);
 
         var saved = false;
         string? savedName = null;

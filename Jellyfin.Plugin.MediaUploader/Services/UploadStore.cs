@@ -44,7 +44,7 @@ public sealed class BatchItem
 }
 
 /// <summary>
-/// Liste de lecture Jellyfin à créer à partir des morceaux d'un import de playlist.
+/// Liste de lecture Jellyfin à créer (ou compléter) avec les morceaux d'un lot, à la confirmation.
 /// </summary>
 public sealed class PlaylistRequest
 {
@@ -57,8 +57,8 @@ public sealed class PlaylistRequest
     /// <summary>Gets a value indicating whether la liste est publique (visible de tous les utilisateurs).</summary>
     public bool Public { get; init; }
 
-    /// <summary>Gets l'ordre voulu : identifiants des éléments du lot, dans l'ordre de la playlist d'origine.</summary>
-    public required IReadOnlyList<string> Order { get; init; }
+    /// <summary>Gets a value indicating whether, pour une liste existante complétée sans .m3u, les morceaux vont en tête (sinon à la fin).</summary>
+    public bool AtTop { get; init; }
 }
 
 /// <summary>
@@ -75,8 +75,29 @@ public sealed class Batch
     /// <summary>Gets or sets le type choisi : "auto", "music", "movie" ou "series".</summary>
     public string Mode { get; set; } = "auto";
 
-    /// <summary>Gets or sets la liste de lecture à créer avec les morceaux de ce lot (import de playlist), ou null.</summary>
+    /// <summary>Gets or sets la liste de lecture à créer avec les morceaux de ce lot, ou null.</summary>
     public PlaylistRequest? Playlist { get; set; }
+
+    /// <summary>Gets or sets l'ordre d'origine des morceaux d'un import (identifiants des éléments), ou null pour l'ordre de l'aperçu.</summary>
+    public IReadOnlyList<string>? Order { get; set; }
+
+    /// <summary>Gets or sets l'ordre imposé par une liste .m3u fournie par l'utilisateur (prioritaire sur <see cref="Order"/>), ou null.</summary>
+    public M3uResult? M3u { get; set; }
+
+    /// <summary>Gets or sets le nom du fichier .m3u fourni.</summary>
+    public string? M3uFile { get; set; }
+
+    /// <summary>Gets or sets le contenu du fichier .m3u fourni (pour réordonner une liste de lecture existante), ou null.</summary>
+    public string? M3uText { get; set; }
+
+    /// <summary>Gets or sets le nom proposé pour une liste de lecture (titre de l'import), ou null.</summary>
+    public string? SuggestedName { get; set; }
+
+    /// <summary>Gets a value indicating whether le lot vient d'un import (Spotify, YouTube, navigation) : il attend toujours une confirmation.</summary>
+    public bool FromImport { get; init; }
+
+    /// <summary>Gets les chemins des morceaux déjà rangés, par identifiant (pour relier les doublons du lot à une liste de lecture), sous <see cref="Sync"/>.</summary>
+    public Dictionary<string, string> SavedPaths { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Gets or sets la date de dernière activité (UTC).</summary>
     public DateTime LastActivity { get; set; } = DateTime.UtcNow;

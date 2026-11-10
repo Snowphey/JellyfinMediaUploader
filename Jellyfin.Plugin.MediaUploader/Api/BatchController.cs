@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using Jellyfin.Plugin.MediaUploader.Services;
 using Jellyfin.Plugin.MediaUploader.Services.Import;
+using Jellyfin.Plugin.MediaUploader.Services.Library;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Activity;
 using MediaBrowser.Controller.Playlists;
@@ -38,6 +39,7 @@ public class BatchController : MediaUploaderControllerBase
     public BatchController(ILibraryManager libraryManager, IPlaylistManager playlistManager, IActivityManager activityManager, ILogger<BatchController> logger)
     {
         PluginActivity.Attach(activityManager, logger);
+        Services.Library.LibraryMusicIndex.Attach(libraryManager, logger);
         _libraryManager = libraryManager;
         _playlistManager = playlistManager;
         _logger = logger;
@@ -350,6 +352,12 @@ public class BatchController : MediaUploaderControllerBase
             var wanted = request.ItemIds?.ToHashSet(StringComparer.Ordinal);
             var selected = plan.Groups.SelectMany(g => g.Items).Where(i => wanted is null || wanted.Contains(i.Id)).ToList();
 
+            // Doublons que l'utilisateur laisse de côté : retirés du lot, et remplacés dans la liste de lecture par le morceau existant.
+            var linkIds = request.LinkIds?.ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
+            var linkItems = plan.Groups.SelectMany(g => g.Items)
+                .Where(i => linkIds.Contains(i.Id) && i.Status == "duplicate" && i.Duplicate is not null && !selected.Contains(i))
+                .ToList();
+
             List<BatchItem> snapshot;
             lock (batch.Sync)
             {
@@ -361,17 +369,51 @@ public class BatchController : MediaUploaderControllerBase
             var results = UploadCommitter.Commit(work, config, _logger);
 
             // Sortent du lot les fichiers rangés, et ceux dont la copie temporaire a disparu après une erreur.
+            var savedNow = new Dictionary<string, string>(StringComparer.Ordinal);
+            var linked = new Dictionary<string, string>(StringComparer.Ordinal);
+            var linkResults = new List<UploadFileResult>();
             lock (batch.Sync)
             {
                 for (var i = 0; i < work.Count; i++)
                 {
                     var tempGone = work[i].Temp is { } t && !System.IO.File.Exists(t);
                     var done = results[i].Status == "saved" || (results[i].Status == "error" && tempGone);
+                    if (results[i].Status == "saved" && results[i].Path is { } savedPath)
+                    {
+                        savedNow[work[i].Item.Id] = savedPath;
+                        batch.SavedPaths[work[i].Item.Id] = savedPath;
+                    }
+
                     if (done && byId.TryGetValue(work[i].Item.Id, out var removed))
                     {
                         batch.Items.Remove(removed);
                         batch.Overrides.Remove(removed.Id);
                     }
+                }
+
+                foreach (var li in linkItems)
+                {
+                    var dup = li.Duplicate!;
+                    var target = dup.Source == "library" ? dup.WithPath : dup.WithId is not null && batch.SavedPaths.TryGetValue(dup.WithId, out var p) ? p : null;
+                    if (target is not null && !System.IO.File.Exists(target))
+                    {
+                        target = null;
+                    }
+
+                    if (target is not null)
+                    {
+                        linked[li.Id] = target;
+                    }
+
+                    if (byId.TryGetValue(li.Id, out var removed))
+                    {
+                        batch.Items.Remove(removed);
+                        batch.Overrides.Remove(removed.Id);
+                        UploadStore.TryDelete(removed.TempPath);
+                    }
+
+                    var message = $"Doublon de « {dup.With} » : non enregistré" + (batch.Playlist is not null && target is not null ? " ; la liste de lecture renvoie vers le morceau existant." : ".");
+                    linkResults.Add(new UploadFileResult(li.Name, "skipped", target, message, dup.Source == "library" ? dup.With : null));
                 }
             }
 
@@ -389,6 +431,11 @@ public class BatchController : MediaUploaderControllerBase
             }
 
             var saved = results.Count(r => r.Status == "saved");
+            if (saved > 0)
+            {
+                LibraryMusicIndex.Invalidate();
+            }
+
             var scanQueued = false;
             if (saved > 0 && (request.Scan ?? config.AutoScan))
             {
@@ -406,19 +453,27 @@ public class BatchController : MediaUploaderControllerBase
                 PluginActivity.Log($"{CurrentUserName} a envoyé {text.What}", "MediaUploaderUpload", CurrentUserId, text.Summary, text.Detail);
             }
 
-            // Import de playlist : la liste de lecture Jellyfin est créée dès que le scan a fait apparaître les morceaux.
-            if (saved > 0 && batch.Playlist is { } playlist)
+            // Liste de lecture : créée (ou complétée) dès que le scan a fait apparaître les morceaux, dans l'ordre d'origine de l'import
+            // (sinon celui de l'aperçu) ; un doublon laissé de côté y figure par le morceau déjà présent dans la bibliothèque.
+            if ((savedNow.Count > 0 || linked.Count > 0) && batch.Playlist is { } playlist)
             {
-                var position = playlist.Order.Select((itemId, index) => (itemId, index)).ToDictionary(x => x.itemId, x => x.index, StringComparer.Ordinal);
-                var paths = work.Select((w, i) => (w.Item.Id, Result: results[i]))
-                    .Where(x => x.Result.Status == "saved" && x.Result.Path is not null && position.ContainsKey(x.Id))
-                    .OrderBy(x => position[x.Id])
-                    .Select(x => x.Result.Path!)
-                    .ToList();
-                PlaylistBuilder.Queue(_libraryManager, _playlistManager, playlist, paths, _logger);
+                // Ordre : fichier .m3u fourni, sinon ordre d'origine de l'import, sinon celui de l'aperçu ; les morceaux absents du .m3u suivent.
+                var previewOrder = plan.Groups.SelectMany(g => g.Items).Where(i => i.Role == "main").Select(i => i.Id).ToList();
+                var order = (batch.M3u?.Order ?? Enumerable.Empty<string>()).Concat(batch.Order ?? previewOrder).ToList();
+                var paths = new List<string>();
+                var seenPaths = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var itemId in order.Concat(savedNow.Keys).Concat(linked.Keys))
+                {
+                    if ((savedNow.TryGetValue(itemId, out var path) || linked.TryGetValue(itemId, out path)) && seenPaths.Add(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+
+                PlaylistBuilder.Queue(_libraryManager, _playlistManager, playlist, paths, _logger, batch.M3u is null ? null : batch.M3uText);
             }
 
-            return new UploadResponse(saved, scanQueued, results);
+            return new UploadResponse(saved, scanQueued, results.Concat(linkResults).ToList());
         }
         finally
         {
@@ -467,6 +522,237 @@ public class BatchController : MediaUploaderControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Choisit la liste de lecture Jellyfin créée (ou complétée, si elle existe déjà sous ce nom) avec les morceaux confirmés du lot.
+    /// </summary>
+    /// <param name="id">Identifiant du lot.</param>
+    /// <param name="request">Nom, visibilité, ou aucune liste.</param>
+    /// <returns>Lot.</returns>
+    [HttpPut("Batch/{id}/Playlist")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<BatchResponse> SetPlaylist(string id, [FromBody] BatchPlaylistRequest request)
+    {
+        var batch = Find(id, out var error);
+        if (batch is null)
+        {
+            return error!;
+        }
+
+        if (!request.Create)
+        {
+            batch.Playlist = null;
+        }
+        else
+        {
+            // La liste appartient au propriétaire du lot ; une clé d'API ne peut pas en posséder.
+            if (!Guid.TryParse(batch.Owner, out var userId))
+            {
+                return BadRequest(new { error = "Une clé d'API ne peut pas posséder de liste de lecture." });
+            }
+
+            var name = (request.Name ?? string.Empty).Trim();
+            if (name.Length == 0 || name.Length > 200)
+            {
+                return BadRequest(new { error = "Donnez un nom à la liste de lecture (200 caractères au plus)." });
+            }
+
+            batch.Playlist = new PlaylistRequest { Name = name, UserId = userId, Public = request.Public, AtTop = request.AtTop };
+        }
+
+        batch.LastActivity = DateTime.UtcNow;
+        lock (batch.Sync)
+        {
+            return BuildResponse(batch, batch.Items.Select(i => i.Id).ToList());
+        }
+    }
+
+    /// <summary>
+    /// Ordre de la liste de lecture d'après un fichier .m3u / .m3u8 : ses entrées sont retrouvées parmi les morceaux du lot
+    /// (nom de fichier, sinon artiste et titre). Un contenu vide revient à l'ordre de l'import (ou de l'aperçu).
+    /// </summary>
+    /// <param name="id">Identifiant du lot.</param>
+    /// <param name="request">Contenu et nom du fichier.</param>
+    /// <returns>Lot.</returns>
+    [HttpPut("Batch/{id}/PlaylistOrder")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<BatchResponse> SetPlaylistOrder(string id, [FromBody] BatchOrderRequest request)
+    {
+        var batch = Find(id, out var error);
+        if (batch is null)
+        {
+            return error!;
+        }
+
+        var text = request.M3u ?? string.Empty;
+        if (text.Length > 2_000_000)
+        {
+            return BadRequest(new { error = "Fichier .m3u trop gros (2 Mo au plus)." });
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            batch.M3u = null;
+            batch.M3uFile = null;
+            batch.M3uText = null;
+        }
+        else
+        {
+            var audio = PlanFactory.Options(Config).Audio;
+            List<M3uCandidate> candidates;
+            lock (batch.Sync)
+            {
+                candidates = batch.Items
+                    .Where(i => audio.Contains(i.Ext))
+                    .Select(i =>
+                    {
+                        batch.Overrides.TryGetValue(i.Id, out var ov);
+                        return new M3uCandidate(i.Id, i.ClientPath, string.IsNullOrWhiteSpace(i.Tags?.Artist) ? ov?.Artist : i.Tags!.Artist, string.IsNullOrWhiteSpace(ov?.Title) ? i.Tags?.Title : ov!.Title);
+                    })
+                    .ToList();
+            }
+
+            var result = M3uOrder.Match(text, candidates);
+            if (result.Entries == 0)
+            {
+                return BadRequest(new { error = "Ce fichier ne contient aucune entrée de liste de lecture (.m3u / .m3u8)." });
+            }
+
+            batch.M3u = result;
+            batch.M3uText = text;
+            batch.M3uFile = string.IsNullOrWhiteSpace(request.FileName) ? "liste.m3u" : Path.GetFileName(request.FileName.Trim());
+        }
+
+        batch.LastActivity = DateTime.UtcNow;
+        lock (batch.Sync)
+        {
+            return BuildResponse(batch, batch.Items.Select(i => i.Id).ToList());
+        }
+    }
+
+    /// <summary>
+    /// Listes de lecture de l'utilisateur, pour compléter l'une d'elles plutôt que d'en créer une nouvelle.
+    /// </summary>
+    /// <returns>Noms.</returns>
+    [HttpGet("Playlists")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult GetPlaylists()
+    {
+        if (!CanUpload)
+        {
+            return Forbid();
+        }
+
+        var userId = CurrentUserId;
+        if (userId == Guid.Empty)
+        {
+            return Ok(new { Names = Array.Empty<string>() });
+        }
+
+        var names = _playlistManager.GetPlaylists(userId)
+            .Where(p => p.OwnerUserId == userId && !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => p.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        return Ok(new { Names = names });
+    }
+
+    /// <summary>
+    /// Cherche des pochettes pour un album du lot (Cover Art Archive et iTunes).
+    /// </summary>
+    /// <param name="artist">Artiste.</param>
+    /// <param name="album">Album.</param>
+    /// <returns>Propositions.</returns>
+    [HttpGet("Batch/Cover/Search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> SearchCovers([FromQuery] string? artist, [FromQuery] string? album)
+    {
+        if (!CanUpload)
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(album) || album.Length > 200 || (artist?.Length ?? 0) > 200)
+        {
+            return BadRequest(new { error = "Indiquez le titre de l'album." });
+        }
+
+        return Ok(new { Candidates = await CoverSearch.SearchAsync(artist?.Trim(), album.Trim(), HttpContext.RequestAborted).ConfigureAwait(false) });
+    }
+
+    /// <summary>
+    /// Intègre une pochette aux morceaux reçus d'un album du lot (avant la confirmation). À l'enregistrement, elle sert aussi de cover.jpg au dossier s'il n'en a pas.
+    /// </summary>
+    /// <param name="id">Identifiant du lot.</param>
+    /// <param name="request">Morceaux et image (proposition choisie, ou image envoyée).</param>
+    /// <returns>Lot.</returns>
+    [HttpPost("Batch/{id}/Cover")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BatchResponse>> SetCover(string id, [FromBody] BatchCoverRequest request)
+    {
+        var batch = Find(id, out var error);
+        if (batch is null)
+        {
+            return error!;
+        }
+
+        var (cover, problem, remote) = await CoverImage.ResolveAsync(request.Source, request.Id, request.Url, request.ImageBase64, _logger, HttpContext.RequestAborted).ConfigureAwait(false);
+        if (cover is null)
+        {
+            return remote ? StatusCode(StatusCodes.Status502BadGateway, new { error = problem }) : BadRequest(new { error = problem });
+        }
+
+        var audio = PlanFactory.Options(Config).Audio;
+        var wanted = request.ItemIds.ToHashSet(StringComparer.Ordinal);
+        List<BatchItem> items;
+        lock (batch.Sync)
+        {
+            items = batch.Items.Where(i => wanted.Contains(i.Id) && i.Complete && i.TempPath is not null && audio.Contains(i.Ext)).ToList();
+        }
+
+        if (items.Count == 0)
+        {
+            return BadRequest(new { error = "Aucun morceau reçu dans cette sélection." });
+        }
+
+        var failed = 0;
+        foreach (var item in items)
+        {
+            await item.Lock.WaitAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+            try
+            {
+                if (AudioTagReader.WriteCover(item.TempPath!, item.Ext, cover.Data, cover.Mime) is { } message)
+                {
+                    failed++;
+                    _logger.LogWarning("MediaUploader: pochette non intégrée à {Name} : {Message}", item.ClientPath, message);
+                }
+                else
+                {
+                    item.Size = item.Received = new FileInfo(item.TempPath!).Length;
+                }
+            }
+            finally
+            {
+                item.Lock.Release();
+            }
+        }
+
+        if (failed == items.Count)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "La pochette n'a pu être intégrée à aucun morceau (détails dans le journal de Jellyfin)." });
+        }
+
+        batch.LastActivity = DateTime.UtcNow;
+        batch.Invalidate();
+        lock (batch.Sync)
+        {
+            return BuildResponse(batch, batch.Items.Select(i => i.Id).ToList());
+        }
+    }
+
     // Crée le fichier partiel au premier morceau, dans la racine de destination du fichier d'après le plan courant.
     private string? EnsureTemp(Batch batch, BatchItem item)
     {
@@ -509,7 +795,22 @@ public class BatchController : MediaUploaderControllerBase
             progress = batch.Items.ToDictionary(i => i.Id, i => new ItemProgress(i.Received, i.Size, i.Complete, i.ImportState, i.ImportMessage), StringComparer.Ordinal);
         }
 
-        return new BatchResponse(batch.Id, ChunkMb(config) * 1024 * 1024, ids, plan, progress);
+        var pl = batch.Playlist;
+        var m3u = batch.M3u;
+        var info = new BatchPlaylistInfo(
+            pl is not null,
+            pl?.Name ?? batch.SuggestedName,
+            pl?.Public ?? config.ImportPlaylistPublic,
+            Guid.TryParse(batch.Owner, out _),
+            batch.FromImport,
+            m3u is not null ? "m3u" : batch.Order is not null ? "import" : "preview",
+            m3u is null ? null : batch.M3uFile,
+            m3u?.Order.Count ?? 0,
+            m3u?.Entries ?? 0,
+            m3u?.Missing.Take(20).ToList(),
+            m3u?.Name,
+            pl?.AtTop ?? false);
+        return new BatchResponse(batch.Id, ChunkMb(config) * 1024 * 1024, ids, plan, progress, info);
     }
 
     private Batch? Find(string id, out ActionResult? error)

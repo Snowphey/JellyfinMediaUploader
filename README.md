@@ -40,7 +40,8 @@ Tests du moteur de détection et du rangement (aucune dépendance à Jellyfin) :
 ## Import par lien et navigation (Spotify, YouTube, artistes et albums)
 
 Un onglet **Lien** et un onglet **Parcourir** s'ajoutent à la page d'upload. Les morceaux téléchargés arrivent dans un lot, avec le même aperçu groupé par album,
-les mêmes corrections et la même confirmation que les fichiers envoyés : rien n'entre dans la bibliothèque avant votre accord (sauf si l'administrateur a choisi la confirmation « seulement en cas de doute » ou « jamais »). Aucune clé d'API n'est nécessaire.
+les mêmes corrections et la même confirmation que les fichiers envoyés : rien n'entre dans la bibliothèque avant votre accord. Un import attend **toujours** cette vérification, même si l'administrateur a réglé la confirmation sur « seulement en cas de doute » ou « jamais » :
+une fois les téléchargements terminés, la page invite à vérifier le lot (retirer ou décocher des morceaux, corriger les tags, ajouter une pochette, choisir la liste de lecture) avant « Confirmer et envoyer ». Aucune clé d'API n'est nécessaire.
 
 - **Lien** : playlist, album ou titre Spotify (les métadonnées sont lues sans clé sur la page d'intégration de Spotify, qui n'expose que les **100 premiers titres** d'une playlist ; chaque titre est ensuite cherché sur YouTube),
   playlist YouTube / YouTube Music, album YouTube Music ou vidéo seule (via [yt-dlp](https://github.com/yt-dlp/yt-dlp)). La liste des morceaux s'affiche : vous décochez ce que vous ne voulez pas,
@@ -57,9 +58,17 @@ les mêmes corrections et la même confirmation que les fichiers envoyés : rien
 3. Le serveur Jellyfin doit pouvoir sortir sur Internet (YouTube, Spotify, musicbrainz.org, coverartarchive.org, github.com pour l'installation des outils).
 4. Réglages : cadence des téléchargements (voir ci-dessous), format audio (M4A par défaut, sans réencodage dans la plupart des cas ; Opus ; MP3), téléchargements simultanés, fichier de cookies facultatif (YouTube Music Premium, ou si YouTube réclame une vérification).
 
-Liste de lecture : pour un lien de **playlist**, une liste de lecture Jellyfin du même nom est créée avec les morceaux confirmés, dans l'ordre d'origine, dès que Jellyfin a scanné les nouveaux fichiers
-(quelques minutes ; si la liste existe déjà, les morceaux manquants y sont ajoutés). Elle appartient à l'utilisateur qui a lancé l'import et est **publique par défaut** (visible de tous) ; une case permet de la garder privée
-au moment du téléchargement, et les deux valeurs par défaut se règlent dans l'onglet Import. Une clé d'API ne peut pas posséder de liste de lecture.
+Liste de lecture : à la vérification de n'importe quel lot de musique (import ou fichiers envoyés), la barre du haut propose de **créer une liste de lecture Jellyfin** avec les morceaux confirmés :
+nom (autocomplétion avec vos listes existantes ; une liste existante du même nom est **complétée**), **publique** (visible de tous) ou **privée**. Pour un lien de **playlist**, elle est proposée d'office sous le nom de la playlist
+(les deux valeurs par défaut se règlent dans l'onglet Import) ; pour un album ou une sélection d'artiste, cochez la case. Les morceaux y sont dans l'ordre d'origine de l'import (sinon dans l'ordre de l'aperçu),
+ou dans celui d'un **fichier `.m3u` / `.m3u8`** (bouton « Ordre : fichier .m3u… ») : chaque entrée est retrouvée parmi les morceaux du lot par nom de fichier (même avec une autre extension), sinon par artiste et titre
+(ligne `#EXTINF` ou nom « Artiste - Titre »), avec la même souplesse que les doublons ; les entrées absentes du lot sont signalées, les morceaux du lot absents du fichier sont placés à la fin. Le nom de la liste est repris du fichier (ou de sa ligne `#PLAYLIST`) s'il n'y en a pas déjà un.
+et la liste apparaît dès que Jellyfin a scanné les nouveaux fichiers (quelques minutes). Un morceau **déjà présent dans la bibliothèque** (voir « Doublons de musique ») n'est pas réimporté : la liste renvoie vers le fichier existant, à sa place dans l'ordre.
+Pour **mettre à jour** une liste, envoyez les nouveaux morceaux en lui donnant le même nom (le champ propose vos listes existantes) : ils sont ajoutés en bas, ou en haut au choix (ceux déjà dans la liste ne sont pas ajoutés deux fois). Si vous fournissez aussi le `.m3u`, **toute la liste** est ensuite remise dans l'ordre du fichier, morceaux déjà présents compris ; ceux que le fichier ne cite pas restent à la fin, et rien n'est retiré.
+Elle appartient à l'utilisateur qui envoie le lot ; une clé d'API ne peut pas posséder de liste de lecture.
+
+Pochette : chaque album de l'aperçu montre la pochette du premier morceau reçu (et, piste par piste, ceux qui n'en ont pas). **Ajouter une pochette** (ou *Changer la pochette*) cherche sur Cover Art Archive (MusicBrainz) et iTunes d'après l'album et l'artiste,
+ou prend une image de votre ordinateur (JPEG ou PNG, 8 Mo au plus) : elle est intégrée à tous les morceaux reçus de l'album avant leur entrée dans la bibliothèque, et sert de `cover.jpg` au dossier s'il n'en a pas. Cela vaut aussi pour les fichiers envoyés.
 
 Cadence (anti-robot) : pour que le serveur ne soit pas pris pour un robot par YouTube, les téléchargements sont espacés d'un délai **aléatoire de 8 à 25 s** (commun à tous les utilisateurs, puisque l'adresse IP est la même),
 plafonnés à **100 par heure** et **400 par jour**, un seul à la fois, avec une pause entre les requêtes internes de yt-dlp. Si YouTube signale une limitation ou une vérification anti-robot, tout est suspendu 30 min
@@ -105,10 +114,18 @@ Un lot non confirmé est conservé 6 h (réglable, 1 à 72 h) puis supprimé ; i
 
 ### Doublons de musique
 
-Deux morceaux sont des doublons s'ils ont le même **artiste et le même titre dans leurs tags**, comparés sans tenir compte de la casse, des accents, des espaces ni de la ponctuation
-(le nom du fichier ne compte pas). La comparaison porte sur les autres fichiers du lot et sur le dossier de l'artiste dans la bibliothèque (tous albums). Un doublon est signalé
-dans l'aperçu et **n'est pas enregistré**, sauf si vous cochez « Forcer l'enregistrement » (par fichier, ou « Forcer les doublons » pour un groupe). Sans titre ou sans artiste dans les tags, rien n'est détecté.
-Pour l'API, `force=true` enregistre quand même. Le contrôle ne vaut que si les tags sont corrects.
+Deux morceaux sont des doublons s'ils ont **au moins un artiste en commun et le même titre** dans leurs tags (le nom du fichier ne compte pas). La comparaison est volontairement **souple**, pour retrouver
+un morceau même quand les métadonnées diffèrent d'une source à l'autre :
+- casse, accents, espaces, ponctuation et apostrophes ignorés ; petites fautes tolérées (« Alors on danse » / « Alors on dance ») ; titre tronqué par une source accepté ;
+- mentions ajoutées par YouTube ou les rééditions retirées : `(Official Video)`, `[HD]`, `(Lyrics)`, `- Remastered 2011`, `(Radio Edit)`… ; invités retirés (`feat. X`, `ft. X`) ;
+- artiste répété en tête du titre (« Daft Punk - Get Lucky ») ; chaînes « - Topic » et « VEVO » ; article en tête de l'artiste (« The Weeknd » / « Weeknd ») ; un seul artiste commun suffit (« Daft Punk, Pharrell Williams » / « Daft Punk »).
+
+Restent **distincts** : une version live, remix (« Club Mix », mais pas « Original Mix »), acoustique, instrumentale, reprise, démo, accélérée…, et une numérotation différente (« Part 1 » / « Part 2 »).
+
+La recherche porte sur les autres fichiers du lot et sur **toute la bibliothèque musique** (index de Jellyfin : aussi un morceau rangé sous un autre artiste ou dans un album « Various Artists »),
+plus le dossier de l'artiste relu sur le disque (morceaux tout juste envoyés, pas encore scannés). Un doublon est signalé dans l'aperçu (« sans doute le même morceau que… ») et **n'est pas enregistré** :
+à la confirmation il quitte le lot, et une liste de lecture créée avec le lot renvoie vers le morceau existant (un groupe qui ne contient que des doublons reste donc coché par défaut ; décochez-le pour le laisser hors de la liste). Pour le garder quand même, cochez « Forcer l'enregistrement » (par fichier, ou « Forcer les doublons » pour un groupe).
+Sans titre ou sans artiste dans les tags, rien n'est détecté. Pour l'API, `force=true` enregistre quand même.
 
 ### Musiques sans metadata
 
@@ -186,7 +203,12 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | PUT | `/MediaUploader/Batch/{id}/Items/{itemId}/Chunk?offset=N` | Envoie un morceau d'un fichier du lot |
 | POST | `/MediaUploader/Batch/{id}/Items/{itemId}/Complete` | Termine un fichier (lit les tags) |
 | DELETE | `/MediaUploader/Batch/{id}/Items/{itemId}` | Retire un fichier du lot |
-| POST | `/MediaUploader/Batch/{id}/Commit` | Confirme : `{itemIds, scan}` ; range les fichiers choisis |
+| POST | `/MediaUploader/Batch/{id}/Commit` | Confirme : `{itemIds, scan, linkIds}` ; range les fichiers choisis (`linkIds` : doublons retirés du lot, remplacés dans la liste de lecture par le morceau existant) |
+| PUT | `/MediaUploader/Batch/{id}/Playlist` | Liste de lecture créée ou complétée à la confirmation : `{create, name, public}` |
+| PUT | `/MediaUploader/Batch/{id}/PlaylistOrder` | Ordre de la liste d'après un `.m3u` : `{m3u, fileName}` (`m3u` vide : ordre de l'import ou de l'aperçu) |
+| GET | `/MediaUploader/Playlists` | Noms des listes de lecture de l'utilisateur |
+| GET | `/MediaUploader/Batch/Cover/Search?artist=&album=` | Pochettes proposées (Cover Art Archive, iTunes) |
+| POST | `/MediaUploader/Batch/{id}/Cover` | Intègre une pochette aux morceaux reçus : `{itemIds, source, id, url}` ou `{itemIds, imageBase64}` |
 | DELETE | `/MediaUploader/Batch/{id}` | Annule le lot |
 | GET | `/MediaUploader/Music/Suggestions?artist=` | Artistes (et albums de l'artiste) déjà présents, pour l'autocomplétion |
 | GET | `/MediaUploader/Library/Titles?kind=` | Titres de films ou séries déjà présents |

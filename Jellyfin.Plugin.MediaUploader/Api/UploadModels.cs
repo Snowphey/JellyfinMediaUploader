@@ -146,7 +146,72 @@ public class CommitRequest
 
     /// <summary>Gets or sets le scan après enregistrement (null = valeur de la config).</summary>
     public bool? Scan { get; set; }
+
+    /// <summary>Gets or sets les doublons à retirer du lot sans les enregistrer : la liste de lecture éventuelle renvoie vers le morceau existant.</summary>
+    public List<string>? LinkIds { get; set; }
 }
+
+/// <summary>Liste de lecture à créer avec les morceaux d'un lot.</summary>
+public class BatchPlaylistRequest
+{
+    /// <summary>Gets or sets a value indicating whether une liste de lecture est créée (false : aucune).</summary>
+    public bool Create { get; set; }
+
+    /// <summary>Gets or sets son nom (une liste existante du même nom est complétée).</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether elle est publique.</summary>
+    public bool Public { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether, si la liste existe déjà (et sans .m3u), les morceaux sont ajoutés en tête plutôt qu'à la fin.</summary>
+    public bool AtTop { get; set; }
+}
+
+/// <summary>Ordre de la liste de lecture d'un lot, donné par un fichier .m3u / .m3u8.</summary>
+public class BatchOrderRequest
+{
+    /// <summary>Gets or sets le contenu du fichier (vide : revenir à l'ordre de l'import ou de l'aperçu).</summary>
+    public string? M3u { get; set; }
+
+    /// <summary>Gets or sets le nom du fichier.</summary>
+    public string? FileName { get; set; }
+}
+
+/// <summary>Pochette à intégrer aux morceaux d'un lot.</summary>
+public class BatchCoverRequest
+{
+    /// <summary>Gets or sets les morceaux concernés (un album).</summary>
+    public List<string> ItemIds { get; set; } = new();
+
+    /// <summary>Gets or sets la source choisie : "musicbrainz" ou "itunes" (ignorée si une image est envoyée).</summary>
+    public string? Source { get; set; }
+
+    /// <summary>Gets or sets l'identifiant chez la source (MBID pour "musicbrainz").</summary>
+    public string? Id { get; set; }
+
+    /// <summary>Gets or sets l'adresse de l'image (source "itunes").</summary>
+    public string? Url { get; set; }
+
+    /// <summary>Gets or sets une image envoyée par l'utilisateur (JPEG ou PNG, en base64).</summary>
+    public string? ImageBase64 { get; set; }
+}
+
+/// <summary>
+/// Liste de lecture prévue pour un lot.
+/// </summary>
+/// <param name="Create">Une liste sera créée ou complétée à la confirmation.</param>
+/// <param name="Name">Nom (ou nom proposé).</param>
+/// <param name="Public">Publique.</param>
+/// <param name="Allowed">L'utilisateur peut posséder une liste (faux pour une clé d'API).</param>
+/// <param name="FromImport">Le lot vient d'un import : il attend toujours une confirmation.</param>
+/// <param name="OrderFrom">Origine de l'ordre : "m3u", "import" ou "preview" (ordre de l'aperçu).</param>
+/// <param name="M3uFile">Nom du fichier .m3u fourni.</param>
+/// <param name="M3uMatched">Morceaux du lot retrouvés dans le .m3u.</param>
+/// <param name="M3uEntries">Entrées du .m3u.</param>
+/// <param name="M3uMissing">Entrées du .m3u absentes du lot (20 au plus).</param>
+/// <param name="M3uName">Nom donné par la ligne #PLAYLIST du .m3u.</param>
+/// <param name="AtTop">Liste existante complétée sans .m3u : morceaux ajoutés en tête.</param>
+public record BatchPlaylistInfo(bool Create, string? Name, bool Public, bool Allowed, bool FromImport, string OrderFrom = "preview", string? M3uFile = null, int M3uMatched = 0, int M3uEntries = 0, IReadOnlyList<string>? M3uMissing = null, string? M3uName = null, bool AtTop = false);
 
 /// <summary>
 /// Avancement de l'envoi d'un fichier du lot.
@@ -166,7 +231,8 @@ public record ItemProgress(long Received, long Size, bool Complete, string? Stat
 /// <param name="Ids">Identifiants attribués aux fichiers, dans l'ordre de la demande.</param>
 /// <param name="Plan">Plan de rangement.</param>
 /// <param name="Progress">Avancement par fichier.</param>
-public record BatchResponse(string BatchId, int ChunkSize, IReadOnlyList<string> Ids, Plan Plan, IReadOnlyDictionary<string, ItemProgress> Progress);
+/// <param name="Playlist">Liste de lecture prévue.</param>
+public record BatchResponse(string BatchId, int ChunkSize, IReadOnlyList<string> Ids, Plan Plan, IReadOnlyDictionary<string, ItemProgress> Progress, BatchPlaylistInfo? Playlist = null);
 
 /// <summary>Règles envoyées ou reçues par l'éditeur des paramètres.</summary>
 public class RulesPayload

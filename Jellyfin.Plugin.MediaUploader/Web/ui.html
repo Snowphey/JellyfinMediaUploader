@@ -47,6 +47,9 @@
   .dest { color: #9a9a9a; font-size: .85em; word-break: break-all; margin-top: .1em; }
   .dest.new { color: #7cc4e8; }
   .note { color: #f2c94c; font-size: .82em; margin-top: .1em; }
+  #plM3uNote details { display: inline; margin-left: .4em; }
+  #plM3uNote summary { display: inline; cursor: pointer; text-decoration: underline dotted; }
+  #plM3uNote details[open] > div { max-height: 6.5em; overflow: auto; margin-top: .2em; }
   .pair { color: #b9a6e8; font-size: .85em; margin-top: .1em; word-break: break-all; }
   .edit { background: #1d1d1d; border: 1px solid #333; border-radius: 6px; padding: .6em .8em; margin: .5em 0; display: flex; gap: .8em; flex-wrap: wrap; align-items: end; }
   .edit label { display: flex; flex-direction: column; gap: .2em; font-size: .8em; color: #9a9a9a; }
@@ -96,6 +99,15 @@
   .ptable th { color: #9a9a9a; font-weight: 400; }
   .ok { color: #6fcf97; } .ko { color: #e57373; }
   .imp .fails { color: #e57373; margin-top: .3em; word-break: break-word; }
+  .pl { margin-top: .5em; }
+  .pl label { display: flex; gap: .35em; align-items: center; }
+  .pl input[type=text] { min-width: 14em; flex: 1; max-width: 26em; }
+  .impdone { background: #1d3a2a; color: #cdeedb; border-radius: 6px; padding: .5em .7em; margin: .4em 0; }
+  .cpick { background: #1d1d1d; border: 1px solid #333; border-radius: 6px; padding: .6em .8em; margin: 0 .8em .6em; }
+  .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .6em; margin: .6em 0; }
+  .cand { background: #161616; border: 1px solid #333; padding: .35em; text-align: left; font-size: .78em; color: #ddd; display: flex; flex-direction: column; gap: .25em; }
+  .cand:hover { border-color: #00a4dc; }
+  .cand img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; background: #222; }
 </style>
 </head>
 <body>
@@ -103,7 +115,7 @@
 <div class="muted">Déposez vos fichiers : le serveur les reçoit, lit les tags (musique) et les noms (films, séries, animés), puis vous montre où chaque fichier sera rangé. Par défaut, rien n'entre dans la bibliothèque avant votre confirmation (l'administrateur peut la rendre automatique quand tout est reconnu avec certitude).</div>
 <div id="warn" class="warn" style="display:none"></div>
 
-<datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist>
+<datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist><datalist id="dl-playlists"></datalist>
 
 <div id="pick">
   <div class="tabs" id="tabs" style="display:none">
@@ -113,7 +125,7 @@
   </div>
 
   <div id="tabLink" style="display:none">
-    <div class="muted" style="margin-top:.8em">Collez le lien d'une playlist ou d'un album Spotify, d'une playlist YouTube / YouTube Music, ou d'un album YouTube Music. Vous choisirez les morceaux, puis vérifierez le rangement avant qu'ils entrent dans la bibliothèque.</div>
+    <div class="muted" style="margin-top:.8em">Collez le lien d'une playlist ou d'un album Spotify, d'une playlist YouTube / YouTube Music, ou d'un album YouTube Music. Vous choisirez les morceaux ; une fois téléchargés, vous vérifierez le lot (retirer des morceaux, corriger les tags, ajouter une pochette, créer une liste de lecture) avant qu'ils entrent dans la bibliothèque.</div>
     <div id="impWarn" class="warn" style="display:none"></div>
     <div id="quotaLink" class="muted quota"></div>
     <div class="linkrow">
@@ -176,6 +188,17 @@
       <button id="cancel" type="button" class="danger small">Tout annuler</button>
       <span class="muted" id="ttlnote"></span>
     </div>
+    <div class="line pl" id="plbox" style="display:none">
+      <label><input type="checkbox" id="plOn"> Créer une liste de lecture Jellyfin</label>
+      <input type="text" id="plName" list="dl-playlists" placeholder="Nom de la liste (une liste existante est complétée)" autocomplete="off">
+      <select id="plVis"><option value="public">Publique (visible de tous)</option><option value="private">Privée</option></select>
+      <select id="plPos" title="Où ajouter les morceaux dans la liste existante" style="display:none"><option value="end">Ajouter en bas</option><option value="top">Ajouter en haut</option></select>
+      <button type="button" id="plM3u" class="secondary small" title="Fichier .m3u / .m3u8 qui donne l'ordre des morceaux">Ordre : fichier .m3u…</button>
+      <button type="button" id="plM3uOff" class="secondary small" style="display:none">Retirer le .m3u</button>
+      <input type="file" id="plM3uFile" accept=".m3u,.m3u8,audio/x-mpegurl,audio/mpegurl,application/vnd.apple.mpegurl" style="display:none">
+      <span class="muted" id="plNote"></span>
+    </div>
+    <div class="note" id="plM3uNote" style="display:none"></div>
     <div class="imp" id="importinfo" style="display:none"></div>
   </div>
   <div id="groups"></div>
@@ -201,7 +224,7 @@
     batch: null, files: {}, plan: null, progress: {}, ups: {},
     overrides: {}, include: {}, open: {}, edit: null, sel: {}, sugg: { artists: [], albums: {}, loaded: false, titles: {} },
     phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, mode: 'auto',
-    previews: {}, details: {}
+    previews: {}, details: {}, cover: null, playlistInfo: null, plTimer: null, plNames: null
   };
 
   // ---------- Utilitaires ----------
@@ -347,7 +370,9 @@
   function applyBatch(body) {
     S.plan = pick(body, 'Plan');
     S.progress = pick(body, 'Progress') || {};
+    if (pick(body, 'Playlist') !== undefined) { S.playlistInfo = pick(body, 'Playlist'); }
   }
+  function fromImport() { return !!(S.playlistInfo && pick(S.playlistInfo, 'FromImport')); }
 
   function planItems() {
     var out = [];
@@ -616,8 +641,14 @@
   // ---------- Rendu de l'aperçu ----------
   function isIncluded(g) {
     var key = pick(g, 'Key');
-    if (S.include[key] === undefined) { return pick(g, 'Status') === 'ready'; }
+    if (S.include[key] === undefined) { return pick(g, 'Status') === 'ready' || duplicatesOnly(g); }
     return S.include[key];
+  }
+  // Groupe dont tous les morceaux sont des doublons : rien n'y sera enregistré, mais il reste coché par défaut
+  // pour qu'une liste de lecture créée avec le lot renvoie vers les morceaux déjà présents.
+  function duplicatesOnly(g) {
+    var mains = list(pick(g, 'Items')).filter(function (i) { return pick(i, 'Role') === 'main' && !rejected(i); });
+    return mains.length > 0 && mains.every(function (i) { return pick(i, 'Status') === 'duplicate'; });
   }
 
   function itemState(item) {
@@ -767,9 +798,13 @@
       h('div', {}, [
         h('div', { text: meta.length ? meta.join(' · ') : 'Tags en cours de lecture…' }),
         h('div', { class: 'muted', text: mains.length + ' morceau' + (mains.length > 1 ? 'x' : '') + ' reçu' + (mains.length > 1 ? 's' : '') }),
-        h('button', { type: 'button', class: 'secondary small', style: 'margin-top:.3em', text: open ? 'Masquer le détail des tags' : 'Vérifier les tags piste par piste', onclick: function () { S.details[key] = !open; render(); } })
+        h('div', { class: 'row', style: 'margin:.3em 0 0;gap:.4em' }, [
+          h('button', { type: 'button', class: 'secondary small', text: open ? 'Masquer le détail des tags' : 'Vérifier les tags piste par piste', onclick: function () { S.details[key] = !open; render(); } }),
+          h('button', { type: 'button', class: (first && first.state === 'ready' && !first.cover ? '' : 'secondary ') + 'small', text: first && first.cover ? 'Changer la pochette' : 'Ajouter une pochette', onclick: function () { openCoverPicker(g, mains, d); } })
+        ])
       ])
     ]));
+    if (S.cover && S.cover.key === key) { box.appendChild(coverPicker()); }
     if (open) {
       var rows = mains.map(function (i) {
         var p = previewOf(pick(i, 'Id')), pd = p && p.data;
@@ -782,6 +817,198 @@
         h('tbody', {}, rows)
       ])]));
     }
+  }
+
+
+  // ---------- Pochette d'un album du lot (avant confirmation) ----------
+  function openCoverPicker(g, mains, d) {
+    S.cover = {
+      key: pick(g, 'Key'),
+      ids: mains.filter(function (i) { return !rejected(i); }).map(function (i) { return pick(i, 'Id'); }),
+      album: pick(g, 'Album') || (d && pick(d, 'Album')) || '',
+      artist: pick(g, 'Artist') || (d && (pick(d, 'AlbumArtist') || pick(d, 'Artist'))) || '',
+      candidates: null, busy: false, error: ''
+    };
+    if (S.cover.album) { searchCovers(); } else { render(); }
+  }
+  function searchCovers() {
+    var c = S.cover;
+    if (!c) { return; }
+    if (!c.album.trim()) { c.error = 'Indiquez le titre de l\'album.'; render(); return; }
+    c.busy = true; c.error = ''; c.candidates = null; render();
+    api('GET', 'MediaUploader/Batch/Cover/Search?artist=' + encodeURIComponent(c.artist.trim()) + '&album=' + encodeURIComponent(c.album.trim())).then(function (res) {
+      if (S.cover !== c) { return; }
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      c.candidates = list(pick(res.body, 'Candidates')); c.busy = false; render();
+    }).catch(function (err) { c.busy = false; c.error = err.message; render(); });
+  }
+  function applyCover(body) {
+    var c = S.cover;
+    if (!c || !S.batch) { return; }
+    c.busy = true; c.error = ''; render();
+    body.itemIds = c.ids;
+    api('POST', 'MediaUploader/Batch/' + S.batch.id + '/Cover', body).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      applyBatch(res.body);
+      c.ids.forEach(function (id) { var pv = S.previews[id]; if (pv && pv.cover) { URL.revokeObjectURL(pv.cover); } delete S.previews[id]; });
+      if (S.cover === c) { S.cover = null; }
+      render();
+    }).catch(function (err) { c.busy = false; c.error = err.message; render(); });
+  }
+  function coverPicker() {
+    var c = S.cover;
+    var album = h('input', { type: 'text', value: c.album, placeholder: 'Album', oninput: function (e) { c.album = e.target.value; }, onkeydown: function (e) { if (e.key === 'Enter') { searchCovers(); } } });
+    var artist = h('input', { type: 'text', value: c.artist, placeholder: 'Artiste', oninput: function (e) { c.artist = e.target.value; }, onkeydown: function (e) { if (e.key === 'Enter') { searchCovers(); } } });
+    var file = h('input', { type: 'file', accept: 'image/jpeg,image/png', style: 'display:none', onchange: function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) { return; }
+      if (f.size > 8 * 1048576) { c.error = 'Image trop grosse (8 Mo au plus).'; render(); return; }
+      var reader = new FileReader();
+      reader.onload = function () { applyCover({ imageBase64: String(reader.result) }); };
+      reader.readAsDataURL(f);
+    } });
+    var kids = [
+      h('div', { class: 'muted', text: 'La pochette choisie est intégrée aux ' + c.ids.length + ' morceau' + (c.ids.length > 1 ? 'x' : '') + ' reçu' + (c.ids.length > 1 ? 's' : '') + ' de cet album (elle remplace l\'éventuelle pochette actuelle) ; elle sert aussi de cover.jpg au dossier de l\'album s\'il n\'en a pas.' }),
+      h('div', { class: 'row', style: 'margin:.5em 0;gap:.5em' }, [album, artist,
+        h('button', { type: 'button', class: 'small', disabled: c.busy, text: 'Chercher', onclick: searchCovers }),
+        h('button', { type: 'button', class: 'secondary small', disabled: c.busy, text: 'Image de mon ordinateur…', onclick: function () { file.click(); } }),
+        h('button', { type: 'button', class: 'secondary small', text: 'Fermer', onclick: function () { S.cover = null; render(); } }),
+        file])
+    ];
+    if (c.error) { kids.push(h('div', { class: 'warn', style: 'margin:.3em 0', text: c.error })); }
+    if (c.busy) { kids.push(h('div', { class: 'muted', text: c.candidates ? 'Enregistrement de la pochette…' : 'Recherche sur Cover Art Archive et iTunes…' })); }
+    if (c.candidates && !c.busy) {
+      if (!c.candidates.length) { kids.push(h('div', { class: 'muted', text: 'Aucune pochette trouvée : corrigez l\'album ou l\'artiste, ou choisissez une image de votre ordinateur.' })); }
+      var grid = h('div', { class: 'cgrid' });
+      c.candidates.forEach(function (k) {
+        var img = h('img', { src: pick(k, 'Thumb'), alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+        img.addEventListener('error', function () { if (pick(k, 'Fallback') && img.src !== pick(k, 'Fallback')) { img.src = pick(k, 'Fallback'); } });
+        grid.appendChild(h('button', { type: 'button', class: 'cand', title: 'Choisir cette pochette', onclick: function () {
+          applyCover({ source: pick(k, 'Source'), id: pick(k, 'Id'), url: pick(k, 'Full') });
+        } }, [img, h('strong', { text: pick(k, 'Title') }), h('span', { class: 'muted', text: [pick(k, 'Artist'), pick(k, 'Year'), pick(k, 'Source') === 'itunes' ? 'iTunes' : 'MusicBrainz'].filter(Boolean).join(' · ') })]));
+      });
+      kids.push(grid);
+    }
+    return h('div', { class: 'cpick' }, kids);
+  }
+
+  // ---------- Liste de lecture créée avec le lot ----------
+  function loadPlaylistNames() {
+    if (S.plNames) { return; }
+    S.plNames = [];
+    api('GET', 'MediaUploader/Playlists').then(function (res) {
+      if (res.status === 200 && res.body) { S.plNames = list(pick(res.body, 'Names')); fillList('dl-playlists', S.plNames); }
+    }).catch(function () { /* autocomplétion indisponible */ });
+  }
+  function renderPlaylistBox() {
+    var box = $('plbox'), info = S.playlistInfo;
+    var music = planItems().some(function (i) { return pick(i, 'Kind') === 'music' && pick(i, 'Role') === 'main' && !rejected(i); });
+    if (!info || !pick(info, 'Allowed') || !music || S.committing) { box.style.display = 'none'; $('plM3uNote').style.display = 'none'; return; }
+    box.style.display = '';
+    loadPlaylistNames();
+    if (S.plTimer) { return; } // modification en cours d'envoi : on ne réécrit pas ce que l'utilisateur tape
+    // Case cochée sans nom encore enregistré : brouillon local (le .m3u peut alors donner le nom).
+    var draft = !!S.plDraft && !pick(info, 'Create');
+    var on = !!pick(info, 'Create') || draft;
+    if (document.activeElement !== $('plName')) { $('plName').value = pick(info, 'Name') || ''; }
+    $('plOn').checked = on;
+    $('plVis').value = pick(info, 'Public') ? 'public' : 'private';
+    $('plPos').value = pick(info, 'AtTop') ? 'top' : 'end';
+    $('plName').disabled = $('plVis').disabled = !on;
+    var dups = linkedDuplicates().length, from = pick(info, 'OrderFrom');
+    var orderText = from === 'm3u' ? 'dans l\'ordre du fichier « ' + pick(info, 'M3uFile') + ' »' : from === 'import' ? 'dans l\'ordre d\'origine de l\'import' : 'dans l\'ordre de l\'aperçu';
+    var plName = (pick(info, 'Name') || '').toLowerCase();
+    var exists = !!plName && list(S.plNames).some(function (n) { return String(n).toLowerCase() === plName; });
+    var dupText = dups ? ' ; ' + dups + ' doublon(s) y renverront vers le morceau déjà présent.' : '.';
+    $('plNote').textContent = draft ? 'Donnez-lui un nom, ou choisissez un fichier .m3u : son nom sera repris.'
+      : on && exists ? 'Cette liste existe : après le scan, les morceaux y seront ajoutés' + (from === 'm3u' ? ', puis toute la liste sera remise dans l\'ordre de « ' + pick(info, 'M3uFile') + ' »' : (pick(info, 'AtTop') ? ' en haut' : ' en bas') + ' (ou fournissez le .m3u pour les mettre à leur place)') + dupText
+      : on ? 'Créée (ou complétée) ' + orderText + ' après le scan de la bibliothèque' + (dups ? ' ; ' + dups + ' doublon(s) y renverront vers le morceau déjà présent.' : '.') : '';
+    $('plM3u').style.display = on ? '' : 'none';
+    $('plPos').style.display = on && exists && from !== 'm3u' ? '' : 'none';
+    $('plM3uOff').style.display = on && !draft && from === 'm3u' ? '' : 'none';
+    var mnote = $('plM3uNote');
+    if (on && !draft && from === 'm3u') {
+      var miss = list(pick(info, 'M3uMissing')), entries = pick(info, 'M3uEntries') || 0, matched = pick(info, 'M3uMatched') || 0;
+      var absent = entries - matched;
+      mnote.textContent = '';
+      mnote.appendChild(document.createTextNode('« ' + pick(info, 'M3uFile') + ' » : ' + matched + ' morceau' + (matched > 1 ? 'x' : '') + ' du lot retrouvé' + (matched > 1 ? 's' : '') + ' sur ' + entries + ' entrée' + (entries > 1 ? 's' : '') + '. Les morceaux du lot absents du fichier sont placés à la fin.'));
+      // Entrées du fichier qui ne sont pas dans le lot : repliées (une liste complète peut couvrir bien plus que ce lot).
+      if (absent > 0 && miss.length) {
+        mnote.appendChild(h('details', { open: !!S.m3uOpen, ontoggle: function (e) { S.m3uOpen = e.target.open; } }, [
+          h('summary', { text: absent + ' entrée' + (absent > 1 ? 's' : '') + ' du fichier ne ' + (absent > 1 ? 'sont' : 'est') + ' pas dans ce lot' + (absent > miss.length ? ' (les ' + miss.length + ' premières ci-dessous)' : '') }),
+          h('div', { text: miss.join(' ; ') + (absent > miss.length ? ' ; …' : '') })
+        ]));
+      }
+      mnote.style.display = '';
+    } else { mnote.style.display = 'none'; }
+  }
+  function sendM3u(text, fileName) {
+    if (!S.batch) { return; }
+    api('PUT', 'MediaUploader/Batch/' + S.batch.id + '/PlaylistOrder', { m3u: text, fileName: fileName }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      showWarn('');
+      applyBatch(res.body);
+      // Sans nom saisi : celui du fichier (ou de sa ligne #PLAYLIST).
+      var info = S.playlistInfo;
+      if (text && info && !pick(info, 'Create') && pick(info, 'Allowed')) {
+        $('plOn').checked = true;
+        $('plName').value = $('plName').value.trim() || pick(info, 'M3uName') || fileName.replace(/\.m3u8?$/i, '');
+        savePlaylist();
+      }
+      render();
+    }).catch(function (err) { showWarn(err.message); });
+  }
+  $('plM3u').addEventListener('click', function () { $('plM3uFile').click(); });
+  $('plM3uOff').addEventListener('click', function () { sendM3u('', ''); });
+  $('plM3uFile').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) { return; }
+    if (f.size > 2 * 1048576) { showWarn('Fichier .m3u trop gros (2 Mo au plus).'); return; }
+    // .m3u8 est en UTF-8 ; un .m3u ancien peut être en Windows-1252 : relu ainsi si l'UTF-8 donne des caractères invalides.
+    var read = function (enc, next) {
+      var r = new FileReader();
+      r.onload = function () { var t = String(r.result); if (next && t.indexOf('\uFFFD') >= 0) { next(); } else { sendM3u(t, f.name); } };
+      r.readAsText(f, enc);
+    };
+    read('utf-8', /\.m3u8$/i.test(f.name) ? null : function () { read('windows-1252', null); });
+  });
+  function savePlaylist() {
+    if (S.plTimer) { clearTimeout(S.plTimer); }
+    S.plTimer = setTimeout(function () {
+      S.plTimer = null;
+      if (!S.batch) { return; }
+      var name = $('plName').value.trim();
+      var body = { create: $('plOn').checked, name: name, public: $('plVis').value === 'public', atTop: $('plPos').value === 'top' };
+      if (body.create && !name) { showWarn('Donnez un nom à la liste de lecture.'); return; }
+      api('PUT', 'MediaUploader/Batch/' + S.batch.id + '/Playlist', body).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        showWarn('');
+        S.plDraft = false;
+        applyBatch(res.body); render();
+      }).catch(function (err) { showWarn(err.message); });
+    }, 450);
+  }
+  $('plOn').addEventListener('change', function () {
+    var on = $('plOn').checked;
+    S.plDraft = on;
+    $('plName').disabled = $('plVis').disabled = !on;
+    if (on && !$('plName').value.trim()) { $('plName').value = (S.playlistInfo && pick(S.playlistInfo, 'Name')) || ''; }
+    if (on && !$('plName').value.trim()) { renderPlaylistBox(); $('plName').focus(); return; }
+    savePlaylist();
+  });
+  $('plName').addEventListener('input', savePlaylist);
+  $('plVis').addEventListener('change', savePlaylist);
+  $('plPos').addEventListener('change', savePlaylist);
+
+  // Doublons des groupes cochés : ils ne sont pas enregistrés, mais la liste de lecture renvoie vers le morceau existant.
+  function linkedDuplicates() {
+    var out = [];
+    list(S.plan && pick(S.plan, 'Groups')).forEach(function (g) {
+      if (pick(g, 'Kind') === 'ignored' || !isIncluded(g)) { return; }
+      list(pick(g, 'Items')).forEach(function (i) { if (pick(i, 'Status') === 'duplicate') { out.push(pick(i, 'Id')); } });
+    });
+    return out;
   }
 
   function renderItem(item, selectable) {
@@ -933,21 +1160,24 @@
     $('recvbar').value = pct;
     $('recvbar').style.display = got === receivable.length ? 'none' : '';
     $('recvtext').textContent = got === receivable.length ? 'Tous les fichiers sont reçus et analysés.' : 'Réception : ' + got + ' / ' + receivable.length + ' fichier(s)';
-    var commit = $('commit');
-    commit.disabled = S.committing || !sel.length || !ready;
-    commit.textContent = S.committing ? 'Rangement en cours…' : (!ready && sel.length ? 'En attente de la réception…' : 'Confirmer et envoyer (' + sel.length + ')');
+    var commit = $('commit'), links = linkedDuplicates();
+    commit.disabled = S.committing || (!sel.length && !links.length) || !ready;
+    commit.textContent = S.committing ? 'Rangement en cours…' : (!ready && sel.length ? 'En attente de la réception…' : 'Confirmer et envoyer (' + sel.length + ')' + (links.length ? ' · ' + links.length + ' doublon' + (links.length > 1 ? 's' : '') + ' laissé' + (links.length > 1 ? 's' : '') + ' de côté' : ''));
     $('checkall').disabled = $('uncheckall').disabled = $('cancel').disabled = S.committing;
     $('ttlnote').textContent = 'Le lot est conservé ' + ((S.status && pick(S.status, 'BatchTtlHours')) || 6) + ' h sur le serveur.';
 
     var box = $('groups');
     box.textContent = '';
     groups.forEach(function (g) { box.appendChild(renderGroup(g)); });
+    renderPlaylistBox();
     renderImportInfo();
   }
 
   function renderDone() {
     var saved = S.results.filter(function (r) { return pick(r, 'Status') === 'saved'; }).length;
-    $('doneSummary').textContent = saved + ' / ' + S.results.length + ' fichier(s) enregistré(s) dans la bibliothèque.' + (saved ? ' Un scan de bibliothèque a été demandé selon vos réglages.' : '');
+    var pl = S.donePlaylist;
+    $('doneSummary').textContent = saved + ' / ' + S.results.length + ' fichier(s) enregistré(s) dans la bibliothèque.' + (saved ? ' Un scan de bibliothèque a été demandé selon vos réglages.' : '')
+      + (pl ? ' La liste de lecture « ' + pl.name + ' » (' + (pl.pub ? 'publique' : 'privée') + ') sera créée ou complétée' + (pl.file ? ' dans l\'ordre de « ' + pl.file + ' »' : '') + ' dès que le scan aura fait apparaître les morceaux.' : '');
     var box = $('results');
     box.textContent = '';
     S.results.forEach(function (r) {
@@ -970,11 +1200,13 @@
   }
 
   // ---------- Confirmation, annulation ----------
-  function commit(ids) {
+  function commit(ids, links) {
     if (S.committing || !S.batch) { return Promise.resolve(); }
-    S.committing = true; render();
-    return api('POST', 'MediaUploader/Batch/' + S.batch.id + '/Commit', { itemIds: ids }).then(function (res) {
+    var pl = S.playlistInfo && pick(S.playlistInfo, 'Create') ? { name: pick(S.playlistInfo, 'Name'), pub: !!pick(S.playlistInfo, 'Public'), file: pick(S.playlistInfo, 'OrderFrom') === 'm3u' ? pick(S.playlistInfo, 'M3uFile') : null } : null;
+    S.committing = true; S.cover = null; render();
+    return api('POST', 'MediaUploader/Batch/' + S.batch.id + '/Commit', { itemIds: ids, linkIds: links || [] }).then(function (res) {
       if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      if (pl && (ids.length || (links || []).length)) { S.donePlaylist = pl; }
       S.results = S.results.concat(list(pick(res.body, 'Files')));
       S.committing = false;
       return api('GET', 'MediaUploader/Batch/' + S.batch.id).then(function (b) {
@@ -994,7 +1226,8 @@
   }
 
   function maybeAutoCommit() {
-    if (S.autoDone || S.committing || !S.status || S.phase !== 'review') { return; }
+    // Un import (Spotify, YouTube, navigation) attend toujours la vérification de l'utilisateur, quel que soit le réglage.
+    if (S.autoDone || S.committing || !S.status || S.phase !== 'review' || fromImport() || (I.view && pick(I.view, 'BatchId') === (S.batch && S.batch.id))) { return; }
     var mode = pick(S.status, 'ConfirmationMode');
     if (mode !== 'never' && mode !== 'doubtful') { return; }
     var receivable = planItems().filter(function (i) { return !rejected(i); });
@@ -1002,7 +1235,7 @@
     var groups = list(pick(S.plan, 'Groups'));
     if (mode === 'doubtful' && groups.some(function (g) { return pick(g, 'Status') === 'review'; })) { return; }
     S.autoDone = true;
-    commit(receivable.map(function (i) { return pick(i, 'Id'); }));
+    commit(receivable.filter(function (i) { return pick(i, 'Status') !== 'duplicate'; }).map(function (i) { return pick(i, 'Id'); }), linkedDuplicates());
   }
 
   function cancelAll() {
@@ -1013,7 +1246,7 @@
   }
 
   function reset() {
-    S = Object.assign(S, { entries: [], batch: null, files: {}, plan: null, progress: {}, ups: {}, overrides: {}, include: {}, open: {}, edit: null, sel: {}, phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, previews: {}, details: {} });
+    S = Object.assign(S, { entries: [], batch: null, files: {}, plan: null, progress: {}, ups: {}, overrides: {}, include: {}, open: {}, edit: null, sel: {}, phase: 'pick', results: [], pumping: false, committing: false, autoDone: false, previews: {}, details: {}, cover: null, playlistInfo: null, plDraft: false, m3uOpen: false, donePlaylist: null, plNames: null });
     var jid = I.job;
     I.job = null; I.view = null; I.busy = false; I.entered = false; I.sel = {};
     if (jid) { api('DELETE', 'MediaUploader/Import/Jobs/' + jid).catch(function () {}); }
@@ -1244,15 +1477,7 @@
       h('option', { value: 'playlist', text: 'Tout dans un album « ' + pick(v, 'Title') + ' »', selected: I.layout === 'playlist' })
     ]);
     box.appendChild(h('div', { class: 'row' }, [h('label', { text: 'Rangement' }), layout]));
-    if (pick(v, 'Kind') === 'playlist' && pick(I.status, 'CreatePlaylist') !== undefined) {
-      if (I.playlist === null) { I.playlist = !!pick(I.status, 'CreatePlaylist'); I.playlistPublic = !!pick(I.status, 'PlaylistPublic'); }
-      var pubBox = h('input', { type: 'checkbox', checked: I.playlistPublic, disabled: !I.playlist, onchange: function (e) { I.playlistPublic = e.target.checked; } });
-      var plBox = h('input', { type: 'checkbox', checked: I.playlist, onchange: function (e) { I.playlist = e.target.checked; pubBox.disabled = !I.playlist; } });
-      box.appendChild(h('div', { class: 'row' }, [
-        h('label', {}, [plBox, document.createTextNode(' Créer une liste de lecture Jellyfin « ' + pick(v, 'Title') + ' »')]),
-        h('label', {}, [pubBox, document.createTextNode(' Publique (visible de tous)')])
-      ]));
-    }
+    box.appendChild(h('div', { class: 'muted', text: 'Liste de lecture Jellyfin (nom, publique ou privée) : à choisir à la vérification, avant l\'envoi' + (pick(v, 'Kind') === 'playlist' && pick(I.status, 'CreatePlaylist') ? ' (proposée d\'office pour une playlist).' : '.') }));
     wantQuota(chosen.length);
     var forecast = quotaForecast(I.quota, chosen.length);
     if (forecast) { box.appendChild(forecast); }
@@ -1269,7 +1494,7 @@
     box.appendChild(h('div', { class: 'row' }, [
       h('button', { type: 'button', disabled: !chosen.length || I.busy, text: 'Télécharger la sélection (' + chosen.length + ')', onclick: function () {
         I.busy = true; renderLinkJob();
-        api('POST', 'MediaUploader/Import/Jobs/' + I.job + '/Start', { trackIds: chosen.map(function (t) { return pick(t, 'Id'); }), layout: I.layout, createPlaylist: I.playlist === null ? undefined : I.playlist, playlistPublic: I.playlist === null ? undefined : I.playlistPublic }).then(function (res) {
+        api('POST', 'MediaUploader/Import/Jobs/' + I.job + '/Start', { trackIds: chosen.map(function (t) { return pick(t, 'Id'); }), layout: I.layout }).then(function (res) {
           if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
           I.view = res.body; I.busy = false; pollJob(); fetchQuota(0);
         }).catch(function (err) { I.busy = false; showWarn(err.message); renderLinkJob(); });
@@ -1323,6 +1548,11 @@
       } }));
     }
     box.appendChild(h('div', {}, kids));
+    if (state === 'downloading') {
+      box.appendChild(h('div', { class: 'qinfo', text: 'Rien n\'entre dans la bibliothèque avant votre confirmation : une fois les téléchargements terminés, vérifiez le lot ci-dessous.' }));
+    } else if (state === 'done' && done > 0) {
+      box.appendChild(h('div', { class: 'impdone', text: '✓ Téléchargements terminés. Vérifiez le lot : décochez ou retirez (✕) ce que vous ne voulez pas, corrigez les tags (Modifier, ✎), ajoutez une pochette, choisissez la liste de lecture, puis « Confirmer et envoyer ».' }));
+    }
 
     if (total > 0) {
       box.appendChild(h('progress', { max: String(total), value: String(done + failed), style: 'margin:.4em 0' }));
@@ -1487,7 +1717,7 @@
   $('drop').addEventListener('drop', handleDrop);
   $('clear').addEventListener('click', function () { S.entries = []; render(); });
   $('analyze').addEventListener('click', function () { if (S.entries.length) { showWarn(''); startBatch(); } });
-  $('commit').addEventListener('click', function () { commit(selectedItems().map(function (i) { return pick(i, 'Id'); })); });
+  $('commit').addEventListener('click', function () { commit(selectedItems().map(function (i) { return pick(i, 'Id'); }), linkedDuplicates()); });
   $('checkall').addEventListener('click', function () { list(pick(S.plan, 'Groups')).forEach(function (g) { S.include[pick(g, 'Key')] = true; }); render(); });
   $('uncheckall').addEventListener('click', function () { list(pick(S.plan, 'Groups')).forEach(function (g) { S.include[pick(g, 'Key')] = false; }); render(); });
   $('cancel').addEventListener('click', cancelAll);
