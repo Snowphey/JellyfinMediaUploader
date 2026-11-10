@@ -64,7 +64,7 @@ public static class LibraryTags
                 t.Performers is { Length: > 0 } ? string.Join("; ", t.Performers) : null,
                 t.AlbumArtists is { Length: > 0 } ? string.Join("; ", t.AlbumArtists) : null,
                 Clean(t.Album),
-                t.Year,
+                NameTools.NormalizeYear(t.Year),
                 t.Track,
                 t.Disc,
                 Clean(t.FirstGenre),

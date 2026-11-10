@@ -774,10 +774,14 @@
         if (opts.album) { st.fields.Album.value = opts.album; st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
         else if (topAlbum && opts.merge) { st.fields.Album.value = pick(topAlbum, 'Value'); st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
         if (topArtist && list(pick(f, 'AlbumArtist')).length > 1) { st.fields.AlbumArtist.value = pick(topArtist, 'Value'); st.dirty.AlbumArtist = true; st.fields.AlbumArtist.className = 'dirty'; }
-        if (list(pick(f, 'Album')).length > 1) { body.appendChild(h('div', { class: 'mid', text: 'Ces morceaux ont ' + list(pick(f, 'Album')).length + ' noms d\'album différents : choisissez celui à garder pour les fusionner.' })); }
+        if (list(pick(f, 'Album')).length > 1 && !(opts.albumArtist && !opts.merge)) { body.appendChild(h('div', { class: 'mid', text: 'Ces morceaux ont ' + list(pick(f, 'Album')).length + ' noms d\'album différents : choisissez celui à garder pour les fusionner.' })); }
+      }
+      if (opts.albumArtist) {
+        st.fields.AlbumArtist.value = opts.albumArtist; st.dirty.AlbumArtist = true; st.fields.AlbumArtist.className = 'dirty';
+        body.appendChild(h('div', { class: 'muted', text: 'Seul « Artiste de l\'album » change : les artistes de chaque morceau (invités compris) restent dans ses tags.' }));
       }
       body.appendChild(h('div', { class: 'row' }, [h('label', {}, [reorg, ' Ranger les fichiers dans le dossier « Artiste/Album » d\'après leurs tags, et supprimer les dossiers vidés (nécessaire pour fusionner des albums coupés en deux) ; en cas de conflit : ']), policy]));
-      body.appendChild(h('div', { class: 'muted', text: 'Les tags sont écrits dans les fichiers eux-mêmes. Jellyfin met sa médiathèque à jour ensuite (quelques secondes à quelques minutes selon sa taille).' }));
+      body.appendChild(h('div', { class: 'muted', text: 'Les tags sont écrits dans les fichiers eux-mêmes. Jellyfin met sa médiathèque à jour ensuite (quelques secondes à quelques minutes selon sa taille) ; les listes de lecture suivent les morceaux déplacés.' }));
       refresh();
     }).catch(function (e) { body.textContent = ''; body.appendChild(h('div', { class: 'bad', text: e.message })); });
 
@@ -966,7 +970,7 @@
       groups.forEach(function (g) {
         box.appendChild(h('div', { class: 'bar' }, [
           h('span', { class: 'muted', text: g.label + ' : ' + g.items.length }),
-          opts.deletable && cDel ? h('button', { type: 'button', class: 'danger small', text: 'Supprimer ' + plural(g.items.length, 'cet élément', 'ces ' + g.items.length + ' éléments') + '…', onclick: function () { deleteDialog(g.items, openHealth, g.key); } }) : null
+          opts.deletable && cDel ? h('button', { type: 'button', class: 'danger small', text: 'Supprimer ' + (g.items.length > 1 ? 'ces ' + g.items.length + ' éléments' : 'cet élément') + '…', onclick: function () { deleteDialog(g.items, openHealth, g.key); } }) : null
         ]));
         var listBox = h('div', { class: 'dlist' });
         g.items.slice(0, 200).forEach(function (p) {
@@ -975,6 +979,71 @@
         box.appendChild(listBox);
       });
       return box;
+    }
+
+    // Musique : artistes et albums répartis sur plusieurs dossiers, morceaux en double.
+    var music = null;
+    L.health.forEach(function (r) { if (pick(r, 'Key') === 'music' && pick(r, 'Music')) { music = pick(r, 'Music'); } });
+    if (music) {
+      var link = function (p) { return h('div', { style: 'margin-left:1em' }, [h('a', { text: '📁 ' + p, onclick: function () { openRoot('music', p); } })]); };
+      var groupBox = function (title, hint, groups, button) {
+        total += groups.length;
+        var box = h('div', { class: 'box healthlist' }, [h('strong', { text: title + ' (' + groups.length + ')' }), h('div', { class: 'muted', text: hint })]);
+        if (!groups.length) { box.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); return box; }
+        groups.slice(0, 200).forEach(function (g) {
+          box.appendChild(h('div', { class: 'bar' }, [
+            h('div', { class: 'grow' }, [h('div', { text: pick(g, 'Name') })].concat(list(pick(g, 'Items')).map(link))),
+            cMove ? button(g) : null
+          ]));
+        });
+        return box;
+      };
+      main.appendChild(groupBox('Artistes répartis sur plusieurs dossiers',
+        'Le même artiste principal a plusieurs dossiers (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan »). Regrouper écrit « artiste de l\'album » dans les tags et range ses morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas et les listes de lecture suivent.',
+        list(pick(music, 'ScatteredArtists')),
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist') }); } }); }));
+      main.appendChild(groupBox('Albums répartis entre plusieurs artistes',
+        'Le même album est rangé sous plusieurs artistes (chaque morceau sous ses propres invités) : Jellyfin en montre plusieurs. Regrouper donne à tous ses morceaux le même album et le même « artiste de l\'album » (l\'artiste commun, sinon « Various Artists »).',
+        list(pick(music, 'ScatteredAlbums')),
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { merge: true, album: pick(g, 'Album'), albumArtist: pick(g, 'Artist') }); } }); }));
+
+      // Morceaux en double : une copie gardée (sans perte, sinon la plus grosse, proposée d'office), les autres à la corbeille.
+      var songs = list(pick(music, 'DuplicateSongs'));
+      total += songs.length;
+      var dupSongs = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Morceaux en double (' + songs.length + ')' }),
+        h('div', { class: 'muted', text: 'Le même morceau (même artiste, même titre, même version) est présent plusieurs fois. Choisissez la copie à garder : les autres vont à la corbeille, et les listes de lecture qui les contenaient renvoient vers la copie gardée, à la même place.' })]);
+      if (!songs.length) { dupSongs.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); }
+      songs.slice(0, 200).forEach(function (g, gi) {
+        var copies = list(pick(g, 'Copies')), name = 'dup' + gi;
+        var radios = copies.map(function (c, i) {
+          var r = h('input', { type: 'radio', name: name, checked: i === pick(g, 'Keep') });
+          return { input: r, path: pick(c, 'Path'), row: h('label', { style: 'display:block;margin-left:1em' }, [r, ' ', h('a', { text: pick(c, 'Path'), onclick: function (ev) { ev.preventDefault(); openRoot('music', parentOf(pick(c, 'Path'))); } }), h('span', { class: 'muted', text: '  ' + fmtSize(pick(c, 'Size')) + (i === pick(g, 'Keep') ? ' · conseillé' : '') })]) };
+        });
+        var keepBtn = cDel ? h('button', { type: 'button', class: 'small', text: 'Garder la copie cochée…', onclick: function () {
+          var keep = radios.filter(function (r) { return r.input.checked; })[0];
+          if (!keep) { return; }
+          var remove = radios.filter(function (r) { return r !== keep; }).map(function (r) { return r.path; });
+          var ok = h('button', { type: 'button', class: 'danger', text: 'Retirer ' + (remove.length > 1 ? 'les ' + remove.length + ' copies' : 'la copie') });
+          openDialog('Morceau en double', [
+            h('div', { text: 'Garder : ' + keep.path }),
+            h('div', { class: 'muted', text: 'Retirer (corbeille, selon vos réglages) : ' + remove.join(' ; ') }),
+            h('div', { class: 'muted', text: 'Les listes de lecture qui contenaient une copie retirée renverront vers la copie gardée, à la même place.' })
+          ], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), ok]);
+          ok.addEventListener('click', function () {
+            ok.disabled = true;
+            api('POST', 'Library/Duplicates/Resolve', { root: 'music', keep: keep.path, remove: remove }).then(function (res) {
+              if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+              closeDialog();
+              var n = pick(res.body, 'Playlists');
+              toast(plural(pick(res.body, 'Removed'), 'copie retirée', 'copies retirées') + (n ? ' · ' + plural(n, 'entrée de liste de lecture redirigée', 'entrées de listes de lecture redirigées') : '') + '.');
+              openHealth();
+            }).catch(function (e) { ok.disabled = false; toast(e.message, true); });
+          });
+        } }) : null;
+        dupSongs.appendChild(h('div', { class: 'bar' }, [h('div', { class: 'grow' }, [h('div', { text: pick(g, 'Label') })].concat(radios.map(function (r) { return r.row; }))), keepBtn]));
+      });
+      main.appendChild(dupSongs);
+      if (pick(music, 'Truncated')) { main.appendChild(h('div', { class: 'muted', text: 'Contrôles de la musique partiels : bibliothèque très grande.' })); }
     }
 
     // Albums coupés en deux : fusion en un clic.

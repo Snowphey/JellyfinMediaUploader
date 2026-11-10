@@ -59,12 +59,12 @@ une fois les téléchargements terminés, la page invite à vérifier le lot (re
 4. Réglages : cadence des téléchargements (voir ci-dessous), format audio (M4A par défaut, sans réencodage dans la plupart des cas ; Opus ; MP3), téléchargements simultanés, fichier de cookies facultatif (YouTube Music Premium, ou si YouTube réclame une vérification).
 
 Liste de lecture : à la vérification de n'importe quel lot de musique (import ou fichiers envoyés), la barre du haut propose de **créer une liste de lecture Jellyfin** avec les morceaux confirmés :
-nom (autocomplétion avec vos listes existantes ; une liste existante du même nom est **complétée**), **publique** (visible de tous) ou **privée**. Pour un lien de **playlist**, elle est proposée d'office sous le nom de la playlist
+une liste déroulante propose **« Nouvelle liste… »** (nom à saisir, **publique** — visible de tous — ou **privée**) puis **vos listes existantes**, à **compléter**. Pour un lien de **playlist**, elle est proposée d'office sous le nom de la playlist
 (les deux valeurs par défaut se règlent dans l'onglet Import) ; pour un album ou une sélection d'artiste, cochez la case. Les morceaux y sont dans l'ordre d'origine de l'import (sinon dans l'ordre de l'aperçu),
 ou dans celui d'un **fichier `.m3u` / `.m3u8`** (bouton « Ordre : fichier .m3u… ») : chaque entrée est retrouvée parmi les morceaux du lot par nom de fichier (même avec une autre extension), sinon par artiste et titre
 (ligne `#EXTINF` ou nom « Artiste - Titre »), avec la même souplesse que les doublons ; les entrées absentes du lot sont signalées, les morceaux du lot absents du fichier sont placés à la fin. Le nom de la liste est repris du fichier (ou de sa ligne `#PLAYLIST`) s'il n'y en a pas déjà un.
 et la liste apparaît dès que Jellyfin a scanné les nouveaux fichiers (quelques minutes). Un morceau **déjà présent dans la bibliothèque** (voir « Doublons de musique ») n'est pas réimporté : la liste renvoie vers le fichier existant, à sa place dans l'ordre.
-Pour **mettre à jour** une liste, envoyez les nouveaux morceaux en lui donnant le même nom (le champ propose vos listes existantes) : ils sont ajoutés en bas, ou en haut au choix (ceux déjà dans la liste ne sont pas ajoutés deux fois). Si vous fournissez aussi le `.m3u`, **toute la liste** est ensuite remise dans l'ordre du fichier, morceaux déjà présents compris ; ceux que le fichier ne cite pas restent à la fin, et rien n'est retiré.
+Pour **mettre à jour** une liste, envoyez les nouveaux morceaux et choisissez-la dans la liste déroulante : ils sont ajoutés en bas, ou en haut au choix (ceux déjà dans la liste ne sont pas ajoutés deux fois). Si vous fournissez aussi le `.m3u`, **toute la liste** est ensuite remise dans l'ordre du fichier, morceaux déjà présents compris ; ceux que le fichier ne cite pas restent à la fin, et rien n'est retiré.
 Elle appartient à l'utilisateur qui envoie le lot ; une clé d'API ne peut pas posséder de liste de lecture.
 
 Pochette : chaque album de l'aperçu montre la pochette du premier morceau reçu (et, piste par piste, ceux qui n'en ont pas). **Ajouter une pochette** (ou *Changer la pochette*) cherche sur Cover Art Archive (MusicBrainz) et iTunes d'après l'album et l'artiste,
@@ -225,7 +225,8 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | POST | `/MediaUploader/Library/Tags/Read` · `/Library/Tags/Apply` | Tags d'éléments / modification des tags avec rangement « Artiste/Album » (`dryRun` : aperçu) |
 | POST | `/MediaUploader/Library/Move` · `/Library/Delete` · `/Library/Folder` | Déplacer / renommer, supprimer (`dryRun` : aperçu), créer un dossier |
 | GET / POST | `/MediaUploader/Library/Trash` · `/Library/Trash/Restore` · `/Library/Trash/Purge` | Corbeille : contenu, restauration, purge (administrateurs) |
-| GET | `/MediaUploader/Library/Health` | Anomalies de toutes les bibliothèques |
+| GET | `/MediaUploader/Library/Health` | Anomalies de toutes les bibliothèques (`Music` : artistes et albums répartis, morceaux en double) |
+| POST | `/MediaUploader/Library/Duplicates/Resolve` | Garde une copie d'un morceau en double, retire les autres : `{root, keep, remove}` ; les listes de lecture renvoient vers la copie gardée |
 | GET / PUT | `/MediaUploader/Rules` | Lit / enregistre les règles de détection (administrateurs) |
 | POST | `/MediaUploader/Rules/Test` | Essaie des noms de fichiers sur les règles (administrateurs) |
 
@@ -287,7 +288,13 @@ là où l'interface de Jellyfin est laborieuse :
   (« X (Official Soundtrack) » et « X: Official Soundtrack ») : sélectionnez les deux dossiers, choisissez le nom à garder.
 - **Pochettes** : pour un album sans pochette (liste « Santé » ou bouton 🖼 d'un dossier), recherche automatique sur Cover Art Archive (MusicBrainz) et iTunes d'après les tags, choix visuel, ou image de votre ordinateur ; elle est enregistrée dans le dossier (`cover.jpg`) et/ou intégrée à chaque morceau.
 - **Supprimer** des fichiers ou des dossiers entiers par lots : aperçu avec l'**arborescence** de ce qui sera supprimé (« 25 fichiers, 87 Mo »), mot de confirmation à taper au-delà d'un seuil, puis **corbeille** (dossier caché `.mu-corbeille`, restauration possible, purge automatique chaque nuit) ou suppression définitive selon le réglage.
-- **Santé**, pour toutes les bibliothèques à la fois : albums probablement coupés en deux (avec bouton de fusion), dossiers sans pochette (un morceau seul avec pochette intégrée n'est pas signalé ; contrôle réservé à la musique), dossiers vides, fichiers partiels abandonnés, fichiers d'extension inconnue.
+- **Santé**, pour toutes les bibliothèques à la fois. Pour la musique :
+  - **artistes répartis sur plusieurs dossiers** (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan », « Freeze Corleone » et « Freeze Corleone, ASHE 22 ») : « Regrouper » écrit l'artiste principal (orthographe des tags, « K/DA ») dans « artiste de l'album » et range les morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas (« & » ne sépare pas : « Bigflo & Oli » reste un artiste) ;
+  - **albums répartis entre plusieurs artistes** (chaque morceau rangé sous ses invités) : « Regrouper » leur donne le même album et le même artiste de l'album (l'artiste commun, sinon « Various Artists ») ; un titre courant (« Greatest Hits ») d'artistes sans rapport n'est pas signalé ;
+  - **morceaux en double** (même comparaison souple qu'à l'envoi, d'après l'index de Jellyfin) : la copie conseillée est sans perte, sinon la plus grosse ; les autres vont à la corbeille ;
+  - **listes de lecture préservées** : un morceau déplacé ou regroupé reste à sa place dans les listes de lecture de tous les utilisateurs, et une copie retirée y est remplacée par la copie gardée (sans doublon si la liste la contenait déjà). Avec l'actualisation « Aucune », les listes sont réparées dès que Jellyfin a scanné les fichiers déplacés (jusqu'à 24 h).
+
+  Et aussi : albums probablement coupés en deux (avec bouton de fusion), dossiers sans pochette (un morceau seul avec pochette intégrée n'est pas signalé ; contrôle réservé à la musique), dossiers vides, fichiers partiels abandonnés, fichiers d'extension inconnue.
 
 Chaque déplacement, renommage, modification de tags, suppression, restauration, purge et téléchargement de dossier est écrit dans le journal d'activité de Jellyfin (qui, quoi, combien, et **la liste des fichiers concernés**, y compris le contenu d'un dossier supprimé).
 

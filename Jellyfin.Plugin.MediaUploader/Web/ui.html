@@ -102,6 +102,7 @@
   .pl { margin-top: .5em; }
   .pl label { display: flex; gap: .35em; align-items: center; }
   .pl input[type=text] { min-width: 14em; flex: 1; max-width: 26em; }
+  .pl #plPick { max-width: 22em; }
   .impdone { background: #1d3a2a; color: #cdeedb; border-radius: 6px; padding: .5em .7em; margin: .4em 0; }
   .cpick { background: #1d1d1d; border: 1px solid #333; border-radius: 6px; padding: .6em .8em; margin: 0 .8em .6em; }
   .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .6em; margin: .6em 0; }
@@ -115,7 +116,7 @@
 <div class="muted">Déposez vos fichiers : le serveur les reçoit, lit les tags (musique) et les noms (films, séries, animés), puis vous montre où chaque fichier sera rangé. Par défaut, rien n'entre dans la bibliothèque avant votre confirmation (l'administrateur peut la rendre automatique quand tout est reconnu avec certitude).</div>
 <div id="warn" class="warn" style="display:none"></div>
 
-<datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist><datalist id="dl-playlists"></datalist>
+<datalist id="dl-titles"></datalist><datalist id="dl-artists"></datalist><datalist id="dl-albums"></datalist>
 
 <div id="pick">
   <div class="tabs" id="tabs" style="display:none">
@@ -190,7 +191,8 @@
     </div>
     <div class="line pl" id="plbox" style="display:none">
       <label><input type="checkbox" id="plOn"> Créer une liste de lecture Jellyfin</label>
-      <input type="text" id="plName" list="dl-playlists" placeholder="Nom de la liste (une liste existante est complétée)" autocomplete="off">
+      <select id="plPick" title="Compléter une de vos listes, ou en créer une nouvelle"><option value="">Nouvelle liste…</option></select>
+      <input type="text" id="plName" placeholder="Nom de la nouvelle liste" autocomplete="off">
       <select id="plVis"><option value="public">Publique (visible de tous)</option><option value="private">Privée</option></select>
       <select id="plPos" title="Où ajouter les morceaux dans la liste existante" style="display:none"><option value="end">Ajouter en bas</option><option value="top">Ajouter en haut</option></select>
       <button type="button" id="plM3u" class="secondary small" title="Fichier .m3u / .m3u8 qui donne l'ordre des morceaux">Ordre : fichier .m3u…</button>
@@ -897,8 +899,20 @@
     if (S.plNames) { return; }
     S.plNames = [];
     api('GET', 'MediaUploader/Playlists').then(function (res) {
-      if (res.status === 200 && res.body) { S.plNames = list(pick(res.body, 'Names')); fillList('dl-playlists', S.plNames); }
-    }).catch(function () { /* autocomplétion indisponible */ });
+      if (res.status === 200 && res.body) { S.plNames = list(pick(res.body, 'Names')); renderPlaylistBox(); }
+    }).catch(function () { /* listes existantes indisponibles : seule « Nouvelle liste » est proposée */ });
+  }
+  // Liste déroulante : « Nouvelle liste… » puis les listes de l'utilisateur (le menu défile s'il y en a beaucoup).
+  function fillPlaylistPick() {
+    var sel = $('plPick'), names = list(S.plNames);
+    if (sel.getAttribute('data-n') === JSON.stringify(names)) { return; }
+    sel.setAttribute('data-n', JSON.stringify(names));
+    while (sel.options.length > 1) { sel.remove(1); }
+    names.forEach(function (n) { sel.appendChild(h('option', { value: n, text: n })); });
+  }
+  function existingName(name) {
+    var low = String(name || '').toLowerCase();
+    return low ? list(S.plNames).filter(function (n) { return String(n).toLowerCase() === low; })[0] || null : null;
   }
   function renderPlaylistBox() {
     var box = $('plbox'), info = S.playlistInfo;
@@ -914,15 +928,21 @@
     $('plOn').checked = on;
     $('plVis').value = pick(info, 'Public') ? 'public' : 'private';
     $('plPos').value = pick(info, 'AtTop') ? 'top' : 'end';
-    $('plName').disabled = $('plVis').disabled = !on;
+    fillPlaylistPick();
+    var existing = draft ? null : existingName(pick(info, 'Name'));
+    $('plPick').value = existing || '';
+    $('plPick').disabled = $('plName').disabled = $('plVis').disabled = !on;
+    // Liste existante choisie : pas de nom à saisir ni de visibilité (elle garde la sienne).
+    $('plName').style.display = existing ? 'none' : '';
+    $('plVis').style.display = existing ? 'none' : '';
+    $('plPick').style.display = list(S.plNames).length ? '' : 'none';
     var dups = linkedDuplicates().length, from = pick(info, 'OrderFrom');
     var orderText = from === 'm3u' ? 'dans l\'ordre du fichier « ' + pick(info, 'M3uFile') + ' »' : from === 'import' ? 'dans l\'ordre d\'origine de l\'import' : 'dans l\'ordre de l\'aperçu';
-    var plName = (pick(info, 'Name') || '').toLowerCase();
-    var exists = !!plName && list(S.plNames).some(function (n) { return String(n).toLowerCase() === plName; });
+    var exists = !!existing;
     var dupText = dups ? ' ; ' + dups + ' doublon(s) y renverront vers le morceau déjà présent.' : '.';
-    $('plNote').textContent = draft ? 'Donnez-lui un nom, ou choisissez un fichier .m3u : son nom sera repris.'
+    $('plNote').textContent = draft ? (list(S.plNames).length ? 'Choisissez une de vos listes, ou donnez un nom à la nouvelle' : 'Donnez-lui un nom') + ' (ou choisissez un fichier .m3u : son nom sera repris).'
       : on && exists ? 'Cette liste existe : après le scan, les morceaux y seront ajoutés' + (from === 'm3u' ? ', puis toute la liste sera remise dans l\'ordre de « ' + pick(info, 'M3uFile') + ' »' : (pick(info, 'AtTop') ? ' en haut' : ' en bas') + ' (ou fournissez le .m3u pour les mettre à leur place)') + dupText
-      : on ? 'Créée (ou complétée) ' + orderText + ' après le scan de la bibliothèque' + (dups ? ' ; ' + dups + ' doublon(s) y renverront vers le morceau déjà présent.' : '.') : '';
+      : on ? 'Nouvelle liste, créée ' + orderText + ' après le scan de la bibliothèque' + (dups ? ' ; ' + dups + ' doublon(s) y renverront vers le morceau déjà présent.' : '.') : '';
     $('plM3u').style.display = on ? '' : 'none';
     $('plPos').style.display = on && exists && from !== 'm3u' ? '' : 'none';
     $('plM3uOff').style.display = on && !draft && from === 'm3u' ? '' : 'none';
@@ -998,6 +1018,20 @@
     savePlaylist();
   });
   $('plName').addEventListener('input', savePlaylist);
+  $('plPick').addEventListener('change', function () {
+    var v = $('plPick').value;
+    if (v) { $('plName').value = v; savePlaylist(); return; }
+    // Nouvelle liste : on oublie la liste choisie jusqu'à ce qu'un nom soit saisi (ou donné par un .m3u).
+    $('plName').value = '';
+    S.plDraft = true;
+    if (S.plTimer) { clearTimeout(S.plTimer); S.plTimer = null; }
+    renderPlaylistBox();
+    $('plName').focus();
+    if (!S.batch) { return; }
+    api('PUT', 'MediaUploader/Batch/' + S.batch.id + '/Playlist', { create: false }).then(function (res) {
+      if (res.status === 200 && res.body) { applyBatch(res.body); S.plDraft = true; render(); }
+    }).catch(function (err) { showWarn(err.message); });
+  });
   $('plVis').addEventListener('change', savePlaylist);
   $('plPos').addEventListener('change', savePlaylist);
 

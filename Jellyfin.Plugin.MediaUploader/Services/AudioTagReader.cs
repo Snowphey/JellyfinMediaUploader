@@ -103,7 +103,7 @@ public static class AudioTagReader
                 Clean(tag.Album),
                 tag.Track,
                 tag.Disc,
-                tag.Year,
+                NameTools.NormalizeYear(tag.Year),
                 (int)Math.Round(file.Properties?.Duration.TotalSeconds ?? 0),
                 cover,
                 mime);

@@ -1001,7 +1001,10 @@ public static class Planner
                 g.Year = lead.Year;
                 g.Artist = lead.Artist;
                 g.Album = lead.Album;
-                g.Status = g.Items.Any(i => i.Status is "guess" or "unknown" or "duplicate") ? "review" : "ready";
+                // Un doublon est déjà tranché (laissé de côté, ou relié dans la liste de lecture) : il ne rend pas tout le groupe « à vérifier »,
+                // sinon les autres morceaux de l'album seraient décochés par défaut. Un groupe fait uniquement de doublons reste à vérifier.
+                var live = g.Items.Where(i => i.Status != "duplicate").ToList();
+                g.Status = live.Count == 0 || live.Any(i => i.Status is "guess" or "unknown") ? "review" : "ready";
             }
 
             g.Items = g.Items

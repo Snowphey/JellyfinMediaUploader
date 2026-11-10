@@ -23,8 +23,9 @@ public static class PlaylistRelinker
     /// <param name="oldItems">Éléments connus de Jellyfin avant l'action : identifiant et ancien chemin complet.</param>
     /// <param name="newPathOf">Nouveau chemin complet d'un ancien chemin (null : l'élément n'existe plus).</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="maxWait">Attente maximale de l'apparition des nouveaux chemins dans Jellyfin (6 min par défaut).</param>
     /// <returns>Nombre d'entrées de listes de lecture concernées (0 : rien à faire).</returns>
-    public static int Queue(ILibraryManager libraryManager, IPlaylistManager playlistManager, IUserManager userManager, IReadOnlyDictionary<Guid, string> oldItems, Func<string, string?> newPathOf, ILogger logger)
+    public static int Queue(ILibraryManager libraryManager, IPlaylistManager playlistManager, IUserManager userManager, IReadOnlyDictionary<Guid, string> oldItems, Func<string, string?> newPathOf, ILogger logger, TimeSpan? maxWait = null)
     {
         if (oldItems.Count == 0)
         {
@@ -64,10 +65,12 @@ public static class PlaylistRelinker
             try
             {
                 var pending = entries.ToList();
-                var deadline = DateTime.UtcNow + MaxWait;
+                var start = DateTime.UtcNow;
+                var deadline = start + (maxWait ?? MaxWait);
                 while (pending.Count > 0 && DateTime.UtcNow < deadline)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                    // Toutes les 5 s les premières minutes, puis toutes les minutes (attente d'un scan lancé à la main).
+                    await Task.Delay(DateTime.UtcNow - start < MaxWait ? TimeSpan.FromSeconds(5) : TimeSpan.FromMinutes(1)).ConfigureAwait(false);
                     foreach (var entry in pending.ToList())
                     {
                         var newPath = newPathOf(oldItems[entry.OldItemId]);
@@ -91,7 +94,13 @@ public static class PlaylistRelinker
                             var index = Array.FindIndex(current, c => c.ItemId == entry.OldItemId);
                             var oldStillThere = index >= 0;
                             var position = oldStillThere ? index : Math.Min(entry.Index, current.Length);
-                            await playlistManager.AddItemToPlaylistAsync(entry.PlaylistId, new[] { item.Id }, position, entry.OwnerId).ConfigureAwait(false);
+
+                            // Doublon retiré alors que la liste contient déjà la copie gardée : on ne l'y met pas deux fois.
+                            if (!current.Any(c => c.ItemId == item.Id))
+                            {
+                                await playlistManager.AddItemToPlaylistAsync(entry.PlaylistId, new[] { item.Id }, position, entry.OwnerId).ConfigureAwait(false);
+                            }
+
                             if (oldStillThere)
                             {
                                 await playlistManager.RemoveItemFromPlaylistAsync(entry.PlaylistId.ToString("N"), new[] { entry.OldItemId.ToString("N") }).ConfigureAwait(false);

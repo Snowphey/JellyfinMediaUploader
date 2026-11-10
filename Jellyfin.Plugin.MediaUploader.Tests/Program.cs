@@ -298,12 +298,32 @@ True("distinct : autre artiste", !Dup("Adele", "Hello", "Lionel Richie", "Hello"
 True("distinct : titres proches mais différents", !Dup("Artiste", "Intro", "Artiste", "Outro"));
 True("titre « Live Forever » : pas une version live", Dup("Oasis", "Live Forever", "Oasis", "Live Forever (Remastered)"));
 True("sans artiste : rien", DuplicateMatcher.Key(null, "Titre") is null);
+// Cas réels (import SoSo) : faux doublons à éviter…
+True("distinct : (Intro) / (Start a Band)", !Dup("Daniel Pemberton", "Across the Spider-Verse (Intro)", "Daniel Pemberton", "Across the Spider-Verse (Start a Band)"));
+True("distinct : reprise", !Dup("Andrew Prahlow", "Outer Wilds - Reprise", "Andrew Prahlow", "Outer Wilds"));
+True("distinct : ～EDM ARRANGE VER.～", !Dup("Jin Hashimoto", "CRAZY NOISY BIZARRE TOWN ～EDM ARRANGE VER.～", "Jin Hashimoto", "CRAZY NOISY BIZARRE TOWN"));
+True("distinct : -Archetype Mix Ver.", !Dup("Coda", "JOJO SONO CHINO SADAME -Archetype Mix Ver.", "Coda", "JOJO SONO CHINO SADAME"));
+True("distinct : sous-titre après tiret", !Dup("Hiroaki Tsutsumi", "Jujutsu Sorcerer - Nobara Kugisaki", "Hiroaki Tsutsumi", "Jujutsu Sorcerer"));
+// … et vrais doublons à garder.
+True("même : - From Saturday Night Fever Soundtrack", Dup("Bee Gees", "Stayin' Alive - From Saturday Night Fever Soundtrack", "Bee Gees", "Stayin Alive"));
+True("même : sous-titre complété", Dup("Arcane", "Renegade (We Never Run) (from the series Arcane League of Legends)", "Arcane", "Renegade (We Never Run)"));
+True("même : (from the series …) d'un seul côté", Dup("Arcane", "Paint The Town Blue (from the series Arcane League of Legends)", "Arcane", "Paint the Town Blue"));
+True("même : (feat. X) / (ft. X)", Dup("Eminem", "Till I Collapse (feat. Nate Dogg)", "Eminem", "Till I Collapse (ft. Nate Dogg)"));
+True("même : - 2012 Remaster", Dup("Michael Jackson", "Bad - 2012 Remaster", "Michael Jackson", "Bad"));
+Check("artistes répétés retirés", (NameTools.DedupeArtists("Yoshimasa Terui;Yoshimasa Terui;Yoshimasa Terui"), NameTools.DedupeArtists("batta, Tatsu Hoshino, Tatsu Hoshino, batta"), NameTools.DedupeArtists("Tyler, The Creator"), NameTools.DedupeArtists("Earth, Wind & Fire")), ("Yoshimasa Terui", "batta, Tatsu Hoshino", "Tyler, The Creator", "Earth, Wind & Fire"));
+True("année YYYYMMDD ramenée à l'année", NameTools.NormalizeYear(20170118) == 2017 && NameTools.NormalizeYear(201701) == 2017 && NameTools.NormalizeYear(1984) == 1984);
 
 // Doublon dans toute la bibliothèque (index de Jellyfin) : rangé sous un autre artiste, et chemin gardé pour la liste de lecture.
 var idxFs = new FakeFs(new[] { Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a" });
 idxFs.Known.Add((Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a", new TagInfo("Daft Punk, Pharrell Williams", "Ma Playlist", "Get Lucky")));
 var idxDup = Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky (Official Audio)") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxFs);
 Check("doublon dans un autre dossier (index)", (Item(idxDup, "gl.m4a").Status, Item(idxDup, "gl.m4a").Duplicate!.WithPath), ("duplicate", Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a"));
+Check("groupe fait uniquement de doublons : à vérifier", idxDup.Groups.Single(g => g.Kind == "music").Status, "review");
+// Un doublon dans un album dont un autre morceau est nouveau : le groupe reste prêt, donc coché par défaut (le nouveau morceau n'est pas oublié).
+var mjFs = new FakeFs(new[] { Music + "/Michael Jackson/Thriller 25/29 - Billie Jean.flac" });
+mjFs.Known.Add((Music + "/Michael Jackson/Thriller 25/29 - Billie Jean.flac", new TagInfo("Michael Jackson", "Thriller 25", "Billie Jean")));
+var mj = Planner.Build(new List<PlanFile> { Song("a", "Beat It.m4a", "Michael Jackson", "Beat It"), Song("b", "Billie Jean.m4a", "Michael Jackson", "Billie Jean") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, mjFs);
+Check("doublon + autre morceau de l'album : groupe prêt", (Item(mj, "Billie Jean.m4a").Status, Item(mj, "Beat It.m4a").Status, mj.Groups.Single(g => g.Kind == "music").Status), ("duplicate", "ready", "ready"));
 var idxGone = new FakeFs(Array.Empty<string>());
 idxGone.Known.Add((Music + "/X/disparu.m4a", new TagInfo("Daft Punk", "A", "Get Lucky")));
 Check("index périmé (fichier supprimé) : pas un doublon", Item(Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxGone), "gl.m4a").Status, "ready");
@@ -871,6 +891,76 @@ if (OperatingSystem.IsLinux())
     finally
     {
         Directory.Delete(tmp, recursive: true);
+    }
+}
+
+// ---------- Santé de la bibliothèque musique : artistes et albums répartis, morceaux en double ----------
+Check("artiste principal", (MusicHealth.Lead("K DA, Madison Beer, i-dle"), MusicHealth.Lead("Freeze Corleone feat. ASHE 22"), MusicHealth.Lead("Bigflo & Oli"), MusicHealth.Lead("Mcfly & Carlito, Bigflo & Oli")), ("K DA", "Freeze Corleone", "Bigflo & Oli", "Mcfly & Carlito"));
+Check("clé d'artiste", (MusicHealth.ArtistKey("K/DA") == MusicHealth.ArtistKey("K DA"), MusicHealth.ArtistKey("OrelSan") == MusicHealth.ArtistKey("Orelsan"), MusicHealth.ArtistKey("The Weeknd") == MusicHealth.ArtistKey("Weeknd")), (true, true, true));
+{
+    var hlib = Path.Combine(Path.GetTempPath(), "mu-health-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        foreach (var d in new[]
+        {
+            "K DA, League of Legends, i-dle/FIRESTARTER", "K DA, Madison Beer, i-dle/POP STARS", "K DA/ALL OUT",
+            "Freeze Corleone/LMF", "Freeze Corleone, ASHE 22/Single",
+            "Orelsan/Civilisation", "OrelSan/Le Chant des sirènes", "OrelSan/Perdu d'avance",
+            "Lorien Testard/Clair Obscur Expedition 33 (Original Soundtrack)", "Alice Duport-Percier, Lorien Testard/Clair Obscur Expedition 33 (Original Soundtrack)",
+            "Bigflo & Oli/La cour des grands", "Mcfly & Carlito, Bigflo & Oli/Booska",
+            "Queen/Greatest Hits", "ABBA/Greatest Hits",
+            "Eminem/The Eminem Show", "Various Artists/SHADYXV",
+            ".mu-corbeille/x"
+        })
+        {
+            Directory.CreateDirectory(Path.Combine(hlib, d));
+        }
+
+        string F(string rel) => Path.Combine(hlib, rel.Replace('/', Path.DirectorySeparatorChar));
+        File.WriteAllBytes(F("Eminem/The Eminem Show/Lose Yourself.mp3"), new byte[100]);
+        File.WriteAllBytes(F("Various Artists/SHADYXV/Eminem - Lose Yourself.flac"), new byte[500]);
+        var known = new List<(string, TagInfo)>
+        {
+            (F("Eminem/The Eminem Show/Lose Yourself.mp3"), new TagInfo("Eminem", "The Eminem Show", "Lose Yourself")),
+            (F("K DA, Madison Beer, i-dle/POP STARS/POPSTARS.m4a"), new TagInfo("K/DA, Madison Beer, i-dle", "POP/STARS", "POP/STARS")),
+            (F("K DA, Madison Beer, i-dle/POP STARS/POPSTARS.m4a"), new TagInfo("K/DA, Madison Beer, i-dle", "POP/STARS", "POP/STARS")),
+            (F("Various Artists/SHADYXV/Eminem - Lose Yourself.flac"), new TagInfo("Eminem", "SHADYXV", "Lose Yourself")),
+            (F("Eminem/The Eminem Show/Gone.mp3"), new TagInfo("Eminem", "The Eminem Show", "Lose Yourself")),
+            (F("Queen/Greatest Hits/Live.mp3"), new TagInfo("Queen", "Greatest Hits", "Bohemian Rhapsody (Live)"))
+        };
+        var rep = MusicHealth.Analyze(hlib, known, File.Exists, p => new FileInfo(p).Length);
+
+        var kda = rep.ScatteredArtists.SingleOrDefault(g => MusicHealth.ArtistKey(g.Name) == "kda");
+        Check("artiste réparti : K DA (3 dossiers), nom écrit comme dans les tags", (kda?.Items.Count, kda?.Artist), ((int?)3, "K/DA"));
+        Check("artiste réparti : Freeze Corleone", rep.ScatteredArtists.Any(g => g.Artist == "Freeze Corleone" && g.Items.Count == 2), true);
+        var orel = rep.ScatteredArtists.SingleOrDefault(g => MusicHealth.ArtistKey(g.Name) == "orelsan");
+        Check("artiste réparti : casse (le dossier le plus fourni gagne)", orel?.Artist, "OrelSan");
+        Check("« & » ne coupe pas : Bigflo & Oli pas mélangé à Mcfly & Carlito", rep.ScatteredArtists.Any(g => g.Items.Contains("Bigflo & Oli")), false);
+        Check("corbeille ignorée", rep.ScatteredArtists.Concat(rep.ScatteredAlbums).SelectMany(g => g.Items).Any(i => i.Contains(".mu-corbeille")), false);
+
+        var co = rep.ScatteredAlbums.SingleOrDefault(g => g.Name.StartsWith("Clair Obscur", StringComparison.Ordinal));
+        Check("album réparti entre artistes : artiste commun proposé", (co?.Items.Count, co?.Artist), ((int?)2, "Lorien Testard"));
+        Check("titre courant d'artistes sans rapport : pas signalé", rep.ScatteredAlbums.Any(g => g.Name == "Greatest Hits"), false);
+
+        // Copie dans une compilation d'un morceau rangé sous l'artiste (mention « K/DA, … » avec « / »).
+        Directory.CreateDirectory(F("K DA/FIRESTARTER"));
+        Directory.CreateDirectory(F("Various Artists/League Compil"));
+        File.WriteAllBytes(F("K DA/FIRESTARTER/FIRESTARTER.m4a"), new byte[10]);
+        File.WriteAllBytes(F("Various Artists/League Compil/02 - FIRESTARTER (copie).m4a"), new byte[10]);
+        const string KdaCredit = "K/DA, League of Legends, i-dle, Mimi Webb, Sophie Powers, MIYEON, SOYEON";
+        var kdaRep = MusicHealth.Analyze(hlib, new List<(string, TagInfo)>
+        {
+            (F("Various Artists/League Compil/02 - FIRESTARTER (copie).m4a"), new TagInfo(KdaCredit, "League Compil", "FIRESTARTER")),
+            (F("K DA/FIRESTARTER/FIRESTARTER.m4a"), new TagInfo(KdaCredit, "FIRESTARTER", "FIRESTARTER"))
+        }, File.Exists, p => new FileInfo(p).Length);
+        Check("doublon : même mention d'artistes avec « / »", kdaRep.DuplicateSongs.Count, 1);
+
+        var hdup = rep.DuplicateSongs.SingleOrDefault();
+        Check("morceau en double : copies existantes seulement, sans perte conseillé", (hdup?.Copies.Count, hdup is null ? null : hdup.Copies[hdup.Keep].Path), ((int?)2, "Various Artists/SHADYXV/Eminem - Lose Yourself.flac"));
+    }
+    finally
+    {
+        Directory.Delete(hlib, recursive: true);
     }
 }
 

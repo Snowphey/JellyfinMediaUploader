@@ -18,6 +18,12 @@ public sealed class SongKey
 
     /// <summary>Gets les mentions qui font une autre version (« live », « remix », « acoustic »…), triées.</summary>
     public required string Markers { get; init; }
+
+    /// <summary>Gets les mots du titre réduit, dans l'ordre (pour reconnaître un titre tronqué).</summary>
+    public IReadOnlyList<string> TitleWords { get; init; } = Array.Empty<string>();
+
+    /// <summary>Gets les mots des parenthèses descriptives (« (Intro) », « (Start a Band) ») : deux sous-titres différents font deux morceaux.</summary>
+    public IReadOnlySet<string> Extra { get; init; } = new HashSet<string>();
 }
 
 /// <summary>
@@ -29,7 +35,11 @@ public static class DuplicateMatcher
 {
     private static readonly Regex Brackets = new(@"[\(\[\{（【]([^\)\]\}）】]*)[\)\]\}）】]", RegexOptions.Compiled);
     private static readonly Regex Featuring = new(@"\s+(feat\.?|ft\.?|featuring|avec)\s.*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex Dash = new(@"\s+[-–—|]\s+", RegexOptions.Compiled);
+    // Tiret séparateur : espacé des deux côtés, ou au moins d'un (« Titre -Archetype Mix Ver. ») ; « Spider-Man » n'est pas coupé.
+    private static readonly Regex Dash = new(@"\s+[-–—|]\s*|\s*[-–—|]\s+", RegexOptions.Compiled);
+    private static readonly Regex Tildes = new(@"[～~〜]([^～~〜]+)[～~〜]", RegexOptions.Compiled);
+    private static readonly Regex GuestBracket = new(@"^\s*(feat\.?|ft\.?|featuring|with|avec)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex SourceTail = new(@"^\s*(from|de|du|des|extrait|taken from|tiré)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex ArtistSplit = new(@"\s*(?:,|;|&|/|\+|\bx\b|\bvs\.?(?=\s)|\bfeat\.?|\bft\.?(?=\s)|\bfeaturing\b|\bwith\b|\band\b|\bet\b)\s*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex ArtistNoise = new(@"(\s*-\s*topic|vevo|\s+official)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Numbered = new(@"\b(part|pt|vol|volume|chapter|chapitre|no|n°|op|act|acte)\.?\s*\d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -58,7 +68,11 @@ public static class DuplicateMatcher
         ["slowed"] = "speed",
         ["extended"] = "extended",
         ["orchestral"] = "orchestral",
-        ["piano"] = "piano"
+        ["piano"] = "piano",
+        ["reprise"] = "reprise",
+        ["arrange"] = "arrange",
+        ["arranged"] = "arrange",
+        ["arrangement"] = "arrange"
     };
 
     // Mentions sans importance derrière un tiret (« Titre - Remastered 2011 ») ; ailleurs, toute parenthèse sans mention de version est ignorée.
@@ -66,7 +80,7 @@ public static class DuplicateMatcher
     {
         "remaster", "remastered", "remasterise", "remasterisé", "official", "officiel", "video", "vidéo", "clip", "audio", "lyrics", "lyric", "paroles",
         "visualizer", "visualiser", "version", "edit", "radio", "single", "album", "mono", "stereo", "explicit", "clean", "bonus", "track", "deluxe",
-        "hd", "hq", "4k", "mv", "m", "v", "from", "original", "mix", "soundtrack", "ost", "theme", "music", "musique", "anniversary", "edition", "remake", "topic"
+        "hd", "hq", "4k", "mv", "m", "v", "from", "original", "mix", "soundtrack", "ost", "theme", "music", "musique", "anniversary", "edition", "remake", "topic", "ver"
     };
 
     /// <summary>
@@ -91,9 +105,11 @@ public static class DuplicateMatcher
         }
 
         var markers = new SortedSet<string>(StringComparer.Ordinal);
-        var t = title.Trim();
+        var extra = new HashSet<string>(StringComparer.Ordinal);
+        var t = Tildes.Replace(title.Trim(), " ($1) ");
 
-        // Parenthèses et crochets : une mention de version est retenue, une numérotation (« Part 2 ») reste dans le titre, le reste disparaît.
+        // Parenthèses et crochets : une mention de version est retenue, une numérotation (« Part 2 ») reste dans le titre ;
+        // une mention descriptive (« (Intro) ») est mise à part : elle ne bloque que face à une autre mention différente.
         t = Brackets.Replace(t, m =>
         {
             var inner = m.Groups[1].Value;
@@ -102,7 +118,20 @@ public static class DuplicateMatcher
                 return " ";
             }
 
-            return Numbered.IsMatch(inner) ? " " + inner + " " : " ";
+            if (Numbered.IsMatch(inner))
+            {
+                return " " + inner + " ";
+            }
+
+            if (!IsNoise(inner) && !GuestBracket.IsMatch(inner))
+            {
+                foreach (var w in Words.Matches(inner).Select(x => NameTools.TitleKey(x.Value)).Where(w => w.Length > 0 && !NoiseWords.Contains(w)))
+                {
+                    extra.Add(w);
+                }
+            }
+
+            return " ";
         });
 
         // « Artiste - Titre - Remastered 2011 » : l'artiste en tête et les mentions en queue tombent.
@@ -117,7 +146,7 @@ public static class DuplicateMatcher
 
             for (var i = parts.Count - 1; i >= 1; i--)
             {
-                if (AddMarkers(parts[i], markers) || IsNoise(parts[i]))
+                if (AddMarkers(parts[i], markers) || IsNoise(parts[i]) || SourceTail.IsMatch(parts[i]))
                 {
                     parts.RemoveAt(i);
                 }
@@ -133,7 +162,8 @@ public static class DuplicateMatcher
             return null;
         }
 
-        return new SongKey { Artists = artists, ArtistFull = full, Title = key, Markers = string.Join("+", markers) };
+        var words = Words.Matches(t).Select(x => NameTools.TitleKey(x.Value)).Where(w => w.Length > 0).ToList();
+        return new SongKey { Artists = artists, ArtistFull = full, Title = key, Markers = string.Join("+", markers), TitleWords = words, Extra = extra };
     }
 
     /// <summary>
@@ -180,6 +210,12 @@ public static class DuplicateMatcher
             return false;
         }
 
+        // Deux mentions descriptives différentes (« (Intro) » / « (Start a Band) ») : deux morceaux ; l'une peut compléter l'autre.
+        if (a.Extra.Count > 0 && b.Extra.Count > 0 && !a.Extra.IsSubsetOf(b.Extra) && !b.Extra.IsSubsetOf(a.Extra))
+        {
+            return false;
+        }
+
         if (a.Title == b.Title)
         {
             return true;
@@ -193,8 +229,10 @@ public static class DuplicateMatcher
             return false;
         }
 
-        // Titre tronqué par la source (« Bohemian Rhapsody » / « Bohemian Rhapsody Remastered »).
-        if (s.Length >= 8 && l.StartsWith(s, StringComparison.Ordinal))
+        // Titre suivi de mentions sans importance (« Bohemian Rhapsody » / « Bohemian Rhapsody Remastered ») ;
+        // un sous-titre (« Jujutsu Sorcerer » / « Jujutsu Sorcerer - Nobara Kugisaki ») fait un autre morceau.
+        var (ws, wl) = a.TitleWords.Count <= b.TitleWords.Count ? (a.TitleWords, b.TitleWords) : (b.TitleWords, a.TitleWords);
+        if (s.Length >= 8 && ws.Count > 0 && wl.Take(ws.Count).SequenceEqual(ws) && wl.Skip(ws.Count).All(w => NoiseWords.Contains(w) || w.All(char.IsDigit)))
         {
             return true;
         }

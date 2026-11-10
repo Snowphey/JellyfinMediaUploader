@@ -113,6 +113,19 @@ public class LibraryCoverRequest
     public bool Overwrite { get; set; }
 }
 
+/// <summary>Résolution d'un morceau en double.</summary>
+public class LibraryDuplicateRequest
+{
+    /// <summary>Gets or sets la bibliothèque (musique).</summary>
+    public string? Root { get; set; }
+
+    /// <summary>Gets or sets la copie gardée (chemin relatif).</summary>
+    public string? Keep { get; set; }
+
+    /// <summary>Gets or sets les copies retirées (chemins relatifs).</summary>
+    public List<string>? Remove { get; set; }
+}
+
 /// <summary>Lecture ou modification des tags des morceaux d'éléments (fichiers ou dossiers entiers).</summary>
 public class LibraryTagsRequest
 {
@@ -177,6 +190,7 @@ public class LibraryController : MediaUploaderControllerBase
         _userManager = userManager;
         _logger = logger;
         PluginActivity.Attach(activityManager, logger);
+        LibraryMusicIndex.Attach(libraryManager, logger);
     }
 
     private bool CanView => Config.LibraryEnabled && (IsAdmin || (Config.LibraryViewAccess == "uploaders" && CanUpload));
@@ -770,13 +784,105 @@ public class LibraryController : MediaUploaderControllerBase
         }
 
         var kindOf = KindOf();
+
+        // Analyse demandée par l'utilisateur : l'index de Jellyfin est relu (une correction récente doit s'y voir).
+        LibraryMusicIndex.Invalidate();
         var reports = Roots().Select(r => new
         {
             r.Key,
             r.Label,
-            Report = LibraryFs.Health(r, kindOf, IsBusy, DateTime.UtcNow, r.Key == "music", r.Key == "music" ? LibraryTags.HasCover : null)
+            Report = LibraryFs.Health(r, kindOf, IsBusy, DateTime.UtcNow, r.Key == "music", r.Key == "music" ? LibraryTags.HasCover : null),
+            Music = r.Key == "music" ? MusicHealth.Analyze(r.Path, LibraryMusicIndex.Under(r.Path), System.IO.File.Exists, FileSize) : null
         }).ToList();
         return Ok(new { Reports = reports });
+    }
+
+    /// <summary>
+    /// Résout un morceau en double : garde une copie et met les autres à la corbeille (ou les supprime, selon le réglage).
+    /// Les listes de lecture qui contenaient une copie retirée renvoient ensuite vers la copie gardée, à la même place.
+    /// </summary>
+    /// <param name="request">Copie gardée et copies retirées.</param>
+    /// <returns>Résultat.</returns>
+    [HttpPost("Library/Duplicates/Resolve")]
+    public ActionResult ResolveDuplicate([FromBody] LibraryDuplicateRequest request)
+    {
+        if (!Gate(request.Root, out var r, out var denied))
+        {
+            return denied!;
+        }
+
+        if (!CanDelete)
+        {
+            return Forbid();
+        }
+
+        var remove = Clean(request.Remove);
+        var keep = Clean(new List<string> { request.Keep ?? string.Empty }).FirstOrDefault();
+        if (keep is null || remove.Count == 0 || remove.Count > 20 || remove.Contains(keep, StringComparer.Ordinal))
+        {
+            return BadRequest(new { error = "Indiquez la copie à garder et celles à retirer." });
+        }
+
+        if (!LibraryFs.TryResolve(r!, keep, out var keepFull, out _) || !System.IO.File.Exists(keepFull))
+        {
+            return BadRequest(new { error = "La copie à garder n'existe plus." });
+        }
+
+        foreach (var item in remove)
+        {
+            if (!LibraryFs.TryResolve(r!, item, out var full, out _) || !System.IO.File.Exists(full))
+            {
+                return BadRequest(new { error = $"« {item} » n'est pas un fichier de la bibliothèque." });
+            }
+        }
+
+        // Entrées de listes de lecture à rediriger : relevées AVANT la suppression (Jellyfin retire l'élément de ses listes dès qu'il l'oublie).
+        // La redirection, faite quelques secondes plus tard, ne concerne que les copies effectivement retirées.
+        var captured = CaptureItems(r!, remove);
+        var doneSet = new HashSet<string>(StringComparer.Ordinal);
+        var relinked = 0;
+        try
+        {
+            relinked = PlaylistRelinker.Queue(_libraryManager, _playlistManager, _userManager, captured, old =>
+            {
+                lock (doneSet)
+                {
+                    return doneSet.Contains(LibraryFs.Relative(r!, old)) ? keepFull : null;
+                }
+            },
+            _logger);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MediaUploader: réparation des listes de lecture impossible");
+        }
+
+        var mode = Config.LibraryDeleteMode == "permanent" ? "permanent" : "trash";
+        var results = LibraryFs.Delete(r!, remove, mode, CurrentUserName, dryRun: false, IsBusy, DateTime.UtcNow);
+        var done = results.Where(x => x.Status is "trashed" or "deleted").ToList();
+        if (done.Count == 0)
+        {
+            relinked = 0;
+        }
+        else
+        {
+            SizeCache.Clear();
+            LibraryMusicIndex.Invalidate();
+            lock (doneSet)
+            {
+                doneSet.UnionWith(done.Select(d => d.Source));
+            }
+
+            PluginActivity.Log(
+                $"{CurrentUserName} a retiré {done.Count} doublon(s) de « {keep} » ({(mode == "permanent" ? "définitivement" : "vers la corbeille")})",
+                "MediaUploaderLibrary",
+                CurrentUserId,
+                $"gardé : {keep}",
+                string.Join("\n", done.Select(d => d.Source)));
+            AfterChange(r!, remove.Where(doneSet.Contains), Array.Empty<string>());
+        }
+
+        return Ok(new { Mode = mode, Removed = done.Count, Playlists = relinked, Results = results });
     }
 
     /// <summary>
@@ -1125,14 +1231,17 @@ public class LibraryController : MediaUploaderControllerBase
 
     private void Relink(Dictionary<Guid, string> captured, Func<string, string?> newPathOf)
     {
-        if (captured.Count == 0 || Config.LibraryRefresh == "none")
+        if (captured.Count == 0)
         {
             return;
         }
 
+        LibraryMusicIndex.Invalidate();
         try
         {
-            var n = PlaylistRelinker.Queue(_libraryManager, _playlistManager, _userManager, captured, newPathOf, _logger);
+            // Sans actualisation automatique, Jellyfin ne verra les fichiers déplacés qu'au prochain scan : on les attend plus longtemps.
+            var wait = Config.LibraryRefresh == "none" ? TimeSpan.FromHours(24) : (TimeSpan?)null;
+            var n = PlaylistRelinker.Queue(_libraryManager, _playlistManager, _userManager, captured, newPathOf, _logger, wait);
             if (n > 0)
             {
                 _logger.LogInformation("MediaUploader: {Count} entrée(s) de listes de lecture seront remises à leur place après l'actualisation de Jellyfin", n);
@@ -1141,6 +1250,18 @@ public class LibraryController : MediaUploaderControllerBase
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "MediaUploader: réparation des listes de lecture impossible");
+        }
+    }
+
+    private static long FileSize(string path)
+    {
+        try
+        {
+            return new FileInfo(path).Length;
+        }
+        catch (IOException)
+        {
+            return 0;
         }
     }
 

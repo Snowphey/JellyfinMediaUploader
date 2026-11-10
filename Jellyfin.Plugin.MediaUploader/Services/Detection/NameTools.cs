@@ -42,10 +42,12 @@ public static class NameTools
             return null;
         }
 
-        var parts = artist.Split(new[] { ", ", "; " }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // « A;A;A » (sans espace) aussi : certains téléchargeurs collent les artistes.
+        var parts = artist.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var kept = parts.Where(p => seen.Add(p)).ToList();
-        return kept.Count == 0 ? artist.Trim() : string.Join(", ", kept);
+        // Rien de répété : la mention reste telle quelle (« A; B » n'est pas réécrit).
+        return kept.Count == 0 ? artist.Trim() : kept.Count == parts.Length ? artist.Trim() : string.Join(", ", kept);
     }
 
     /// <summary>
@@ -156,6 +158,13 @@ public static class NameTools
     /// <param name="folder">Nom de dossier.</param>
     /// <returns>Résultat.</returns>
     public static bool IsSeasonFolder(string folder) => SeasonFolder.IsMatch(folder.Trim());
+
+    /// <summary>
+    /// Année d'un tag : certains téléchargeurs écrivent la date entière (« 20170118 ») dans le champ année ; on n'en garde que l'année.
+    /// </summary>
+    /// <param name="year">Valeur lue.</param>
+    /// <returns>Année (0 : absente).</returns>
+    public static uint NormalizeYear(uint year) => year is >= 1000_00_00 and <= 9999_12_31 ? year / 10000 : year is >= 1000_00 and <= 9999_12 ? year / 100 : year;
 
     /// <summary>
     /// Clé de comparaison de titres : minuscules, lettres et chiffres seulement, sans accents.
