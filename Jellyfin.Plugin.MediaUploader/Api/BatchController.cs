@@ -788,6 +788,7 @@ public class BatchController : MediaUploaderControllerBase
     private ActionResult<BatchResponse> BuildResponse(Batch batch, IReadOnlyList<string> ids)
     {
         var config = Config;
+        var credits = CreditEnricher.Ensure(batch, config, _logger);
         var plan = batch.GetPlan(config);
         Dictionary<string, ItemProgress> progress;
         lock (batch.Sync)
@@ -810,7 +811,46 @@ public class BatchController : MediaUploaderControllerBase
             m3u?.Missing.Take(20).ToList(),
             m3u?.Name,
             pl?.AtTop ?? false);
-        return new BatchResponse(batch.Id, ChunkMb(config) * 1024 * 1024, ids, plan, progress, info);
+        return new BatchResponse(batch.Id, ChunkMb(config) * 1024 * 1024, ids, plan, progress, info, credits);
+    }
+
+    /// <summary>
+    /// Garde entier un nom d'artiste qui contient une virgule (« Tyler, The Creator ») : il n'est plus découpé, dans aucun lot ; ou l'oublie.
+    /// </summary>
+    /// <param name="request">Nom.</param>
+    /// <returns>Noms gardés entiers.</returns>
+    [HttpPost("ArtistNames")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult SetArtistName([FromBody] ArtistNameRequest request)
+    {
+        if (!CanUpload)
+        {
+            return Forbid();
+        }
+
+        var name = request.Name?.Trim();
+        if (string.IsNullOrEmpty(name) || name.Length > 300)
+        {
+            return BadRequest(new { error = "Nom d'artiste invalide." });
+        }
+
+        var config = Config;
+        var names = config.ArtistNames ?? new List<string>();
+        names.RemoveAll(n => ArtistCredits.Key(n) == ArtistCredits.Key(name));
+        if (!request.Remove)
+        {
+            names.Add(name);
+        }
+
+        config.ArtistNames = names;
+        Plugin.Instance!.UpdateConfiguration(config);
+        foreach (var b in UploadStore.Batches.Values)
+        {
+            b.Invalidate();
+        }
+
+        return Ok(new { Names = names });
     }
 
     private Batch? Find(string id, out ActionResult? error)

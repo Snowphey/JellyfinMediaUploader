@@ -1,0 +1,444 @@
+{
+ "created": "2026-11-11T12:26:08.674Z",
+ "count": 2,
+ "offset": 0,
+ "recordings": [
+  {
+   "id": "5ba0fa97-dd20-4d73-9ec8-75f0bf5395f8",
+   "score": 100,
+   "artist-credit-id": "59d39dc2-0260-3279-935e-c86adb39720e",
+   "title": "Ne parlons pas de Bruno",
+   "length": 216106,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Sharon Laloum",
+     "artist": {
+      "id": "e7bceace-15ea-400c-8385-dcad80576e53",
+      "name": "Sharon Laloum",
+      "sort-name": "Laloum, Sharon"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Julian Ortiz Cardona",
+     "artist": {
+      "id": "721bd06a-5937-4537-b7d8-0ab5d9f4c84c",
+      "name": "Julian Ortiz Cardona",
+      "sort-name": "Ortiz Cardona, Julian"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Angèle Humeau",
+     "artist": {
+      "id": "06921845-56a6-49e7-a5f3-3990ac97f973",
+      "name": "Angèle Humeau",
+      "sort-name": "Humeau, Angèle"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Tom Almodar",
+     "artist": {
+      "id": "2c21b81c-234f-4886-bed0-219c2e2df908",
+      "name": "Tom Almodar",
+      "sort-name": "Almodar, Tom"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Kaycie Chase",
+     "artist": {
+      "id": "13d96570-04f4-4078-b2df-5eac708d1e48",
+      "name": "Kaycie Chase",
+      "sort-name": "Chase, Kaycie",
+      "disambiguation": "Kaÿcie",
+      "aliases": [
+       {
+        "sort-name": "Kaÿcie",
+        "name": "Kaÿcie",
+        "locale": null,
+        "type": null,
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": " & Encanto - Cast",
+     "name": "Camille Timmerman",
+     "artist": {
+      "id": "30696508-7d1d-47b9-91d3-7db0a5413c3d",
+      "name": "Camille Timmerman",
+      "sort-name": "Camille Timmerman"
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "5b760a6d-94f4-4e94-9386-6875e3ddc269",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto : La Fantastique Famille Madrigal",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, French version",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0bbf67ad-0891-49c4-876f-930feab6ce16",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto : La Fantastique Famille Madrigal",
+      "disambiguation": "2021 film soundtrack, French version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "cd5cc44b-2485-3854-b39b-64ea294b8e50",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "206d058a-a128-459d-82d9-61df46a3743e",
+         "number": "4",
+         "title": "Ne parlons pas de Bruno",
+         "length": 216000
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "5ef14726-980b-4a6f-b198-ae0923e6620b",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto : La Fantastique Famille Madrigal : Bande originale française du film",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0bbf67ad-0891-49c4-876f-930feab6ce16",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto : La Fantastique Famille Madrigal",
+      "disambiguation": "2021 film soundtrack, French version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021",
+     "country": "CA",
+     "release-events": [
+      {
+       "date": "2021",
+       "area": {
+        "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b",
+        "name": "Canada",
+        "sort-name": "Canada",
+        "iso-3166-1-codes": [
+         "CA"
+        ]
+       }
+      },
+      {
+       "date": "2021",
+       "area": {
+        "id": "08310658-51eb-3801-80de-5a0739207115",
+        "name": "France",
+        "sort-name": "France",
+        "iso-3166-1-codes": [
+         "FR"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "66463a88-297b-34c8-a1f8-3520cb6f5bcf",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "70284ef2-066a-4401-8daa-4b17e6213a62",
+         "number": "4",
+         "title": "Ne parlons pas de Bruno",
+         "length": 216106
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "309f128e-559c-4b32-a9ad-4e378d150449",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "We Don’t Talk About Bruno: As Heard Around the World",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dabfce88-7ecb-4d8f-82c2-2e5916e750c5",
+      "type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "title": "We Don’t Talk About Bruno: As Heard Around the World",
+      "primary-type": "Single",
+      "secondary-types": [
+       "Compilation",
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 20,
+     "media": [
+      {
+       "id": "5a552a3e-b834-355f-a266-b91530978bdc",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "b792400f-f87c-44d1-bb4c-5638ab62b8b8",
+         "number": "4",
+         "title": "Ne parlons pas de Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 3
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12113108"
+   ]
+  },
+  {
+   "id": "f6517930-433d-4c1d-a2fe-ed9d0ae53407",
+   "score": 62,
+   "artist-credit-id": "e7f7801a-b5f4-485d-a407-a13b18f079e0",
+   "title": "Ne parlons pas de Bruno (De \"Encanto: La fantastique famille Madrigal\")",
+   "length": 216120,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Sharon Laloum",
+     "artist": {
+      "id": "e7bceace-15ea-400c-8385-dcad80576e53",
+      "name": "Sharon Laloum",
+      "sort-name": "Laloum, Sharon"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Julian Ortiz Cardona",
+     "artist": {
+      "id": "721bd06a-5937-4537-b7d8-0ab5d9f4c84c",
+      "name": "Julian Ortiz Cardona",
+      "sort-name": "Ortiz Cardona, Julian"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Angèle Humeau",
+     "artist": {
+      "id": "06921845-56a6-49e7-a5f3-3990ac97f973",
+      "name": "Angèle Humeau",
+      "sort-name": "Humeau, Angèle"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Tom Almodar",
+     "artist": {
+      "id": "2c21b81c-234f-4886-bed0-219c2e2df908",
+      "name": "Tom Almodar",
+      "sort-name": "Almodar, Tom"
+     }
+    },
+    {
+     "joinphrase": " & ",
+     "name": "Kaycie Chase",
+     "artist": {
+      "id": "13d96570-04f4-4078-b2df-5eac708d1e48",
+      "name": "Kaycie Chase",
+      "sort-name": "Chase, Kaycie",
+      "disambiguation": "Kaÿcie",
+      "aliases": [
+       {
+        "sort-name": "Kaÿcie",
+        "name": "Kaÿcie",
+        "locale": null,
+        "type": null,
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "Camille Timmerman",
+     "artist": {
+      "id": "30696508-7d1d-47b9-91d3-7db0a5413c3d",
+      "name": "Camille Timmerman",
+      "sort-name": "Camille Timmerman"
+     }
+    }
+   ],
+   "first-release-date": "2025-12-12",
+   "releases": [
+    {
+     "id": "6780c872-d51e-4d75-ae05-2d8640cbbde6",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 2,
+     "title": "Disney Hits : la totale",
+     "status": "Official",
+     "disambiguation": "2 Vol.",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dc7d5ea2-504e-476b-9a7a-75e362acf3be",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Hits : la totale",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2025-12-12",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2025-12-12",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 40,
+     "media": [
+      {
+       "id": "aae32c48-9edc-41b3-9d50-f706a643dd9c",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "ccafb507-4e0f-4dee-a251-85ea6d2d28e2",
+         "number": "6",
+         "title": "Ne parlons pas de Bruno (De \"Encanto: La fantastique famille Madrigal\")",
+         "length": 216120
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 5
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

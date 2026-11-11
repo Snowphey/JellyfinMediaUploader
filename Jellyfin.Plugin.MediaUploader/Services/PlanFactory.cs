@@ -64,7 +64,9 @@ public static class PlanFactory
             Extra = ParseExtensions(c.ExtraExtensions),
             Overwrite = c.OverwriteExisting,
             MaxFileBytes = c.MaxFileSizeMb > 0 ? c.MaxFileSizeMb * 1024L * 1024L : 0,
-            RenameSubtitles = c.RenameSubtitles
+            RenameSubtitles = c.RenameSubtitles,
+            CreditLookup = c.MusicBrainzArtists ? (title, credit, album) => Import.MusicBrainzCredits.TryGetCached(title, credit, album, out var hit) ? hit : null : null,
+            ArtistNames = c.ArtistNames ?? new List<string>()
         };
     }
 

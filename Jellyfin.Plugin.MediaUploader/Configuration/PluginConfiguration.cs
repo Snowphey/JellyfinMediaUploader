@@ -54,6 +54,8 @@ public class PluginConfiguration : BasePluginConfiguration
         LibraryMaxItems = 500;
         LibraryRefresh = "targeted";
         HealthIgnored = new List<string>();
+        MusicBrainzArtists = true;
+        ArtistNames = new List<string>();
     }
 
     /// <summary>
@@ -268,4 +270,15 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Chaque entrée identifie un contrôle et les chemins concernés ; si ces chemins changent, l'élément est de nouveau signalé.
     /// </summary>
     public List<string> HealthIgnored { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit une valeur indiquant si MusicBrainz est consulté pour séparer les artistes d'une mention (« A, B »), trouver l'artiste
+    /// de l'album et l'écriture latine des noms (une requête par seconde, en arrière-plan) ; sinon, règles locales seulement.
+    /// </summary>
+    public bool MusicBrainzArtists { get; set; }
+
+    /// <summary>
+    /// Obtient ou définit les noms d'artistes qui contiennent une virgule (« Tyler, The Creator ») : jamais découpés.
+    /// </summary>
+    public List<string> ArtistNames { get; set; }
 }

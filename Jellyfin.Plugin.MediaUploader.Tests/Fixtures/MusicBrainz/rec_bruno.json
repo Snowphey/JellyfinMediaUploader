@@ -1,0 +1,2071 @@
+{
+ "created": "2026-11-11T12:26:06.907Z",
+ "count": 5,
+ "offset": 0,
+ "recordings": [
+  {
+   "id": "5b16f667-1eec-4a29-be37-9b0961fc0f91",
+   "score": 100,
+   "artist-credit-id": "e652ce19-6916-4613-a999-f4f72a3563f1",
+   "title": "We Don’t Talk About Bruno",
+   "length": 216120,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Carolina Gaitán",
+     "artist": {
+      "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+      "name": "Carolina Gaitán",
+      "sort-name": "Gaitán, Carolina",
+      "disambiguation": "La Gaita",
+      "aliases": [
+       {
+        "sort-name": "Gaita, La",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "La Gaita",
+        "locale": null,
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Gaitán Lozano, Carolina del Pilar",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Carolina del Pilar Gaitán Lozano",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Mauro Castillo",
+     "artist": {
+      "id": "b26fbf03-064d-477d-8452-61c587ce82f7",
+      "name": "Mauro Castillo",
+      "sort-name": "Castillo, Mauro",
+      "aliases": [
+       {
+        "sort-name": "Castillo Rivas, Mauricio",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Mauricio Castillo Rivas",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Adassa",
+     "artist": {
+      "id": "239c8eea-895e-4b6f-bfd5-3e51a61230df",
+      "name": "Adassa",
+      "sort-name": "Adassa",
+      "disambiguation": "reggaeton artist"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Rhenzy Feliz",
+     "artist": {
+      "id": "c919a8e7-e4cf-407f-ac87-f4a670a01cf9",
+      "name": "Rhenzy Feliz",
+      "sort-name": "Feliz, Rhenzy"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Diane Guerrero",
+     "artist": {
+      "id": "5958a781-1fa5-4d4f-a027-9caba2943eaf",
+      "name": "Diane Guerrero",
+      "sort-name": "Guerrero, Diane"
+     }
+    },
+    {
+     "joinphrase": " and Cast",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "395882b0-5fbd-4168-80c8-6a4e082687e2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Disney Hits Volume 1",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "2f95f557-5043-4224-87bd-828e239a0250",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Hits Volume 1",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2025",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2025",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 15,
+     "media": [
+      {
+       "id": "402878ad-237f-4f18-b3c6-e8b9ee933e03",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "6f701ebf-ad60-41a7-bde3-bf132d36a25c",
+         "number": "5",
+         "title": "We Don't Talk About Bruno",
+         "length": 212386
+        }
+       ],
+       "track-count": 15,
+       "track-offset": 4
+      }
+     ]
+    },
+    {
+     "id": "71d2fa0b-2755-4eb0-a5ca-23ced2e12c0c",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "09dfc158-c1e6-30bf-bf10-c9d59ef153a6",
+     "count": 1,
+     "title": "Disney Halloween",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Disney",
+       "artist": {
+        "id": "66ea0139-149f-4a0c-8fbf-5ea9ec4a6e49",
+        "name": "[Disney]",
+        "sort-name": "[Disney]",
+        "disambiguation": "Special Purpose Artist - Do not add releases here, if possible."
+       }
+      }
+     ],
+     "release-group": {
+      "id": "922599b9-703d-4b36-9c9f-89152f776420",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Halloween",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "track-count": 78,
+     "media": [
+      {
+       "id": "fe0355c3-592e-3a2d-a1d4-b5ed481f5b93",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "01e37fb7-51b8-46a1-8632-f7955eaf2859",
+         "number": "7",
+         "title": "We Don't Talk About Bruno - From \"Encanto\"/Soundtrack Version",
+         "length": 216120
+        }
+       ],
+       "track-count": 78,
+       "track-offset": 6
+      }
+     ]
+    },
+    {
+     "id": "edd868f7-706b-4080-87c6-24bbd542188a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Walt Disney World – Cool KIDS’ SUMMER",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "24addd7b-da10-4a4f-8b1d-4a967346f753",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Walt Disney World – Cool KIDS’ SUMMER",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2026-05-26",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2026-05-26",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 37,
+     "media": [
+      {
+       "id": "3981855d-91cb-4e54-a8e5-5a270d5814ef",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "30b87121-4f07-415b-aeb4-228008150758",
+         "number": "23",
+         "title": "We Don't Talk About Bruno (From \"Encanto\"/Soundtrack version)",
+         "length": 216120
+        }
+       ],
+       "track-count": 37,
+       "track-offset": 22
+      }
+     ]
+    },
+    {
+     "id": "afe9fed1-ab9b-43d4-992f-631b28d3698c",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Disney Summer Songs 2",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "1612e47d-94a4-46e8-809b-9b59334eae80",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Summer Songs 2",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2023-09-25",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2023-09-25",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 20,
+     "media": [
+      {
+       "id": "28f3ffa8-d77f-3841-8d6a-f77146c3c9d5",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "2f329165-1af1-4b08-9186-c7ba42cdb350",
+         "number": "1",
+         "title": "We Don’t Talk About Bruno (from “Encanto” soundtrack version)",
+         "length": 216000
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "6026b713-cc76-49f8-915b-97a633d7828a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Canciones originales de Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "b6a60c72-c85e-486c-b098-d19e9b4531b7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, Spanish version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2022",
+     "country": "MX",
+     "release-events": [
+      {
+       "date": "2022",
+       "area": {
+        "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+        "name": "Mexico",
+        "sort-name": "Mexico",
+        "iso-3166-1-codes": [
+         "MX"
+        ]
+       }
+      }
+     ],
+     "track-count": 15,
+     "media": [
+      {
+       "id": "a77157c4-661f-3861-a564-ba78336a25eb",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "db5c5ed3-ebc7-4b11-8e5c-ab2a1d26e594",
+         "number": "13",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216066
+        }
+       ],
+       "track-count": 15,
+       "track-offset": 12
+      }
+     ]
+    },
+    {
+     "id": "a8e0b7ce-585f-4825-a646-d68c16a521d7",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "disambiguation": "Target exclusive",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "fa58887b-ec06-3e5a-ac3f-0434a48f5441",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "1c72688b-eef4-4be1-9374-1fbfda5788ba",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "43a362d2-a5d3-44c9-b830-8b2fb663ddf3",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 2,
+     "title": "Now That’s What I Call Music! 111",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "2b046010-4f5f-46ae-90dd-d0181a0ed18f",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Now That’s What I Call Music! 111",
+      "disambiguation": "UK",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2022-04-08",
+     "country": "IE",
+     "release-events": [
+      {
+       "date": "2022-04-08",
+       "area": {
+        "id": "390b05d4-11ec-3bce-a343-703a366b34a5",
+        "name": "Ireland",
+        "sort-name": "Ireland",
+        "iso-3166-1-codes": [
+         "IE"
+        ]
+       }
+      },
+      {
+       "date": "2022-04-08",
+       "area": {
+        "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+        "name": "United Kingdom",
+        "sort-name": "United Kingdom",
+        "iso-3166-1-codes": [
+         "GB"
+        ]
+       }
+      }
+     ],
+     "track-count": 50,
+     "media": [
+      {
+       "id": "5289d322-a01a-3946-ad0f-94e1bacb0820",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "739ebe8b-dfa1-4fab-bc00-9f14a46b8e45",
+         "number": "1",
+         "title": "We Don’t Talk About Bruno (from “Encanto”) (soundtrack version)",
+         "length": 215115
+        }
+       ],
+       "track-count": 25,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "70ab314e-eab3-4f06-aaf3-892936989931",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "AU",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+        "name": "Australia",
+        "sort-name": "Australia",
+        "iso-3166-1-codes": [
+         "AU"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "7c48c56a-a0c1-309a-a2bf-843e967bc393",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "caafd08c-83ab-4464-9ea0-bf76241dbfba",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "6bc38737-d9ae-49a3-89a7-3642af908dc6",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021",
+     "country": "XE",
+     "release-events": [
+      {
+       "date": "2021",
+       "area": {
+        "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+        "name": "Europe",
+        "sort-name": "Europe",
+        "iso-3166-1-codes": [
+         "XE"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "ab80e168-2439-3061-8023-d7fbb8c96bb7",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "f8186e53-98f9-4a2c-917c-45899494b409",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216093
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "c75b0e31-bf55-4ec6-b347-1f447827f600",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "NL",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+        "name": "Netherlands",
+        "sort-name": "Netherlands",
+        "iso-3166-1-codes": [
+         "NL"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "aef5e46a-cbad-3927-a635-0f64a9fa9d6e",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "766e0c7c-6fc3-45d9-ab1f-d51f230fb0a7",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "0fd03d2e-5d8f-4116-b30b-2487e3030527",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "e94b6b71-ae76-343b-a07a-3cf94f942434",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "2b459bea-fcfb-4bc9-9c6a-f64680119579",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "ef44204c-d4c1-4c07-b48e-e99ed598fdb6",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 2,
+     "title": "Now That’s What I Call Music! 111",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "2b046010-4f5f-46ae-90dd-d0181a0ed18f",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Now That’s What I Call Music! 111",
+      "disambiguation": "UK",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2022-04-08",
+     "country": "GB",
+     "release-events": [
+      {
+       "date": "2022-04-08",
+       "area": {
+        "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+        "name": "United Kingdom",
+        "sort-name": "United Kingdom",
+        "iso-3166-1-codes": [
+         "GB"
+        ]
+       }
+      }
+     ],
+     "track-count": 50,
+     "media": [
+      {
+       "id": "bcddad3f-5b91-312a-8e39-2021708c2772",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "3f44b6e7-fdc2-4eba-8b4d-60730cacf62f",
+         "number": "1",
+         "title": "We Don’t Talk About Bruno",
+         "length": 215106
+        }
+       ],
+       "track-count": 25,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "9d907d36-c6f3-4099-8ee7-45cc3ea9aa45",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "b7bf12e0-adab-375c-9183-c522525eecc2",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "91e7b581-4558-46a6-a546-768cf84e62e8",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "a9bc9efe-9283-4132-8131-6add7ea0e0f2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "9654d0a0-fd2f-3c1a-b9c6-6f13ed00aaa7",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "11facadf-9a69-4794-8d65-ed7632fb8987",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "309f128e-559c-4b32-a9ad-4e378d150449",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "We Don’t Talk About Bruno: As Heard Around the World",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dabfce88-7ecb-4d8f-82c2-2e5916e750c5",
+      "type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "title": "We Don’t Talk About Bruno: As Heard Around the World",
+      "primary-type": "Single",
+      "secondary-types": [
+       "Compilation",
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 20,
+     "media": [
+      {
+       "id": "5a552a3e-b834-355f-a266-b91530978bdc",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "d8618910-3547-49d1-ad9c-c24fc62a88ce",
+         "number": "1",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216120
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 0
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12112915"
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "latin"
+    },
+    {
+     "count": 0,
+     "name": "whimsical"
+    },
+    {
+     "count": 1,
+     "name": "children's music"
+    },
+    {
+     "count": 2,
+     "name": "offizielle charts"
+    },
+    {
+     "count": 1,
+     "name": "5+ wochen"
+    }
+   ]
+  },
+  {
+   "id": "26b061dc-14ec-41e4-a3a6-2fab9d42e0d7",
+   "score": 97,
+   "artist-credit-id": "47997f91-25ac-4a17-ba1d-d110c8b224c8",
+   "title": "We Don’t Talk About Bruno",
+   "length": 216192,
+   "disambiguation": "Dolby Atmos mix",
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Carolina Gaitán",
+     "artist": {
+      "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+      "name": "Carolina Gaitán",
+      "sort-name": "Gaitán, Carolina",
+      "disambiguation": "La Gaita",
+      "aliases": [
+       {
+        "sort-name": "Gaita, La",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "La Gaita",
+        "locale": null,
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Gaitán Lozano, Carolina del Pilar",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Carolina del Pilar Gaitán Lozano",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Mauro Castillo",
+     "artist": {
+      "id": "b26fbf03-064d-477d-8452-61c587ce82f7",
+      "name": "Mauro Castillo",
+      "sort-name": "Castillo, Mauro",
+      "aliases": [
+       {
+        "sort-name": "Castillo Rivas, Mauricio",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Mauricio Castillo Rivas",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Adassa",
+     "artist": {
+      "id": "239c8eea-895e-4b6f-bfd5-3e51a61230df",
+      "name": "Adassa",
+      "sort-name": "Adassa",
+      "disambiguation": "reggaeton artist"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Rhenzy Feliz",
+     "artist": {
+      "id": "c919a8e7-e4cf-407f-ac87-f4a670a01cf9",
+      "name": "Rhenzy Feliz",
+      "sort-name": "Feliz, Rhenzy"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Diane Guerrero",
+     "artist": {
+      "id": "5958a781-1fa5-4d4f-a027-9caba2943eaf",
+      "name": "Diane Guerrero",
+      "sort-name": "Guerrero, Diane"
+     }
+    },
+    {
+     "joinphrase": " & ",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "Encanto - Cast",
+     "artist": {
+      "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+      "name": "Encanto - Cast",
+      "sort-name": "Encanto - Cast",
+      "disambiguation": "Cast from \"Encanto\""
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "341610c8-f25f-486b-8bf0-93aedd283df2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, Māori version",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dc4db6bd-a827-4bc9-96c5-f7afe2cbfb16",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2024-08-30",
+     "country": "NZ",
+     "release-events": [
+      {
+       "date": "2024-08-30",
+       "area": {
+        "id": "8524c7d9-f472-3890-a458-f28d5081d9c4",
+        "name": "New Zealand",
+        "sort-name": "New Zealand",
+        "iso-3166-1-codes": [
+         "NZ"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "a7f36af4-1ab0-4e2b-8b19-2a51f11158ca",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "cbf00132-25d4-4568-8652-1471c2ac59d8",
+         "number": "4",
+         "title": "We Don't Talk About Bruno",
+         "length": 216192
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "201eca7d-b708-4918-b936-5879e0fa8fbb",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "c1a29b2c-5bb1-4390-b4e0-9ed3c964c8a8",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "ebbf94de-2fd0-492f-b422-4acc3c1c682c",
+         "number": "4",
+         "title": "We Don't Talk About Bruno",
+         "length": 216192
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    },
+    {
+     "id": "6c5e7659-534f-43d8-98cc-dbfcb48c7fbe",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 2,
+     "title": "Disney 100",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "f4e77998-b053-474a-bddc-97507e550c6f",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney 100",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "track-count": 29,
+     "media": [
+      {
+       "id": "c753591d-9138-3c2d-962a-a4e39c55725e",
+       "position": 2,
+       "format": "CD",
+       "track": [
+        {
+         "id": "d535e702-e1f4-427c-ae7b-bca4e1570014",
+         "number": "12",
+         "title": "We Don't Talk About Bruno",
+         "length": 212373
+        }
+       ],
+       "track-count": 13,
+       "track-offset": 11
+      }
+     ]
+    },
+    {
+     "id": "19628a0e-fd30-46e6-af05-634ca76f3689",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version, Dolby Atmos mix",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 44,
+     "media": [
+      {
+       "id": "6e2a32b3-3e9c-3701-8ca8-58e47c19e0ba",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "6eadb584-1788-411e-8aed-9d2db929eeb8",
+         "number": "4",
+         "title": "We Don’t Talk About Bruno",
+         "length": 216192
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 3
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12213779"
+   ]
+  },
+  {
+   "id": "a5a23d4f-c62f-4af6-bdf9-ad20bfebd3c4",
+   "score": 97,
+   "artist-credit-id": "47997f91-25ac-4a17-ba1d-d110c8b224c8",
+   "title": "We Don’t Talk About Bruno",
+   "length": 212659,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Carolina Gaitán",
+     "artist": {
+      "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+      "name": "Carolina Gaitán",
+      "sort-name": "Gaitán, Carolina",
+      "disambiguation": "La Gaita",
+      "aliases": [
+       {
+        "sort-name": "Gaita, La",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "La Gaita",
+        "locale": null,
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Gaitán Lozano, Carolina del Pilar",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Carolina del Pilar Gaitán Lozano",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Mauro Castillo",
+     "artist": {
+      "id": "b26fbf03-064d-477d-8452-61c587ce82f7",
+      "name": "Mauro Castillo",
+      "sort-name": "Castillo, Mauro",
+      "aliases": [
+       {
+        "sort-name": "Castillo Rivas, Mauricio",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Mauricio Castillo Rivas",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Adassa",
+     "artist": {
+      "id": "239c8eea-895e-4b6f-bfd5-3e51a61230df",
+      "name": "Adassa",
+      "sort-name": "Adassa",
+      "disambiguation": "reggaeton artist"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Rhenzy Feliz",
+     "artist": {
+      "id": "c919a8e7-e4cf-407f-ac87-f4a670a01cf9",
+      "name": "Rhenzy Feliz",
+      "sort-name": "Feliz, Rhenzy"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Diane Guerrero",
+     "artist": {
+      "id": "5958a781-1fa5-4d4f-a027-9caba2943eaf",
+      "name": "Diane Guerrero",
+      "sort-name": "Guerrero, Diane"
+     }
+    },
+    {
+     "joinphrase": " & ",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "Encanto - Cast",
+     "artist": {
+      "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+      "name": "Encanto - Cast",
+      "sort-name": "Encanto - Cast",
+      "disambiguation": "Cast from \"Encanto\""
+     }
+    }
+   ],
+   "first-release-date": "2023-09-15",
+   "releases": [
+    {
+     "id": "718ccd62-c073-4d44-967f-15ef5d3cf246",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Songs and Story: Encanto",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "e0afee47-2177-4474-baac-578ffbbc58d7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Songs and Story: Encanto",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 7,
+     "media": [
+      {
+       "id": "57156de0-c54f-4f3b-aef4-10167704d14f",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "b46eab0f-47f0-427d-b25b-95b44195fd81",
+         "number": "3",
+         "title": "We Don’t Talk About Bruno",
+         "length": 212659
+        }
+       ],
+       "track-count": 7,
+       "track-offset": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "73ee60e8-0b17-453d-a452-f8f54322287d",
+   "score": 93,
+   "artist-credit-id": "7a5ca1ad-98ad-479b-b7de-78d9d203ac78",
+   "title": "We Don’t Talk About Bruno (from ‘Encanto’ soundtrack version)",
+   "length": 236000,
+   "disambiguation": "part of “Mastermix: DJ Beats Chart 101” DJ‐mix",
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": " & Cast of “Encanto”",
+     "name": "Carolina Gaitán",
+     "artist": {
+      "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+      "name": "Carolina Gaitán",
+      "sort-name": "Gaitán, Carolina",
+      "disambiguation": "La Gaita",
+      "aliases": [
+       {
+        "sort-name": "Gaita, La",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "La Gaita",
+        "locale": null,
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Gaitán Lozano, Carolina del Pilar",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Carolina del Pilar Gaitán Lozano",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "first-release-date": "2022",
+   "releases": [
+    {
+     "id": "62db4978-fb35-44e9-8b29-47c31cb99ccf",
+     "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Mastermix: DJ Beats Chart 101",
+     "status": "Promotion",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "b8c56111-0c5a-4f98-9ecf-8f7cae73eca8",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Mastermix: DJ Beats Chart 101",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2022",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2022",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 10,
+     "media": [
+      {
+       "id": "dd680946-5fcd-3fbb-bd9a-7aa268796f3e",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "2444caae-e112-455f-8901-e499dcb20bd3",
+         "number": "1",
+         "title": "We Don’t Talk About Bruno (from ‘Encanto’ soundtrack version)",
+         "length": 236000
+        }
+       ],
+       "track-count": 10,
+       "track-offset": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "247c2244-406b-475a-92e2-5be724d52cee",
+   "score": 82,
+   "artist-credit-id": "e652ce19-6916-4613-a999-f4f72a3563f1",
+   "title": "We Don't Talk About Bruno (Noc.V Bootleg)",
+   "length": 172485,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Carolina Gaitán",
+     "artist": {
+      "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+      "name": "Carolina Gaitán",
+      "sort-name": "Gaitán, Carolina",
+      "disambiguation": "La Gaita",
+      "aliases": [
+       {
+        "sort-name": "Gaita, La",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "La Gaita",
+        "locale": null,
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Gaitán Lozano, Carolina del Pilar",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Carolina del Pilar Gaitán Lozano",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Mauro Castillo",
+     "artist": {
+      "id": "b26fbf03-064d-477d-8452-61c587ce82f7",
+      "name": "Mauro Castillo",
+      "sort-name": "Castillo, Mauro",
+      "aliases": [
+       {
+        "sort-name": "Castillo Rivas, Mauricio",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Mauricio Castillo Rivas",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Adassa",
+     "artist": {
+      "id": "239c8eea-895e-4b6f-bfd5-3e51a61230df",
+      "name": "Adassa",
+      "sort-name": "Adassa",
+      "disambiguation": "reggaeton artist"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Rhenzy Feliz",
+     "artist": {
+      "id": "c919a8e7-e4cf-407f-ac87-f4a670a01cf9",
+      "name": "Rhenzy Feliz",
+      "sort-name": "Feliz, Rhenzy"
+     }
+    },
+    {
+     "joinphrase": ", ",
+     "name": "Diane Guerrero",
+     "artist": {
+      "id": "5958a781-1fa5-4d4f-a027-9caba2943eaf",
+      "name": "Diane Guerrero",
+      "sort-name": "Guerrero, Diane"
+     }
+    },
+    {
+     "joinphrase": " and Cast",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "first-release-date": "2022-01-23",
+   "releases": [
+    {
+     "id": "13dba671-4120-48c0-8ea9-57535daa6016",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "artist-credit-id": "e652ce19-6916-4613-a999-f4f72a3563f1",
+     "count": 1,
+     "title": "We Don't Talk About Bruno (Noc.V Bootleg)",
+     "status": "Bootleg",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Carolina Gaitán",
+       "artist": {
+        "id": "468be9aa-67bc-4ed1-b84d-9f4f20128f07",
+        "name": "Carolina Gaitán",
+        "sort-name": "Gaitán, Carolina",
+        "disambiguation": "La Gaita"
+       }
+      },
+      {
+       "joinphrase": ", ",
+       "name": "Mauro Castillo",
+       "artist": {
+        "id": "b26fbf03-064d-477d-8452-61c587ce82f7",
+        "name": "Mauro Castillo",
+        "sort-name": "Castillo, Mauro"
+       }
+      },
+      {
+       "joinphrase": ", ",
+       "name": "Adassa",
+       "artist": {
+        "id": "239c8eea-895e-4b6f-bfd5-3e51a61230df",
+        "name": "Adassa",
+        "sort-name": "Adassa",
+        "disambiguation": "reggaeton artist"
+       }
+      },
+      {
+       "joinphrase": ", ",
+       "name": "Rhenzy Feliz",
+       "artist": {
+        "id": "c919a8e7-e4cf-407f-ac87-f4a670a01cf9",
+        "name": "Rhenzy Feliz",
+        "sort-name": "Feliz, Rhenzy"
+       }
+      },
+      {
+       "joinphrase": ", ",
+       "name": "Diane Guerrero",
+       "artist": {
+        "id": "5958a781-1fa5-4d4f-a027-9caba2943eaf",
+        "name": "Diane Guerrero",
+        "sort-name": "Guerrero, Diane"
+       }
+      },
+      {
+       "joinphrase": " and Cast",
+       "name": "Stephanie Beatriz",
+       "artist": {
+        "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+        "name": "Stephanie Beatriz",
+        "sort-name": "Stephanie Beatriz"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "1205c092-f01c-4ab3-b95a-dfc31d6dac2b",
+      "type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "title": "We Don't Talk About Bruno (Noc.V Bootleg)",
+      "primary-type": "Single",
+      "secondary-types": [
+       "Remix"
+      ],
+      "secondary-type-ids": [
+       "0c60f497-ff81-3818-befd-abfc84a4858b"
+      ]
+     },
+     "date": "2022-01-23",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2022-01-23",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 1,
+     "media": [
+      {
+       "id": "eb3a4eb3-d5c9-3370-ab2b-7146c7a4d565",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "3d712d5e-ae80-47a0-91b6-b613491d423c",
+         "number": "1",
+         "title": "We Don't Talk About Bruno (Noc.V Bootleg)",
+         "length": 172485
+        }
+       ],
+       "track-count": 1,
+       "track-offset": 0
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

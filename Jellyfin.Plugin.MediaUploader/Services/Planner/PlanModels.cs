@@ -33,6 +33,13 @@ public interface IFileProbe
     /// <param name="root">Dossier musique.</param>
     /// <returns>Chemins complets et tags (vide si inconnu).</returns>
     IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => Enumerable.Empty<(string, TagInfo)>();
+
+    /// <summary>
+    /// Noms des sous-dossiers d'un dossier (dossiers d'artiste existants, pour reprendre leur orthographe).
+    /// </summary>
+    /// <param name="directory">Dossier.</param>
+    /// <returns>Noms (vide si inconnu).</returns>
+    IEnumerable<string> ListDirs(string directory) => Enumerable.Empty<string>();
 }
 
 /// <summary>Implémentation réelle : le disque.</summary>
@@ -55,6 +62,21 @@ public sealed class DiskFileProbe : IFileProbe
 
     /// <inheritdoc />
     public IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => _known is null ? Enumerable.Empty<(string, TagInfo)>() : _known(root);
+
+    /// <inheritdoc />
+    public IEnumerable<string> ListDirs(string directory)
+    {
+        try
+        {
+            return Directory.Exists(directory)
+                ? Directory.EnumerateDirectories(directory).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n) && !n!.StartsWith('.')).Cast<string>().Take(20000).ToList()
+                : Enumerable.Empty<string>();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Enumerable.Empty<string>();
+        }
+    }
 
     /// <inheritdoc />
     public IEnumerable<string> ListFilesDeep(string directory)
@@ -172,6 +194,12 @@ public sealed class PlannerOptions
 
     /// <summary>Gets or sets a value indicating whether un sous-titre est renommé pour suivre le nom de sa vidéo.</summary>
     public bool RenameSubtitles { get; set; } = true;
+
+    /// <summary>Gets or sets la réponse connue de MusicBrainz pour un morceau (titre, mention, album) ; null : règles locales seulement.</summary>
+    public Func<string?, string?, string?, Import.MbCredit?>? CreditLookup { get; set; }
+
+    /// <summary>Gets or sets les noms d'artistes contenant une virgule confirmés par l'utilisateur (gardés entiers).</summary>
+    public ICollection<string>? ArtistNames { get; set; }
 }
 
 /// <summary>
@@ -344,6 +372,18 @@ public sealed class PlanItem
 
     /// <summary>Gets or sets l'association (sous-titres).</summary>
     public PlanPair? Pair { get; set; }
+
+    /// <summary>Gets or sets les interprètes du morceau, séparés (vide : mention d'un seul artiste, tags inchangés).</summary>
+    public List<string> Artists { get; set; } = new();
+
+    /// <summary>Gets or sets l'artiste de l'album écrit dans les tags à la confirmation (null : inchangé).</summary>
+    public string? AlbumArtist { get; set; }
+
+    /// <summary>Gets or sets la mention d'artistes d'origine (tags).</summary>
+    public string? Credit { get; set; }
+
+    /// <summary>Gets or sets l'origine du découpage : "rule", "name", "musicbrainz" ; null si rien n'a été découpé.</summary>
+    public string? CreditSource { get; set; }
 
     /// <summary>Gets or sets les artistes possibles pour le dossier quand le choix automatique est incertain (artiste commun d'un album aux artistes variés) ; vide si le choix est sûr.</summary>
     public List<string> ArtistChoices { get; set; } = new();

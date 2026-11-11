@@ -34,6 +34,14 @@ public static class MusicBrainzClient
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, (DateTime At, int Count)> TrackCounts = new();
 
     /// <summary>
+    /// Requête brute à l'API de MusicBrainz (même file d'attente que les autres : une requête par seconde au plus).
+    /// </summary>
+    /// <param name="relative">Chemin et paramètres après « /ws/2/ ».</param>
+    /// <param name="ct">Annulation.</param>
+    /// <returns>JSON.</returns>
+    public static Task<string> GetJsonAsync(string relative, CancellationToken ct) => GetAsync(relative, ct);
+
+    /// <summary>
     /// Cherche des artistes par nom.
     /// </summary>
     /// <param name="query">Texte saisi.</param>

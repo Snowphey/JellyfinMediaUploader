@@ -373,6 +373,11 @@
     S.plan = pick(body, 'Plan');
     S.progress = pick(body, 'Progress') || {};
     if (pick(body, 'Playlist') !== undefined) { S.playlistInfo = pick(body, 'Playlist'); }
+    S.credits = pick(body, 'Credits') || null;
+    // Vérification des artistes sur MusicBrainz en cours : l'aperçu se complète, on le redemande régulièrement.
+    if (S.credits && pick(S.credits, 'Pending') > 0 && S.phase === 'review' && !S.creditTimer) {
+      S.creditTimer = setTimeout(function () { S.creditTimer = null; refreshBatch(); }, 3000);
+    }
   }
   function fromImport() { return !!(S.playlistInfo && pick(S.playlistInfo, 'FromImport')); }
 
@@ -1076,6 +1081,16 @@
     if (rule && pick(item, 'Manual')) { row.appendChild(h('div', { class: 'muted', text: 'Corrigé à la main' })); }
     if (pick(item, 'TagsPending') && !complete(id)) { row.appendChild(h('div', { class: 'muted', text: 'Artiste et album seront lus dans les tags à la réception.' })); }
     list(pick(item, 'Notes')).forEach(function (n) { row.appendChild(h('div', { class: 'note', text: n })); });
+    // Mention découpée par les règles locales : l'utilisateur peut dire que c'est un seul artiste (« Tyler, The Creator »), c'est retenu.
+    if (pick(item, 'CreditSource') === 'rule' && list(pick(item, 'Artists')).length > 1 && !S.committing) {
+      row.appendChild(h('div', { class: 'note' }, [h('a', { href: '#', text: '« ' + pick(item, 'Credit') + ' » est un seul artiste', onclick: function (e) {
+        e.preventDefault();
+        api('POST', 'MediaUploader/ArtistNames', { name: pick(item, 'Credit') }).then(function (res) {
+          if (res.status !== 200) { throw new Error(errText(res)); }
+          refreshBatch();
+        }).catch(function (err) { showWarn(err.message); });
+      } })]));
+    }
     if (up && up.message) { row.appendChild(h('div', { class: 'note', text: up.message })); }
     var dup = pick(item, 'Duplicate');
     if (dup && !S.committing) {
@@ -1193,7 +1208,10 @@
     $('sumtext').textContent = (pick(sum, 'Groups') || 0) + ' groupe(s), ' + (pick(sum, 'Files') || 0) + ' fichier(s)' + (doubts ? ' · ' + doubts + ' à vérifier' : '') + (pick(sum, 'Rejected') ? ' · ' + pick(sum, 'Rejected') + ' ignoré(s)' : '');
     $('recvbar').value = pct;
     $('recvbar').style.display = got === receivable.length ? 'none' : '';
-    $('recvtext').textContent = got === receivable.length ? 'Tous les fichiers sont reçus et analysés.' : 'Réception : ' + got + ' / ' + receivable.length + ' fichier(s)';
+    var cr = S.credits, crText = '';
+    if (cr && pick(cr, 'Pending') > 0) { crText = ' Vérification des artistes sur MusicBrainz : ' + pick(cr, 'Pending') + ' morceau' + (pick(cr, 'Pending') > 1 ? 'x' : '') + ' restant' + (pick(cr, 'Pending') > 1 ? 's' : '') + ' (l\'aperçu se complète ; vous pouvez confirmer avant la fin).'; }
+    else if (cr && pick(cr, 'Error')) { crText = ' MusicBrainz : ' + pick(cr, 'Error') + ' Les artistes sont séparés par les règles locales.'; }
+    $('recvtext').textContent = (got === receivable.length ? 'Tous les fichiers sont reçus et analysés.' : 'Réception : ' + got + ' / ' + receivable.length + ' fichier(s)') + crText;
     var commit = $('commit'), links = linkedDuplicates();
     commit.disabled = S.committing || (!sel.length && !links.length) || !ready;
     commit.textContent = S.committing ? 'Rangement en cours…' : (!ready && sel.length ? 'En attente de la réception…' : 'Confirmer et envoyer (' + sel.length + ')' + (links.length ? ' · ' + links.length + ' doublon' + (links.length > 1 ? 's' : '') + ' laissé' + (links.length > 1 ? 's' : '') + ' de côté' : ''));

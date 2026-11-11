@@ -19,6 +19,7 @@
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\LibraryModels.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\CoverSearch.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\MusicHealth.cs" />
+    <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Detection\*.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Planner\*.cs" />
     <!-- Import : tout sauf ce qui dépend de Jellyfin ou de TagLib (ImportManager, TrackTagger, PlaylistBuilder). -->

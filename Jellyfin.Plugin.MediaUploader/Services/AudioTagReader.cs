@@ -8,7 +8,11 @@ namespace Jellyfin.Plugin.MediaUploader.Services;
 /// <param name="Title">Titre du morceau.</param>
 /// <param name="CoverData">Pochette intégrée (octets), si présente.</param>
 /// <param name="CoverExtension">Extension de la pochette (.jpg, .png, .webp).</param>
-public record AudioTags(string? Artist, string? Album, string? Title, byte[]? CoverData, string? CoverExtension);
+public record AudioTags(string? Artist, string? Album, string? Title, byte[]? CoverData, string? CoverExtension)
+{
+    /// <summary>Gets les interprètes tels qu'écrits (sans l'artiste d'album).</summary>
+    public string? Performers { get; init; }
+}
 
 /// <summary>
 /// Détail des tags d'un fichier audio, pour l'aperçu avant confirmation.
@@ -67,7 +71,8 @@ public static class AudioTagReader
                 }
             }
 
-            return new AudioTags(artist, album, title, cover, coverExt);
+            var performers = tag.Performers is { Length: > 0 } p ? Clean(string.Join("; ", p.Where(x => !string.IsNullOrWhiteSpace(x)))) : null;
+            return new AudioTags(artist, album, title, cover, coverExt) { Performers = performers };
         }
         catch (Exception)
         {
@@ -123,7 +128,32 @@ public static class AudioTagReader
     public static TagInfo? ReadInfo(string path, string originalExtension)
     {
         var tags = Read(path, originalExtension);
-        return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title);
+        return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title, tags.Performers);
+    }
+
+    /// <summary>
+    /// Écrit les interprètes (un par valeur : Jellyfin les sépare s'il utilise « ; » comme séparateur) et l'artiste de l'album,
+    /// même sous un nom temporaire.
+    /// </summary>
+    /// <param name="path">Fichier.</param>
+    /// <param name="originalExtension">Extension d'origine.</param>
+    /// <param name="artists">Interprètes (vide : inchangés).</param>
+    /// <param name="albumArtist">Artiste de l'album (null : inchangé).</param>
+    public static void WriteCredits(string path, string originalExtension, IReadOnlyList<string> artists, string? albumArtist)
+    {
+        var abstraction = new NamedFile(path, "file" + originalExtension);
+        using var file = TagLib.File.Create(abstraction);
+        if (artists.Count > 0)
+        {
+            file.Tag.Performers = artists.ToArray();
+        }
+
+        if (!string.IsNullOrWhiteSpace(albumArtist))
+        {
+            file.Tag.AlbumArtists = new[] { albumArtist };
+        }
+
+        file.Save();
     }
 
     /// <summary>

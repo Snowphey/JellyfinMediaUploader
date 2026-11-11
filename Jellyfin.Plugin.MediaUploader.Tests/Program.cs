@@ -339,6 +339,13 @@ idxFs.Known.Add((Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a", new 
 var idxDup = Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky (Official Audio)") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxFs);
 Check("doublon dans un autre dossier (index)", (Item(idxDup, "gl.m4a").Status, Item(idxDup, "gl.m4a").Duplicate!.WithPath), ("duplicate", Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a"));
 Check("groupe fait uniquement de doublons : à vérifier", idxDup.Groups.Single(g => g.Kind == "music").Status, "review");
+// Orthographe d'un artiste unifiée : dans le lot (la plus soignée), et d'après un dossier déjà présent.
+var spell = Run(new List<PlanFile> { Song("a", "a.m4a", "Freeze corleone", "Kpop"), Song("b", "b.m4a", "Freeze corleone", "Shavkat"), Song("c", "c.m4a", "Freeze Corleone", "Desiigner") });
+Check("orthographe unifiée dans le lot (« Freeze Corleone »)", spell.Groups.SelectMany(g => g.Items).Select(i => i.Artist).Distinct().Single(), "Freeze Corleone");
+var vfs = new FakeFs(new[] { Music + "/Vald/Agartha/01 - Intro.m4a" });
+var vald = Planner.Build(new List<PlanFile> { Song("a", "x.m4a", "VALD", "Désaccordé") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, vfs);
+Check("orthographe d'un dossier existant reprise (« Vald »)", (Item(vald, "x.m4a").Artist, Item(vald, "x.m4a").Dest!.StartsWith("Vald/", StringComparison.Ordinal)), ("Vald", true));
+
 // Un doublon dans un album dont un autre morceau est nouveau : le groupe reste prêt, donc coché par défaut (le nouveau morceau n'est pas oublié).
 var mjFs = new FakeFs(new[] { Music + "/Michael Jackson/Thriller 25/29 - Billie Jean.flac" });
 mjFs.Known.Add((Music + "/Michael Jackson/Thriller 25/29 - Billie Jean.flac", new TagInfo("Michael Jackson", "Thriller 25", "Billie Jean")));
@@ -406,7 +413,7 @@ var proj = Run(new List<PlanFile> {
     new() { Id = "2", ClientPath = "Alicia.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur: Expedition 33 (OST)", "Alicia") },
     new() { Id = "3", ClientPath = "Autre.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur", "Autre") } });
 Check("préfixe commun : le plus court", (Item(proj, "Autre.mp3").Dest, Item(proj, "Autre.mp3").Status), ("Lorien Testard/Clair Obscur/Autre.mp3", "ready"));
-Check("autre album non touché", Item(proj, "Alicia.mp3").Dest, "Lorien Testard, Alice Duport-Percier/Clair Obscur: Expedition 33 (OST)/Alicia.mp3");
+Check("autre album : dossier de l'artiste principal (plus de dossier à virgule)", Item(proj, "Alicia.mp3").Dest, "Lorien Testard/Clair Obscur: Expedition 33 (OST)/Alicia.mp3");
 var lead = Run(new List<PlanFile> { Song("1", "a.flac", "Duo, X", "A"), Song("2", "b.flac", "Duo, Y", "B") }, ov: null);
 Check("même premier nom : unifié", (Item(lead, "a.flac").Dest, Item(lead, "b.flac").Dest), ("Duo/Album/a.flac", "Duo/Album/b.flac"));
 var keepOv = Run(new List<PlanFile> { Song("1", "a.flac", "P", "A"), Song("2", "b.flac", "Q", "B") }, ov: new() { ["1"] = new ItemOverride { Artist = "Moi" } });
@@ -421,7 +428,7 @@ var rap3 = Run(new List<PlanFile> { Song("1", "1.flac", "Duo, X", "A"), Song("2"
 Check("même artiste principal, invités différents : sûr", (Item(rap3, "1.flac").Dest, Item(rap3, "1.flac").Status), ("Duo/Album/1.flac", "ready"));
 
 // Choix incertain : les possibilités sont proposées ; le choix de l'utilisateur lève le doute.
-Check("choix incertain : propositions", string.Join(" | ", Item(rap2, "2.flac").ArtistChoices), "Drake | Future, Drake | Drake, Future | Various Artists");
+Check("choix incertain : propositions", string.Join(" | ", Item(rap2, "2.flac").ArtistChoices), "Drake | Future | Various Artists");
 Check("choix sûr : pas de proposition", Item(rap, "3.flac").ArtistChoices.Count, 0);
 var picked = Run(new List<PlanFile> { Song("1", "1.flac", "Drake", "A"), Song("2", "2.flac", "Future, Drake", "B"), Song("3", "3.flac", "Drake, Future", "C") },
     ov: new() { ["1"] = new ItemOverride { Artist = "Drake" }, ["2"] = new ItemOverride { Artist = "Drake" }, ["3"] = new ItemOverride { Artist = "Drake" } });
@@ -914,6 +921,64 @@ if (OperatingSystem.IsLinux())
     }
 }
 
+// ---------- Mentions d'artistes : découpage local, puis MusicBrainz ----------
+string Arts(string credit, ICollection<string>? known = null) => string.Join(" | ", ArtistCredits.Split(credit, known).Artists);
+Check("découpage : virgules", Arts("K/DA, Madison Beer, i-dle, Jaira Burns"), "K/DA | Madison Beer | i-dle | Jaira Burns");
+Check("découpage : feat.", Arts("Freeze Corleone feat. ASHE 22"), "Freeze Corleone | ASHE 22");
+Check("découpage : « & » ne sépare pas", Arts("Mcfly & Carlito, Bigflo & Oli"), "Mcfly & Carlito | Bigflo & Oli");
+Check("découpage : répétitions retirées", Arts("Yoshimasa Terui;Yoshimasa Terui;Yoshimasa Terui"), "Yoshimasa Terui");
+Check("nom à virgule connu : entier", (Arts("Tyler, The Creator"), ArtistCredits.Split("Earth, Wind & Fire").Source), ("Tyler, The Creator", "name"));
+Check("nom à virgule connu dans une liste", Arts("Kali Uchis, Tyler, The Creator, Bootsy Collins"), "Kali Uchis | Tyler, The Creator | Bootsy Collins");
+Check("pas de règle de forme : vraie collaboration", Arts("Damso, Hamza & SCH"), "Damso | Hamza & SCH");
+Check("pas de règle de forme : « , The Weeknd »", Arts("Kendrick Lamar, The Weeknd"), "Kendrick Lamar | The Weeknd");
+Check("nom confirmé par l'utilisateur", Arts("Coda, くまのきよみ", new[] { "coda, くまのきよみ" }), "Coda, くまのきよみ");
+Check("un seul artiste : rien à découper", ArtistCredits.Split("Bigflo & Oli").Source, "single");
+Check("distribution d'un film : Various Artists", ArtistCredits.FolderArtist(ArtistCredits.Split("Stephanie Beatriz, Olga Merediz, Encanto - Cast").Artists), "Various Artists");
+Check("sinon l'artiste principal", ArtistCredits.FolderArtist(ArtistCredits.Split("Toby Fox, Lena Raine").Artists), "Toby Fox");
+True("écriture non latine repérée", ArtistCredits.HasNonLatin("照井順政") && !ArtistCredits.HasNonLatin("Beyoncé") && !ArtistCredits.HasNonLatin("Mötley Crüe"));
+
+// Dans l'aperçu : dossier au nom de l'artiste principal, interprètes séparés pour les tags.
+var kdaPlan = Run(new List<PlanFile> { Song("a", "POPSTARS.m4a", "K/DA, Madison Beer, (G)I-DLE, Jaira Burns", "POP/STARS") });
+var kdaItem = Item(kdaPlan, "POPSTARS.m4a");
+Check("aperçu : dossier de l'artiste principal, interprètes séparés", (kdaItem.Artist, string.Join(" | ", kdaItem.Artists), kdaItem.AlbumArtist, kdaItem.CreditSource, kdaItem.Dest!.Split('/')[0]), ("K/DA", "K/DA | Madison Beer | (G)I-DLE | Jaira Burns", "K/DA", "rule", "K DA"));
+var castPlan = Run(new List<PlanFile> { Song("a", "madrigal.m4a", "Stephanie Beatriz, Olga Merediz, Encanto - Cast", "The Family Madrigal") });
+Check("aperçu : distribution de film sans MusicBrainz → Various Artists", Item(castPlan, "madrigal.m4a").Artist, "Various Artists");
+var mbOpts = Opts();
+mbOpts.CreditLookup = (t, c, a) => t == "The Family Madrigal" ? new MbCredit(new[] { "Stephanie Beatriz", "Olga Merediz" }, "Lin‐Manuel Miranda & Germaine Franco", "Encanto") : null;
+var mbPlan = Run(new List<PlanFile> { Song("a", "madrigal.m4a", "Stephanie Beatriz, Olga Merediz, Encanto - Cast", "The Family Madrigal") }, o: mbOpts);
+var mbItem = Item(mbPlan, "madrigal.m4a");
+Check("aperçu : MusicBrainz donne l'artiste de l'album et les interprètes (artistes des tags absents de MusicBrainz gardés)", (mbItem.Artist, string.Join(" | ", mbItem.Artists), mbItem.CreditSource), ("Lin‐Manuel Miranda & Germaine Franco", "Stephanie Beatriz | Olga Merediz | Encanto - Cast", "musicbrainz"));
+// Album dont MusicBrainz crédite deux éditions un peu différemment, et un nom des tags plus long que celui de MusicBrainz.
+var encOpts = Opts();
+encOpts.CreditLookup = (t, c, a) => t switch
+{
+    "Surface Pressure" => new MbCredit(new[] { "Jessica Darrow" }, "Lin‐Manuel Miranda & Germaine Franco", "Encanto"),
+    "Bruno" => new MbCredit(new[] { "Carolina Gaitán", "Mauro Castillo" }, "Lin‐Manuel Miranda, Germaine Franco & Encanto - Cast", "Encanto (OST)"),
+    "Madrigal" => new MbCredit(new[] { "Stephanie Beatriz" }, "Lin‐Manuel Miranda & Germaine Franco", "Encanto"),
+    _ => null
+};
+var enc = Run(new List<PlanFile> { Song("a", "sp.m4a", "Jessica Darrow", "Surface Pressure"), Song("b", "br.m4a", "Carolina Gaitán - La Gaita, Mauro Castillo", "Bruno"), Song("c", "md.m4a", "Stephanie Beatriz, Encanto - Cast", "Madrigal") }, o: encOpts);
+Check("album : artiste MusicBrainz majoritaire pour tout l'album", enc.Groups.SelectMany(gr => gr.Items).Select(i => i.Artist).Distinct().Single(), "Lin‐Manuel Miranda & Germaine Franco");
+Check("nom des tags plus long que celui de MusicBrainz : pas en double", string.Join(" | ", Item(enc, "br.m4a").Artists), "Carolina Gaitán | Mauro Castillo");
+
+var nameOpts = Opts();
+nameOpts.ArtistNames = new List<string> { "Crosby, Stills, Nash" };
+Check("aperçu : nom confirmé gardé entier", Item(Run(new List<PlanFile> { Song("a", "x.m4a", "Crosby, Stills, Nash", "Suite") }, o: nameOpts), "x.m4a").Artist, "Crosby, Stills, Nash");
+Check("aperçu : un seul artiste, rien à écrire", (Item(Run(new List<PlanFile> { Song("a", "y.m4a", "Bigflo & Oli", "Dommage") }), "y.m4a").CreditSource, Item(Run(new List<PlanFile> { Song("a", "y.m4a", "Bigflo & Oli", "Dommage") }), "y.m4a").Artists.Count), ((string?)null, 0));
+
+string Fixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "MusicBrainz", name + ".json"));
+var mbMadrigal = MusicBrainzCredits.ParseRecordings(Fixture("rec_madrigal"), "The Family Madrigal", "Stephanie Beatriz, Olga Merediz, Encanto - Cast", "Encanto");
+Check("MusicBrainz : interprètes séparés, sortie de la bande originale", (mbMadrigal is null ? null : string.Join(" | ", mbMadrigal.Artists.Select(a => a.Name)), mbMadrigal is null ? null : string.Concat(mbMadrigal.AlbumCredit.Select(c => c.Name + c.Join))), ("Stephanie Beatriz | Olga Merediz", "Lin‐Manuel Miranda & Germaine Franco"));
+var mbSurface = MusicBrainzCredits.ParseRecordings(Fixture("rec_surface"), "Surface Pressure", "Jessica Darrow", "Encanto");
+Check("MusicBrainz : chanson solo, album de la bande originale (pas une compilation)", (mbSurface is null ? null : string.Join(" | ", mbSurface.Artists.Select(a => a.Name)), mbSurface?.Release, mbSurface is null ? null : string.Concat(mbSurface.AlbumCredit.Select(c => c.Name + c.Join))),
+    ("Jessica Darrow", "Encanto (Original Motion Picture Soundtrack)", "Lin‐Manuel Miranda, Germaine Franco & Encanto - Cast"));
+var mbBruno = MusicBrainzCredits.ParseRecordings(Fixture("rec_bruno_fr"), "Ne parlons pas de Bruno", "Sharon Laloum, Julian Ortiz Cardona, Angèle Humeau, Tom Almodar, Kaycie Chase, Camille Timmerman, Encanto - Cast", "We Don’t Talk About Bruno");
+Check("MusicBrainz : version française, sortie d'origine", (mbBruno?.Artists.Count, mbBruno is null ? null : string.Concat(mbBruno.AlbumCredit.Select(c => c.Name + c.Join))), ((int?)6, "Lin‐Manuel Miranda & Germaine Franco"));
+var mbJjk = MusicBrainzCredits.ParseRecordings(Fixture("rec_jujutsu"), "Jujutsu Sorcerer", "照井順政, Yoshimasa Terui, Alisa Okehazama", "Jujutsu Kaisen Hidden Inventory Premature Death, The Shibuya Incident Original Soundtrack");
+Check("MusicBrainz : nom japonais retrouvé", mbJjk?.Artists.FirstOrDefault().Name, "照井順政");
+Check("MusicBrainz : alias latin", MusicBrainzCredits.ParseLatinAlias(Fixture("artist_terui")), "Yoshimasa Terui");
+Check("MusicBrainz : titre différent refusé", MusicBrainzCredits.ParseRecordings(Fixture("rec_surface"), "Dos Oruguitas", "Jessica Darrow", "Encanto"), null);
+
 // ---------- Santé de la bibliothèque musique : artistes et albums répartis, morceaux en double ----------
 Check("artiste principal", (MusicHealth.Lead("K DA, Madison Beer, i-dle"), MusicHealth.Lead("Freeze Corleone feat. ASHE 22"), MusicHealth.Lead("Bigflo & Oli"), MusicHealth.Lead("Mcfly & Carlito, Bigflo & Oli")), ("K DA", "Freeze Corleone", "Bigflo & Oli", "Mcfly & Carlito"));
 Check("clé d'artiste", (MusicHealth.ArtistKey("K/DA") == MusicHealth.ArtistKey("K DA"), MusicHealth.ArtistKey("OrelSan") == MusicHealth.ArtistKey("Orelsan"), MusicHealth.ArtistKey("The Weeknd") == MusicHealth.ArtistKey("Weeknd")), (true, true, true));
@@ -958,6 +1023,10 @@ Check("clé d'artiste", (MusicHealth.ArtistKey("K/DA") == MusicHealth.ArtistKey(
         Check("« & » ne coupe pas : Bigflo & Oli pas mélangé à Mcfly & Carlito", rep.ScatteredArtists.Any(g => g.Items.Contains("Bigflo & Oli")), false);
         Check("corbeille ignorée", rep.ScatteredArtists.Concat(rep.ScatteredAlbums).SelectMany(g => g.Items).Any(i => i.Contains(".mu-corbeille")), false);
 
+        var multiFolder = rep.MultiArtistFolders?.SingleOrDefault(g => g.Name == "Mcfly & Carlito, Bigflo & Oli");
+        Check("dossier au nom de plusieurs artistes : artiste principal", multiFolder?.Artist, "Mcfly & Carlito");
+        Check("dossier d'un artiste réparti : pas signalé deux fois", rep.MultiArtistFolders?.Any(g => g.Name.StartsWith("K DA,", StringComparison.Ordinal)), false);
+        Check("nom confirmé : pas signalé", MusicHealth.Analyze(hlib, known, File.Exists, p => new FileInfo(p).Length, new[] { "Mcfly & Carlito, Bigflo & Oli" }).MultiArtistFolders?.Any(g => g.Name == "Mcfly & Carlito, Bigflo & Oli"), false);
         var co = rep.ScatteredAlbums.SingleOrDefault(g => g.Name.StartsWith("Clair Obscur", StringComparison.Ordinal));
         Check("album réparti entre artistes : artiste commun proposé", (co?.Items.Count, co?.Artist), ((int?)2, "Lorien Testard"));
         Check("titre courant d'artistes sans rapport : pas signalé", rep.ScatteredAlbums.Any(g => g.Name == "Greatest Hits"), false);
@@ -1012,4 +1081,10 @@ sealed class FakeFs : IFileProbe
     public List<(string Path, TagInfo Tags)> Known { get; } = new();
 
     public IEnumerable<(string Path, TagInfo Tags)> KnownMusic(string root) => Known.Where(k => k.Path.StartsWith(root));
+
+    public IEnumerable<string> ListDirs(string directory)
+    {
+        var prefix = N(directory) + "/";
+        return _files.Where(f => f.StartsWith(prefix)).Select(f => f[prefix.Length..]).Where(r => r.Contains('/')).Select(r => r[..r.IndexOf('/')]).Distinct().ToList();
+    }
 }

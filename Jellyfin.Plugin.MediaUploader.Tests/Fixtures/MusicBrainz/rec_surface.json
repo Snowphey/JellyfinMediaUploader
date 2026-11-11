@@ -1,0 +1,1213 @@
+{
+ "created": "2026-11-11T12:26:15.243Z",
+ "count": 5,
+ "offset": 0,
+ "recordings": [
+  {
+   "id": "534ea7e4-1f6c-4431-b195-3a398625c0d7",
+   "score": 100,
+   "artist-credit-id": "0d3d8970-e177-3f25-ac7b-37e750699ff2",
+   "title": "Surface Pressure",
+   "length": 201246,
+   "video": null,
+   "artist-credit": [
+    {
+     "name": "Jessica Darrow",
+     "artist": {
+      "id": "e096782e-66d3-4add-aa75-ddf2b3d13923",
+      "name": "Jessica Darrow",
+      "sort-name": "Darrow, Jessica"
+     }
+    }
+   ],
+   "first-release-date": "2023-09-15",
+   "releases": [
+    {
+     "id": "718ccd62-c073-4d44-967f-15ef5d3cf246",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Songs and Story: Encanto",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "e0afee47-2177-4474-baac-578ffbbc58d7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Songs and Story: Encanto",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 7,
+     "media": [
+      {
+       "id": "57156de0-c54f-4f3b-aef4-10167704d14f",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "e6d0cd0a-3f20-4287-ab14-27748afb0b9b",
+         "number": "2",
+         "title": "Surface Pressure",
+         "length": 201246
+        }
+       ],
+       "track-count": 7,
+       "track-offset": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "2608a333-fe8d-444d-bb7e-8f4768ecf969",
+   "score": 100,
+   "artist-credit-id": "0d3d8970-e177-3f25-ac7b-37e750699ff2",
+   "title": "Surface Pressure",
+   "length": 202240,
+   "disambiguation": "Dolby Atmos mix",
+   "video": null,
+   "artist-credit": [
+    {
+     "name": "Jessica Darrow",
+     "artist": {
+      "id": "e096782e-66d3-4add-aa75-ddf2b3d13923",
+      "name": "Jessica Darrow",
+      "sort-name": "Darrow, Jessica"
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "341610c8-f25f-486b-8bf0-93aedd283df2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, Māori version",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dc4db6bd-a827-4bc9-96c5-f7afe2cbfb16",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2024-08-30",
+     "country": "NZ",
+     "release-events": [
+      {
+       "date": "2024-08-30",
+       "area": {
+        "id": "8524c7d9-f472-3890-a458-f28d5081d9c4",
+        "name": "New Zealand",
+        "sort-name": "New Zealand",
+        "iso-3166-1-codes": [
+         "NZ"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "a7f36af4-1ab0-4e2b-8b19-2a51f11158ca",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "a5ec9e3d-19a7-4e0b-8bfa-8245f079f0e2",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202240
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "201eca7d-b708-4918-b936-5879e0fa8fbb",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "c1a29b2c-5bb1-4390-b4e0-9ed3c964c8a8",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "f4396af1-64de-41f8-9c2f-3edc4c712885",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202240
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "19628a0e-fd30-46e6-af05-634ca76f3689",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version, Dolby Atmos mix",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 44,
+     "media": [
+      {
+       "id": "6e2a32b3-3e9c-3701-8ca8-58e47c19e0ba",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "3f428249-ec4c-40e5-93dd-ce53adb5c772",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202240
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 2
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12213778"
+   ]
+  },
+  {
+   "id": "b20dc64a-5da2-4a5c-936b-8e14188b8554",
+   "score": 100,
+   "artist-credit-id": "0d3d8970-e177-3f25-ac7b-37e750699ff2",
+   "title": "Surface Pressure",
+   "length": 202226,
+   "video": null,
+   "artist-credit": [
+    {
+     "name": "Jessica Darrow",
+     "artist": {
+      "id": "e096782e-66d3-4add-aa75-ddf2b3d13923",
+      "name": "Jessica Darrow",
+      "sort-name": "Darrow, Jessica"
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "afe9fed1-ab9b-43d4-992f-631b28d3698c",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Disney Summer Songs 2",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "1612e47d-94a4-46e8-809b-9b59334eae80",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Summer Songs 2",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2023-09-25",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2023-09-25",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 20,
+     "media": [
+      {
+       "id": "28f3ffa8-d77f-3841-8d6a-f77146c3c9d5",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "2dd576ea-1521-4a4e-b0b0-20b5d4ab8dcf",
+         "number": "9",
+         "title": "Surface Pressure (from “Encanto” soundtrack version)",
+         "length": 202000
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 8
+      }
+     ]
+    },
+    {
+     "id": "6026b713-cc76-49f8-915b-97a633d7828a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Canciones originales de Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "b6a60c72-c85e-486c-b098-d19e9b4531b7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, Spanish version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2022",
+     "country": "MX",
+     "release-events": [
+      {
+       "date": "2022",
+       "area": {
+        "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+        "name": "Mexico",
+        "sort-name": "Mexico",
+        "iso-3166-1-codes": [
+         "MX"
+        ]
+       }
+      }
+     ],
+     "track-count": 15,
+     "media": [
+      {
+       "id": "a77157c4-661f-3861-a564-ba78336a25eb",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "2c255325-afa3-4bfd-9a22-dc62c1034176",
+         "number": "12",
+         "title": "Surface Pressure",
+         "length": 202200
+        }
+       ],
+       "track-count": 15,
+       "track-offset": 11
+      }
+     ]
+    },
+    {
+     "id": "6bc38737-d9ae-49a3-89a7-3642af908dc6",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021",
+     "country": "XE",
+     "release-events": [
+      {
+       "date": "2021",
+       "area": {
+        "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+        "name": "Europe",
+        "sort-name": "Europe",
+        "iso-3166-1-codes": [
+         "XE"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "ab80e168-2439-3061-8023-d7fbb8c96bb7",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "78b2ab80-4ca5-4244-959a-f5f8f3a711f0",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202213
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "70ab314e-eab3-4f06-aaf3-892936989931",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "AU",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+        "name": "Australia",
+        "sort-name": "Australia",
+        "iso-3166-1-codes": [
+         "AU"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "7c48c56a-a0c1-309a-a2bf-843e967bc393",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "c752e568-fa96-46b4-a0b6-7708bdc437e1",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202226
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "0fd03d2e-5d8f-4116-b30b-2487e3030527",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "e94b6b71-ae76-343b-a07a-3cf94f942434",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "47952573-4261-461d-ad12-b25e3644be04",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202226
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "9d907d36-c6f3-4099-8ee7-45cc3ea9aa45",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "b7bf12e0-adab-375c-9183-c522525eecc2",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "e2d95a5d-a72d-4ab1-8fdd-9ed695b41a93",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202227
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "a9bc9efe-9283-4132-8131-6add7ea0e0f2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "9654d0a0-fd2f-3c1a-b9c6-6f13ed00aaa7",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "ae3072c8-1645-4474-a6e7-fee8d42241bf",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202227
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "579f1b3f-424f-4265-bfc2-366c01a88d47",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Surface Pressure: As Heard Around the World",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "5f22bef2-17c4-42ee-bc78-ddd8e5c7a0ba",
+      "type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "title": "Surface Pressure: As Heard Around the World",
+      "primary-type": "Single",
+      "secondary-types": [
+       "Compilation",
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 22,
+     "media": [
+      {
+       "id": "627345ae-f2c5-3aa6-a9dd-bf96b0bc0dab",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "034b6fab-d87c-4349-abb0-6db9b449d0f1",
+         "number": "1",
+         "title": "Surface Pressure",
+         "length": 202226
+        }
+       ],
+       "track-count": 22,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "c75b0e31-bf55-4ec6-b347-1f447827f600",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "NL",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+        "name": "Netherlands",
+        "sort-name": "Netherlands",
+        "iso-3166-1-codes": [
+         "NL"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "aef5e46a-cbad-3927-a635-0f64a9fa9d6e",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "1e184503-20eb-4bc5-ab9c-45e2c2c3f365",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202226
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 2
+      }
+     ]
+    },
+    {
+     "id": "a8e0b7ce-585f-4825-a646-d68c16a521d7",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "disambiguation": "Target exclusive",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "fa58887b-ec06-3e5a-ac3f-0434a48f5441",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "987019df-1743-4389-bdf0-db39445b121d",
+         "number": "3",
+         "title": "Surface Pressure",
+         "length": 202226
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 2
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12112914"
+   ],
+   "tags": [
+    {
+     "count": 0,
+     "name": "offizielle charts"
+    },
+    {
+     "count": 1,
+     "name": "0 wochen"
+    }
+   ]
+  },
+  {
+   "id": "04037cac-a601-4904-9e64-12eb243e00a0",
+   "score": 100,
+   "artist-credit-id": "0d3d8970-e177-3f25-ac7b-37e750699ff2",
+   "title": "Surface Pressure",
+   "length": 202000,
+   "video": null,
+   "artist-credit": [
+    {
+     "name": "Jessica Darrow",
+     "artist": {
+      "id": "e096782e-66d3-4add-aa75-ddf2b3d13923",
+      "name": "Jessica Darrow",
+      "sort-name": "Darrow, Jessica"
+     }
+    }
+   ],
+   "first-release-date": "2026-07-08",
+   "releases": [
+    {
+     "id": "92f8c2db-cc97-4ff3-818e-05b8a2e85d2e",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Disney Hits Volume 2",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "e9108a75-852f-48d0-b00c-18927f4bb880",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Hits Volume 2",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2026-07-08",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2026-07-08",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 14,
+     "media": [
+      {
+       "id": "c58e0432-c4c7-4a22-98ec-41c511a07a59",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "fdd57e12-46cc-480f-ab78-5662a03da547",
+         "number": "13",
+         "title": "Surface Pressure",
+         "length": 202000
+        }
+       ],
+       "track-count": 14,
+       "track-offset": 12
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "769569e1-a961-4142-b6e8-abad15a1806a",
+   "score": 89,
+   "artist-credit-id": "0d3d8970-e177-3f25-ac7b-37e750699ff2",
+   "title": "Surface Pressure (Alok remix)",
+   "length": 127660,
+   "video": null,
+   "artist-credit": [
+    {
+     "name": "Jessica Darrow",
+     "artist": {
+      "id": "e096782e-66d3-4add-aa75-ddf2b3d13923",
+      "name": "Jessica Darrow",
+      "sort-name": "Darrow, Jessica"
+     }
+    }
+   ],
+   "first-release-date": "2022-09-02",
+   "releases": [
+    {
+     "id": "b40c1390-d06a-4a15-b39b-ad4395b4fe6d",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "count": 1,
+     "title": "Surface Pressure (Alok remix)",
+     "status": "Official",
+     "release-group": {
+      "id": "dbee1518-a20f-42ab-aef6-a259114cea5d",
+      "type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "primary-type-id": "d6038452-8ee0-3f68-affc-2de9a1ede0b9",
+      "title": "Surface Pressure (Alok remix)",
+      "primary-type": "Single",
+      "secondary-types": [
+       "Soundtrack",
+       "Remix"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88",
+       "0c60f497-ff81-3818-befd-abfc84a4858b"
+      ]
+     },
+     "date": "2022-09-02",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2022-09-02",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 1,
+     "media": [
+      {
+       "id": "89ed9dd2-2aed-3e1d-a732-af99013fbe2e",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "a600f46c-6674-4c18-bfbe-63248748e98b",
+         "number": "1",
+         "title": "Surface Pressure (Alok remix)",
+         "length": 127660
+        }
+       ],
+       "track-count": 1,
+       "track-offset": 0
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12215513"
+   ]
+  }
+ ]
+}

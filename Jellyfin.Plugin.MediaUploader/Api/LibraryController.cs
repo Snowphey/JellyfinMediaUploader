@@ -154,6 +154,9 @@ public class LibraryTagsRequest
     /// <summary>Gets or sets a value indicating whether les fichiers sont ensuite rangés dans le dossier « Artiste/Album » correspondant à leurs nouveaux tags.</summary>
     public bool Reorganize { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether la mention d'artistes de chaque morceau (« A, B feat. C ») est écrite artiste par artiste.</summary>
+    public bool SplitArtists { get; set; }
+
     /// <summary>Gets or sets la politique en cas de fichier déjà présent au rangement : "skip" ou "rename".</summary>
     public string? Policy { get; set; }
 
@@ -805,9 +808,43 @@ public class LibraryController : MediaUploaderControllerBase
             r.Key,
             r.Label,
             Report = LibraryFs.Health(r, kindOf, IsBusy, DateTime.UtcNow, r.Key == "music", r.Key == "music" ? LibraryTags.HasCover : null),
-            Music = r.Key == "music" ? MusicHealth.Analyze(r.Path, LibraryMusicIndex.Under(r.Path), System.IO.File.Exists, FileSize) : null
+            Music = r.Key == "music" ? MusicHealth.Analyze(r.Path, LibraryMusicIndex.Under(r.Path), System.IO.File.Exists, FileSize, Config.ArtistNames) : null
         }).ToList();
-        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>() });
+        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>(), ArtistDelimiter = DelimiterStatus() });
+    }
+
+    /// <summary>
+    /// Active « ; » comme séparateur d'artistes dans la bibliothèque musique de Jellyfin (réglage « séparateurs personnalisés ») :
+    /// les morceaux aux artistes séparés apparaissent alors chez chacun d'eux. « / » n'est pas ajouté (« AC/DC », « K/DA »).
+    /// </summary>
+    /// <returns>État du réglage.</returns>
+    [HttpPost("Library/ArtistDelimiter")]
+    public ActionResult EnableArtistDelimiter()
+    {
+        if (!IsAdmin)
+        {
+            return Forbid();
+        }
+
+        var folder = MusicCollection(out var options);
+        if (folder is null || options is null)
+        {
+            return BadRequest(new { error = "Bibliothèque musique de Jellyfin introuvable pour le dossier musique du plugin." });
+        }
+
+        if (!options.UseCustomTagDelimiters)
+        {
+            options.UseCustomTagDelimiters = true;
+            options.CustomTagDelimiters = new[] { ";" };
+        }
+        else if (!(options.CustomTagDelimiters ?? Array.Empty<string>()).Contains(";", StringComparer.Ordinal))
+        {
+            options.CustomTagDelimiters = (options.CustomTagDelimiters ?? Array.Empty<string>()).Append(";").ToArray();
+        }
+
+        folder.UpdateLibraryOptions(options);
+        _logger.LogInformation("MediaUploader: séparateur d'artistes « ; » activé pour la bibliothèque {Name}", folder.Name);
+        return Ok(DelimiterStatus());
     }
 
     /// <summary>
@@ -1021,7 +1058,7 @@ public class LibraryController : MediaUploaderControllerBase
         }
 
         var changes = request.Changes ?? new TagChanges();
-        if (changes.IsEmpty && !request.Reorganize)
+        if (changes.IsEmpty && !request.Reorganize && !request.SplitArtists)
         {
             return BadRequest(new { error = "Aucune modification demandée." });
         }
@@ -1038,6 +1075,7 @@ public class LibraryController : MediaUploaderControllerBase
         }
 
         var policy = request.Policy == "rename" ? "rename" : "skip";
+        var splitArtist = new Dictionary<TagRow, string>();
         var rows = new List<TagRow>();
         foreach (var file in files)
         {
@@ -1061,6 +1099,16 @@ public class LibraryController : MediaUploaderControllerBase
             }
 
             row.After = Merge(before, changes);
+            if (request.SplitArtists && changes.Artist is null && !string.IsNullOrWhiteSpace(row.After.Artist))
+            {
+                var split = ArtistCredits.Split(NameTools.DedupeArtists(row.After.Artist) ?? row.After.Artist, Config.ArtistNames);
+                if (split.Artists.Count > 1)
+                {
+                    row.After = row.After with { Artist = string.Join("; ", split.Artists) };
+                    splitArtist[row] = row.After.Artist!;
+                }
+            }
+
             if (request.Reorganize)
             {
                 var artistDir = FirstOf(row.After.AlbumArtist) ?? FirstOf(row.After.Artist);
@@ -1099,9 +1147,16 @@ public class LibraryController : MediaUploaderControllerBase
         var touched = new List<string>();
         foreach (var row in rows.Where(x => x.Status == "ok"))
         {
-            if (!changes.IsEmpty)
+            // Artistes séparés : propres à chaque morceau (sa mention à lui).
+            var rowChanges = changes;
+            if (splitArtist.TryGetValue(row, out var separated))
             {
-                var error = LibraryTags.Apply(row.Full, changes);
+                rowChanges = new TagChanges { Title = changes.Title, Artist = separated, AlbumArtist = changes.AlbumArtist, Album = changes.Album, Genre = changes.Genre, Year = changes.Year, Track = changes.Track, Disc = changes.Disc };
+            }
+
+            if (!rowChanges.IsEmpty)
+            {
+                var error = LibraryTags.Apply(row.Full, rowChanges);
                 if (error is not null)
                 {
                     row.Status = "error";
@@ -1318,6 +1373,55 @@ public class LibraryController : MediaUploaderControllerBase
         catch (IOException)
         {
             return 0;
+        }
+    }
+
+    // Bibliothèque de Jellyfin qui contient le dossier musique du plugin, et ses options.
+    private MediaBrowser.Controller.Entities.CollectionFolder? MusicCollection(out MediaBrowser.Model.Configuration.LibraryOptions? options)
+    {
+        options = null;
+        var music = Config.MusicPath?.Trim().TrimEnd('/', '\\');
+        if (string.IsNullOrEmpty(music))
+        {
+            return null;
+        }
+
+        foreach (var info in _libraryManager.GetVirtualFolders())
+        {
+            if (info.Locations.Any(l => string.Equals(l.TrimEnd('/', '\\'), music, StringComparison.Ordinal) || music.StartsWith(l.TrimEnd('/', '\\') + "/", StringComparison.Ordinal))
+                && Guid.TryParse(info.ItemId, out var id) && _libraryManager.GetItemById(id) is MediaBrowser.Controller.Entities.CollectionFolder folder)
+            {
+                options = _libraryManager.GetLibraryOptions(folder);
+                return folder;
+            }
+        }
+
+        return null;
+    }
+
+    private object? DelimiterStatus()
+    {
+        try
+        {
+            var folder = MusicCollection(out var options);
+            if (folder is null || options is null)
+            {
+                return null;
+            }
+
+            var delimiters = options.CustomTagDelimiters ?? Array.Empty<string>();
+            return new
+            {
+                Library = folder.Name,
+                Enabled = options.UseCustomTagDelimiters && delimiters.Contains(";", StringComparer.Ordinal),
+                Slash = options.UseCustomTagDelimiters && delimiters.Contains("/", StringComparer.Ordinal),
+                CanEnable = IsAdmin
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "MediaUploader: options de la bibliothèque musique illisibles");
+            return null;
         }
     }
 

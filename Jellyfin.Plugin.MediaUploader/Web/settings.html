@@ -169,6 +169,22 @@
                 </div>
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label class="emby-checkbox-label">
+                        <input id="muMbArtists" type="checkbox" is="emby-checkbox" />
+                        <span>Vérifier les artistes sur MusicBrainz</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Pour une mention de plusieurs artistes (« K/DA, Madison Beer », « A feat. B ») ou un nom en écriture non latine : interprètes séparés,
+                        artiste de l'album (les compositeurs d'une bande originale…), nom latin (« 照井順政 » → « Yoshimasa Terui »). Une requête par seconde, en arrière-plan ;
+                        sans réponse sûre, le premier nom est l'artiste principal. Pour que Jellyfin crée une fiche par artiste, activez le séparateur « ; » (onglet Santé de la page Bibliothèque).
+                    </div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="muArtistNames">Noms d'artistes contenant une virgule (un par ligne, jamais découpés)</label>
+                    <textarea id="muArtistNames" is="emby-textarea" rows="3" placeholder="Tyler, The Creator"></textarea>
+                    <div class="fieldDescription">« Tyler, The Creator », « Earth, Wind &amp; Fire » et quelques autres sont déjà connus. Le lien « … est un seul artiste » de l'aperçu ajoute un nom ici.</div>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
                         <input id="muCover" type="checkbox" is="emby-checkbox" />
                         <span>Extraire la pochette intégrée aux tags (cover.jpg dans le dossier de l'album)</span>
                     </label>
@@ -384,7 +400,7 @@
             var PLUGIN_ID = '7c1d5f0e-3a4b-4e8a-9b52-6d2f1c8a9e41';
             var TEXT = { MusicPath: 'muMusicPath', MoviesPath: 'muMoviesPath', ShowsPath: 'muShowsPath', MusicLayout: 'muMusicLayout', MoviesLayout: 'muMoviesLayout', ShowsLayout: 'muShowsLayout', ConfirmationMode: 'muConfirm', AudioExtensions: 'muAudioExt', VideoExtensions: 'muVideoExt', ExtraExtensions: 'muExtraExt', YtDlpPath: 'muYtDlpPath', ImportCookiesPath: 'muCookiesPath', ImportAudioFormat: 'muImpFormat', LibraryViewAccess: 'muLibView', LibraryMoveAccess: 'muLibMove', LibraryDeleteAccess: 'muLibDelete', LibraryDeleteMode: 'muLibMode', LibraryRefresh: 'muLibRefresh' };
             var DEFAULTS = { MusicLayout: 'auto', MoviesLayout: 'auto', ShowsLayout: 'auto', ConfirmationMode: 'always', ImportAudioFormat: 'm4a', LibraryViewAccess: 'admins', LibraryMoveAccess: 'admins', LibraryDeleteAccess: 'admins', LibraryDeleteMode: 'trash', LibraryRefresh: 'targeted' };
-            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx', ImportEnabled: 'muImpEnabled', LibraryEnabled: 'muLibEnabled', ImportCreatePlaylist: 'muImpPlaylist', ImportPlaylistPublic: 'muImpPlaylistPublic' };
+            var BOOLS = { AutoScan: 'muAutoScan', OverwriteExisting: 'muOverwrite', ExtractCover: 'muCover', AllowNonAdminUploads: 'muAllowAll', RenameSubtitles: 'muRenameSubs', UseFolderContext: 'muFolderCtx', ImportEnabled: 'muImpEnabled', LibraryEnabled: 'muLibEnabled', ImportCreatePlaylist: 'muImpPlaylist', ImportPlaylistPublic: 'muImpPlaylistPublic', MusicBrainzArtists: 'muMbArtists' };
             var KIND_LABELS = { movie: 'Film', series: 'Série / animé', music: 'Musique' };
 
             // ---------- Onglets ----------
@@ -461,6 +477,7 @@
                     $('muLibConfirm').value = config.LibraryConfirmThreshold === undefined ? 20 : config.LibraryConfirmThreshold;
                     $('muLibMax').value = config.LibraryMaxItems || 500;
                     Object.keys(BOOLS).forEach(function (key) { $(BOOLS[key]).checked = !!config[key]; });
+                    $('muArtistNames').value = (config.ArtistNames || []).join('\n');
                 });
             }
 
@@ -488,6 +505,7 @@
                     config.LibraryConfirmThreshold = Math.min(1000000, Math.max(0, parseInt($('muLibConfirm').value, 10) || 0));
                     config.LibraryMaxItems = Math.min(5000, Math.max(1, parseInt($('muLibMax').value, 10) || 500));
                     Object.keys(BOOLS).forEach(function (key) { config[key] = $(BOOLS[key]).checked; });
+                    config.ArtistNames = $('muArtistNames').value.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l; });
                     return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
                 }).then(function (result) {
                     Dashboard.processPluginConfigurationUpdateResult(result);

@@ -232,7 +232,17 @@ public record ItemProgress(long Received, long Size, bool Complete, string? Stat
 /// <param name="Plan">Plan de rangement.</param>
 /// <param name="Progress">Avancement par fichier.</param>
 /// <param name="Playlist">Liste de lecture prévue.</param>
-public record BatchResponse(string BatchId, int ChunkSize, IReadOnlyList<string> Ids, Plan Plan, IReadOnlyDictionary<string, ItemProgress> Progress, BatchPlaylistInfo? Playlist = null);
+public record BatchResponse(string BatchId, int ChunkSize, IReadOnlyList<string> Ids, Plan Plan, IReadOnlyDictionary<string, ItemProgress> Progress, BatchPlaylistInfo? Playlist = null, CreditCheck? Credits = null);
+
+/// <summary>Nom d'artiste à garder entier (il contient une virgule), ou à oublier.</summary>
+public class ArtistNameRequest
+{
+    /// <summary>Gets or sets le nom (« Tyler, The Creator »).</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether le nom est retiré de la liste.</summary>
+    public bool Remove { get; set; }
+}
 
 /// <summary>Règles envoyées ou reçues par l'éditeur des paramètres.</summary>
 public class RulesPayload

@@ -90,6 +90,9 @@ public sealed class Batch
     /// <summary>Gets or sets le contenu du fichier .m3u fourni (pour réordonner une liste de lecture existante), ou null.</summary>
     public string? M3uText { get; set; }
 
+    /// <summary>Gets or sets la raison de l'arrêt de la vérification des artistes sur MusicBrainz (règles locales ensuite), ou null.</summary>
+    public string? CreditError { get; set; }
+
     /// <summary>Gets or sets le nom proposé pour une liste de lecture (titre de l'import), ou null.</summary>
     public string? SuggestedName { get; set; }
 

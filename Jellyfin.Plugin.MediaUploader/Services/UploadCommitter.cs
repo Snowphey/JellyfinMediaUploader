@@ -76,6 +76,23 @@ public static class UploadCommitter
                 target = unique;
             }
 
+            // Interprètes séparés et artiste de l'album (mentions « A, B » résolues) : écrits avant le rangement.
+            if (item.Kind == "music" && item.Role == "main" && item.CreditSource is not null && (item.Artists.Count > 0 || item.AlbumArtist is not null))
+            {
+                try
+                {
+                    AudioTagReader.WriteCredits(temp, Path.GetExtension(item.Name), item.Artists, item.AlbumArtist);
+                    if (item.Artists.Count > 1)
+                    {
+                        notes.Add("Artistes séparés dans les tags");
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or TagLib.CorruptFileException or TagLib.UnsupportedFormatException or UnauthorizedAccessException)
+                {
+                    logger.LogWarning(ex, "MediaUploader: artistes non écrits dans {Name}", item.Name);
+                }
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             target = MoveWithoutClobber(temp, target, config.OverwriteExisting);
             finalNames[item.Id] = Path.GetFileName(target);

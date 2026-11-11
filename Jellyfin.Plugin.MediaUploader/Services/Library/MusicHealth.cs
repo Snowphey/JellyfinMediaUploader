@@ -25,7 +25,8 @@ public sealed record DuplicateSongGroup(string Label, IReadOnlyList<DuplicateSon
 /// <param name="ScatteredAlbums">Albums répartis entre plusieurs dossiers d'artiste.</param>
 /// <param name="DuplicateSongs">Morceaux présents plusieurs fois.</param>
 /// <param name="Truncated">Vrai si une limite a été atteinte.</param>
-public sealed record MusicHealthReport(IReadOnlyList<ScatteredGroup> ScatteredArtists, IReadOnlyList<ScatteredGroup> ScatteredAlbums, IReadOnlyList<DuplicateSongGroup> DuplicateSongs, bool Truncated);
+/// <param name="MultiArtistFolders">Dossiers d'artiste nommés d'après plusieurs artistes (« Snails, Pegboard Nerds ») : un seul dossier, à ranger sous l'artiste principal.</param>
+public sealed record MusicHealthReport(IReadOnlyList<ScatteredGroup> ScatteredArtists, IReadOnlyList<ScatteredGroup> ScatteredAlbums, IReadOnlyList<DuplicateSongGroup> DuplicateSongs, bool Truncated, IReadOnlyList<ScatteredGroup>? MultiArtistFolders = null);
 
 /// <summary>
 /// Contrôles de cohérence de la bibliothèque musique : dossiers d'artiste et d'album à regrouper, morceaux en double.
@@ -79,8 +80,9 @@ public static class MusicHealth
     /// <param name="known">Morceaux connus de Jellyfin (chemin complet et tags), pour les doublons.</param>
     /// <param name="exists">Vrai si un fichier existe encore (l'index de Jellyfin peut être en retard).</param>
     /// <param name="sizeOf">Taille d'un fichier.</param>
+    /// <param name="artistNames">Noms d'artistes contenant une virgule confirmés par l'utilisateur.</param>
     /// <returns>Rapport.</returns>
-    public static MusicHealthReport Analyze(string rootPath, IEnumerable<(string Path, TagInfo Tags)> known, Func<string, bool> exists, Func<string, long> sizeOf)
+    public static MusicHealthReport Analyze(string rootPath, IEnumerable<(string Path, TagInfo Tags)> known, Func<string, bool> exists, Func<string, long> sizeOf, ICollection<string>? artistNames = null)
     {
         var truncated = false;
         var artistDirs = new List<string>();
@@ -112,7 +114,33 @@ public static class MusicHealth
         var artists = ScatteredArtists(rootPath, artistDirs, albumDirs, knownList, ref truncated);
         var albums = ScatteredAlbums(albumDirs, ref truncated);
         var songs = DuplicateSongs(rootPath, knownList, exists, sizeOf, ref truncated);
-        return new MusicHealthReport(artists, albums, songs, truncated);
+
+        // Dossier unique au nom de plusieurs artistes (un artiste réparti sur plusieurs dossiers est déjà signalé à part).
+        var grouped = artists.SelectMany(g => g.Items).ToHashSet(StringComparer.Ordinal);
+        var multi = new List<ScatteredGroup>();
+        foreach (var dir in artistDirs.Where(d => !grouped.Contains(d)).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
+        {
+            var split = ArtistCredits.Split(dir, artistNames);
+            if (split.Artists.Count < 2)
+            {
+                continue;
+            }
+
+            if (multi.Count >= MaxGroups)
+            {
+                truncated = true;
+                break;
+            }
+
+            // Orthographe des tags pour l'artiste principal (« K/DA » plutôt que le nom de dossier « K DA »).
+            var lead = ArtistCredits.FolderArtist(split.Artists);
+            var spelled = knownList.Where(k => k.Path.StartsWith(Path.Combine(rootPath, dir) + Path.DirectorySeparatorChar, StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(k.Tags.Artist))
+                .Select(k => ArtistCredits.Split(NameTools.DedupeArtists(k.Tags.Artist) ?? k.Tags.Artist!, artistNames).Lead)
+                .FirstOrDefault(l => ArtistKey(l) == ArtistKey(lead));
+            multi.Add(new ScatteredGroup(dir, new[] { dir }, spelled ?? lead, null));
+        }
+
+        return new MusicHealthReport(artists, albums, songs, truncated, multi);
     }
 
     private static List<ScatteredGroup> ScatteredArtists(string rootPath, List<string> artistDirs, List<(string Artist, string Album)> albumDirs, IReadOnlyCollection<(string Path, TagInfo Tags)> known, ref bool truncated)

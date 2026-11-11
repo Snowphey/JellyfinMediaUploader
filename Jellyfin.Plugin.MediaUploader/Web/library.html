@@ -719,7 +719,7 @@
       ['Year', 'Track', 'Disc'].forEach(function (k) { if (st.dirty[k]) { var v = parseInt(st.fields[k].value, 10); c[k.charAt(0).toLowerCase() + k.slice(1)] = isNaN(v) ? 0 : v; } });
       return c;
     }
-    function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry }; }
+    function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry, splitArtists: !!opts.splitArtists }; }
 
     function refresh() {
       var any = Object.keys(st.dirty).some(function (k) { return st.dirty[k]; });
@@ -778,7 +778,9 @@
       }
       if (opts.albumArtist) {
         st.fields.AlbumArtist.value = opts.albumArtist; st.dirty.AlbumArtist = true; st.fields.AlbumArtist.className = 'dirty';
-        body.appendChild(h('div', { class: 'muted', text: 'Seul « Artiste de l\'album » change : les artistes de chaque morceau (invités compris) restent dans ses tags.' }));
+        body.appendChild(h('div', { class: 'muted', text: opts.splitArtists
+          ? 'Les artistes de chaque morceau (invités compris) restent dans ses tags, écrits un par un (« A; B ») pour que Jellyfin crée une fiche par artiste.'
+          : 'Seul « Artiste de l\'album » change : les artistes de chaque morceau (invités compris) restent dans ses tags.' }));
       }
       body.appendChild(h('div', { class: 'row' }, [h('label', {}, [reorg, ' Ranger les fichiers dans le dossier « Artiste/Album » d\'après leurs tags, et supprimer les dossiers vidés (nécessaire pour fusionner des albums coupés en deux) ; en cas de conflit : ']), policy]));
       body.appendChild(h('div', { class: 'muted', text: 'Les tags sont écrits dans les fichiers eux-mêmes. Jellyfin met sa médiathèque à jour ensuite (quelques secondes à quelques minutes selon sa taille) ; les listes de lecture suivent les morceaux déplacés.' }));
@@ -949,6 +951,7 @@
       if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
       L.health = list(pick(res.body, 'Reports'));
       L.ignored = list(pick(res.body, 'Ignored'));
+      L.delimiter = pick(res.body, 'ArtistDelimiter') || null;
       renderHealth();
     }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
   }
@@ -1003,6 +1006,32 @@
     // Musique : artistes et albums répartis sur plusieurs dossiers, morceaux en double.
     var music = null;
     L.health.forEach(function (r) { if (pick(r, 'Key') === 'music' && pick(r, 'Music')) { music = pick(r, 'Music'); } });
+
+    // Séparateur d'artistes de Jellyfin : sans « ; », un morceau « A; B » apparaît sous un seul artiste à ce nom.
+    var delim = L.delimiter;
+    if (delim && (!pick(delim, 'Enabled') || pick(delim, 'Slash'))) {
+      var dBox = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Séparation des artistes dans Jellyfin' })]);
+      if (!pick(delim, 'Enabled')) {
+        total += 1;
+        dBox.appendChild(h('div', { class: 'muted', text: 'La bibliothèque « ' + pick(delim, 'Library') + ' » n\'utilise pas « ; » pour séparer les artistes : un morceau aux artistes séparés (« K/DA; Madison Beer ») y apparaît sous un seul artiste à ce nom. Activer le séparateur « ; » (réglage « séparateurs personnalisés » de la bibliothèque) crée une fiche par artiste ; « / » n\'est pas ajouté, pour ne pas couper « AC/DC » ou « K/DA ». Jellyfin en tient compte à la prochaine actualisation des métadonnées.' }));
+        if (pick(delim, 'CanEnable')) {
+          dBox.appendChild(h('div', { class: 'bar' }, [h('button', { type: 'button', class: 'small', text: 'Activer le séparateur « ; »', onclick: function (e) {
+            e.target.disabled = true;
+            api('POST', 'Library/ArtistDelimiter', {}).then(function (res) {
+              if (res.status !== 200) { throw new Error(errText(res)); }
+              toast('Séparateur « ; » activé.');
+              openHealth();
+            }).catch(function (err) { e.target.disabled = false; toast(err.message, true); });
+          } })]));
+        } else {
+          dBox.appendChild(h('div', { class: 'muted', text: 'Un administrateur peut l\'activer ici.' }));
+        }
+      } else {
+        dBox.appendChild(h('div', { class: 'mid', text: 'La bibliothèque « ' + pick(delim, 'Library') + ' » sépare aussi les artistes sur « / » : « AC/DC » ou « K/DA » y deviennent deux artistes. Retirez « / » des séparateurs personnalisés dans les réglages de la bibliothèque, ou ajoutez ces noms à sa liste d\'exceptions.' }));
+      }
+      main.appendChild(dBox);
+    }
+
     if (music) {
       var link = function (p) { return h('div', { style: 'margin-left:1em' }, [h('a', { text: '📁 ' + p, onclick: function () { openRoot('music', p); } })]); };
       var groupBox = function (title, hint, groups, button, kind) {
@@ -1021,7 +1050,11 @@
       main.appendChild(groupBox('Artistes répartis sur plusieurs dossiers',
         'Le même artiste principal a plusieurs dossiers (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan »). Regrouper écrit « artiste de l\'album » dans les tags et range ses morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas et les listes de lecture suivent.',
         list(pick(music, 'ScatteredArtists')),
-        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist') }); } }); }, 'artists'));
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Regrouper sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist'), splitArtists: true }); } }); }, 'artists'));
+      main.appendChild(groupBox('Dossiers au nom de plusieurs artistes',
+        'Le dossier porte toute une mention (« Snails, Pegboard Nerds », « Madge, VALORANT ») : Jellyfin y voit un seul artiste à ce nom. Ranger écrit l\'artiste principal dans « artiste de l\'album » (« Various Artists » pour une distribution de film), écrit chaque interprète séparément dans les tags, et déplace les morceaux ; les listes de lecture suivent. Un nom qui contient vraiment une virgule (« Tyler, The Creator ») : « Ignorer », ou ajoutez-le aux noms d\'artistes dans les réglages du plugin.',
+        list(pick(music, 'MultiArtistFolders')),
+        function (g) { return h('button', { type: 'button', class: 'small', text: 'Ranger sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist'), splitArtists: true }); } }); }, 'multi'));
       main.appendChild(groupBox('Albums répartis entre plusieurs artistes',
         'Le même album est rangé sous plusieurs artistes (chaque morceau sous ses propres invités) : Jellyfin en montre plusieurs. Regrouper donne à tous ses morceaux le même album et le même « artiste de l\'album » (l\'artiste commun, sinon « Various Artists »).',
         list(pick(music, 'ScatteredAlbums')),

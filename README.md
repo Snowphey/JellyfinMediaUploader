@@ -137,6 +137,15 @@ Les champs artiste et album proposent par **autocomplétion** les artistes et al
 plutôt que d'en créer une variante (« Daft punk » / « Daft Punk »).
 La même autocomplétion existe partout où l'on corrige le rangement (groupe ou fichier) : artiste et album pour la musique, titre pour les films et séries (choisir un titre connu renseigne son année).
 
+### Plusieurs artistes sur un même morceau
+
+Une mention comme « K/DA, Madison Beer, i-dle » ou « Freeze Corleone feat. ASHE 22 » ne crée plus de dossier à virgule :
+- le **dossier** et le tag **« artiste de l'album »** prennent l'**artiste principal** (le premier nom), ou « Various Artists » pour une distribution de film (« Encanto - Cast ») ;
+- les **interprètes** sont écrits **un par un** dans les tags à la confirmation (« K/DA; Madison Beer; i-dle »). Pour que Jellyfin crée une fiche par artiste, activez le séparateur « ; » de la bibliothèque musique (bouton dans l'onglet Santé de la page Bibliothèque ; « / » n'est pas ajouté, pour ne pas couper « AC/DC » ou « K/DA ») ;
+- « & » ne sépare jamais (« Bigflo & Oli ») ; les noms qui contiennent une virgule (« Tyler, The Creator », « Earth, Wind & Fire »…) sont gardés entiers, et le lien « … est un seul artiste » de l'aperçu en ajoute un à la liste (réglages du plugin) ;
+- **MusicBrainz** (réglage « Vérifier les artistes sur MusicBrainz », activé par défaut) est consulté en arrière-plan pour chaque mention ambiguë ou en écriture non latine, et pour les autres morceaux de son album : interprètes séparés, artiste de l'album (les compositeurs d'une bande originale : *Encanto* → « Lin-Manuel Miranda & Germaine Franco »), nom en **écriture latine** (« 照井順政 » → « Yoshimasa Terui »). Une réponse n'est retenue que si elle est sûre (même titre, un artiste en commun) ; les artistes des tags absents de MusicBrainz sont gardés. Une requête par seconde : l'aperçu se complète au fur et à mesure, sans bloquer l'envoi ; sans réponse, les règles ci-dessus s'appliquent ;
+- la même orthographe est gardée pour un artiste (« Freeze corleone » rejoint le dossier « Freeze Corleone » ; celle d'un dossier existant l'emporte).
+
 ### Plusieurs artistes sur un même album
 
 Les tags d'un album ou d'une bande originale citent souvent des artistes différents d'une piste à l'autre. Pour ne pas éclater l'album en plusieurs dossiers :
@@ -228,6 +237,8 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | GET | `/MediaUploader/Library/Health` | Anomalies de toutes les bibliothèques (`Music` : artistes et albums répartis, morceaux en double) |
 | POST | `/MediaUploader/Library/Duplicates/Resolve` | Garde une copie d'un morceau en double, retire les autres : `{root, keep, remove}` ; les listes de lecture renvoient vers la copie gardée |
 | POST | `/MediaUploader/Library/Health/Ignore` | Écarte un élément de l'onglet Santé (`{key}`), le fait réapparaître (`{key, restore: true}`) ou les fait tous réapparaître (`{reset: true}`) |
+| POST | `/MediaUploader/Library/ArtistDelimiter` | Active « ; » comme séparateur d'artistes de la bibliothèque musique de Jellyfin (administrateurs) |
+| POST | `/MediaUploader/ArtistNames` | Garde entier un nom d'artiste contenant une virgule : `{name}` (`remove: true` pour l'oublier) |
 | GET / PUT | `/MediaUploader/Rules` | Lit / enregistre les règles de détection (administrateurs) |
 | POST | `/MediaUploader/Rules/Test` | Essaie des noms de fichiers sur les règles (administrateurs) |
 
@@ -290,6 +301,8 @@ là où l'interface de Jellyfin est laborieuse :
 - **Pochettes** : pour un album sans pochette (liste « Santé » ou bouton 🖼 d'un dossier), recherche automatique sur Cover Art Archive (MusicBrainz) et iTunes d'après les tags, choix visuel, ou image de votre ordinateur ; elle est enregistrée dans le dossier (`cover.jpg`) et/ou intégrée à chaque morceau.
 - **Supprimer** des fichiers ou des dossiers entiers par lots : aperçu avec l'**arborescence** de ce qui sera supprimé (« 25 fichiers, 87 Mo »), mot de confirmation à taper au-delà d'un seuil, puis **corbeille** (dossier caché `.mu-corbeille`, restauration possible, purge automatique chaque nuit) ou suppression définitive selon le réglage.
 - **Santé**, pour toutes les bibliothèques à la fois. Pour la musique :
+  - **dossiers au nom de plusieurs artistes** (« Snails, Pegboard Nerds ») : « Ranger » écrit l'artiste principal dans « artiste de l'album », les interprètes un par un, et déplace les morceaux ;
+  - **séparateur d'artistes** de la bibliothèque Jellyfin : bouton « Activer le séparateur « ; » » s'il manque ;
   - **artistes répartis sur plusieurs dossiers** (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan », « Freeze Corleone » et « Freeze Corleone, ASHE 22 ») : « Regrouper » écrit l'artiste principal (orthographe des tags, « K/DA ») dans « artiste de l'album » et range les morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas (« & » ne sépare pas : « Bigflo & Oli » reste un artiste) ;
   - **albums répartis entre plusieurs artistes** (chaque morceau rangé sous ses invités) : « Regrouper » leur donne le même album et le même artiste de l'album (l'artiste commun, sinon « Various Artists ») ; un titre courant (« Greatest Hits ») d'artistes sans rapport n'est pas signalé ;
   - **morceaux en double** (même comparaison souple qu'à l'envoi, d'après l'index de Jellyfin) : la copie conseillée est sans perte, sinon la plus grosse ; les autres vont à la corbeille ;

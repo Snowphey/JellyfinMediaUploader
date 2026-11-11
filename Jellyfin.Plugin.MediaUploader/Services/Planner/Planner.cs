@@ -65,8 +65,14 @@ public static class Planner
             works.Add(Classify(f, ov, forcedMode, o, engine));
         }
 
-        // 0. Un album = un seul dossier d'artiste, même si les tags des pistes citent des artistes différents.
+        // 0. Mentions de plusieurs artistes (« K/DA, Madison Beer ») : interprètes séparés, dossier au nom de l'artiste principal (ou de l'album selon MusicBrainz).
+        ResolveCredits(works, o);
+
+        // 0 a. Un album = un seul dossier d'artiste, même si les tags des pistes citent des artistes différents.
         UnifyAlbumArtists(works);
+
+        // 0 bis. Un artiste = une seule orthographe (« Freeze corleone » / « Freeze Corleone », « VALD » / « Vald ») : celle d'un dossier existant, sinon la plus soignée du lot.
+        UnifyArtistSpelling(works, o, fs);
 
         // 1. Fichiers principaux (audio, vidéo) : destination et nom.
         var taken = new HashSet<string>(StringComparer.Ordinal);
@@ -704,13 +710,32 @@ public static class Planner
 
         foreach (var g in byAlbum)
         {
-            var artists = g.Select(w => w.Det!.Artist!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (artists.Count < 2)
+            if (g.Select(w => w.Det!.Artist!).Distinct(StringComparer.OrdinalIgnoreCase).Count() < 2)
             {
                 continue;
             }
 
-            var (artist, review) = CommonArtist(artists);
+            // Artiste d'album donné par MusicBrainz pour des morceaux de l'album : le plus fréquent (le plus court à égalité, deux éditions
+            // de la même bande originale pouvant être créditées un peu différemment) vaut pour tout l'album, sans doute à lever.
+            var fromMb = g.Where(w => w.Item.CreditSource == "musicbrainz").Select(w => w.Det!.Artist!).ToList();
+            if (fromMb.Count > 0)
+            {
+                var albumArtist = fromMb.GroupBy(a => a, StringComparer.OrdinalIgnoreCase).OrderByDescending(x => x.Count()).ThenBy(x => x.Key.Length).First().Key;
+                foreach (var w in g.Where(w => !string.Equals(w.Det!.Artist, albumArtist, StringComparison.OrdinalIgnoreCase)))
+                {
+                    w.Item.Notes.Add($"Artiste de l'album d'après MusicBrainz : « {albumArtist} »");
+                    w.Det!.Artist = albumArtist;
+                    w.Item.Artist = albumArtist;
+                }
+
+                continue;
+            }
+
+            // Mentions complètes (« Future, Drake » / « Drake, Future ») : l'artiste commun se cherche parmi tous les interprètes,
+            // puis le dossier prend un seul nom (l'artiste principal de ce qui est commun), jamais une liste.
+            var artists = g.Select(w => w.Item.Credit ?? w.Det!.Artist!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var (common, review) = CommonArtist(artists);
+            var artist = common == ArtistCredits.VariousArtists ? common : ArtistCredits.Split(common).Lead;
             foreach (var w in g.Where(w => !string.Equals(w.Det!.Artist, artist, StringComparison.OrdinalIgnoreCase)))
             {
                 w.Item.Notes.Add(review
@@ -727,7 +752,7 @@ public static class Planner
             if (review)
             {
                 // Le choix est incertain : on propose les artistes possibles à l'utilisateur.
-                var choices = new[] { artist }.Concat(artists).Append("Various Artists").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var choices = new[] { artist }.Concat(artists.SelectMany(a => ArtistCredits.Split(a).Artists)).Append(ArtistCredits.VariousArtists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 foreach (var w in g)
                 {
                     w.Item.ArtistChoices = choices;
@@ -738,6 +763,106 @@ public static class Planner
                     w.Item.Notes.Add($"Artistes différents sur cet album : regroupés sous « {artist} » (à vérifier)");
                     Raise(w.Item, "guess");
                 }
+            }
+        }
+    }
+
+    private static void ResolveCredits(List<Work> works, PlannerOptions o)
+    {
+        foreach (var w in works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Artist: not null, RuleId: null } && Blank(w.Ov?.Artist)))
+        {
+            var tags = w.File.Tags;
+            var credit = NameTools.DedupeArtists(tags?.Performers ?? tags?.Artist) ?? w.Det!.Artist!;
+            var mb = o.CreditLookup?.Invoke(tags?.Title, tags?.Performers ?? tags?.Artist, tags?.Album);
+            var split = ArtistCredits.Split(credit, o.ArtistNames);
+            if (mb is not null)
+            {
+                // MusicBrainz ne cite parfois que l'artiste principal (« Feel Good Inc. » : Gorillaz) : les autres artistes des tags sont gardés à la suite.
+                var known = mb.Artists.Concat(mb.OriginalNames).Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
+                bool Known(string a) => known.Contains(ArtistCredits.Key(a)) || known.Any(k => k.Length > 3 && ArtistCredits.Key(a).Contains(k, StringComparison.Ordinal));
+                var extra = split.Artists.Where(a => !Known(a)).ToList();
+                split = new CreditSplit(mb.Artists.Concat(extra).ToList(), "musicbrainz");
+            }
+            if (split.Source == "single" && mb is null)
+            {
+                continue;
+            }
+
+            w.Item.Credit = credit;
+            w.Item.CreditSource = split.Source;
+            if (split.Artists.Count > 1 || mb is not null)
+            {
+                w.Item.Artists = split.Artists.ToList();
+            }
+
+            // L'artiste de l'album écrit dans les tags l'emporte ; sinon MusicBrainz, sinon l'artiste principal (« Various Artists » pour une distribution de film).
+            var albumArtistTag = tags?.Performers is not null && tags.Artist is not null && ArtistCredits.Key(tags.Artist) != ArtistCredits.Key(tags.Performers);
+            var folder = albumArtistTag ? w.Det!.Artist! : mb?.AlbumArtist ?? ArtistCredits.FolderArtist(split.Artists);
+            if (!string.Equals(folder, w.Det!.Artist, StringComparison.Ordinal))
+            {
+                w.Det.Artist = folder;
+                w.Item.Artist = folder;
+            }
+
+            var from = split.Source switch { "musicbrainz" => "MusicBrainz", "name" => "nom confirmé", _ => "règles" };
+            w.Item.Notes.Add(split.Artists.Count > 1
+                ? $"Artistes : {string.Join(" · ", split.Artists)} ({from}) ; dossier « {folder} »"
+                : $"Artiste : {split.Artists[0]} ({from})");
+        }
+    }
+
+    private static void UnifyArtistSpelling(List<Work> works, PlannerOptions o, IFileProbe fs)
+    {
+        static string Key(string artist) => NameTools.TitleKey(System.Text.RegularExpressions.Regex.Replace(artist.Trim(), @"^(the|les?|la)\s+", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+
+        var music = works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Artist: not null, RuleId: null } && Blank(w.Ov?.Artist)).ToList();
+        if (music.Count == 0)
+        {
+            return;
+        }
+
+        // Dossiers d'artiste déjà présents : leur orthographe l'emporte (le dossier est réutilisé au lieu d'en créer un second).
+        var existing = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!string.IsNullOrEmpty(o.MusicRoot))
+        {
+            foreach (var dir in fs.ListDirs(o.MusicRoot).OrderBy(d => d, StringComparer.Ordinal))
+            {
+                existing.TryAdd(Key(dir), dir);
+            }
+        }
+
+        // Une orthographe « soignée » : chaque mot commence par une capitale ou un chiffre (« Freeze Corleone » plutôt que « Freeze corleone »).
+        static bool Tidy(string a) => a.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(word => !char.IsLetter(word[0]) || char.IsUpper(word[0]));
+
+        foreach (var g in music.GroupBy(w => Key(w.Det!.Artist!)).Where(g => g.Key.Length > 0))
+        {
+            var spellings = g.Select(w => w.Det!.Artist!).Distinct(StringComparer.Ordinal).ToList();
+            string target;
+            string why;
+            if (existing.TryGetValue(g.Key, out var folder))
+            {
+                target = folder;
+                why = "comme le dossier déjà présent dans la bibliothèque";
+            }
+            else if (spellings.Count > 1)
+            {
+                target = g.GroupBy(w => w.Det!.Artist!, StringComparer.Ordinal)
+                    .OrderByDescending(x => Tidy(x.Key))
+                    .ThenByDescending(x => x.Count())
+                    .ThenBy(x => x.Key, StringComparer.Ordinal)
+                    .First().Key;
+                why = "comme les autres morceaux du lot";
+            }
+            else
+            {
+                continue;
+            }
+
+            foreach (var w in g.Where(w => !string.Equals(w.Det!.Artist, target, StringComparison.Ordinal)))
+            {
+                w.Item.Notes.Add($"Artiste écrit « {target} » {why} (tags : « {w.Det!.Artist} »)");
+                w.Det!.Artist = target;
+                w.Item.Artist = target;
             }
         }
     }
@@ -1034,6 +1159,13 @@ public static class Planner
             .ToList();
 
         var all = plan.Groups.SelectMany(g => g.Items).ToList();
+
+        // Artiste de l'album à écrire dans les tags : l'artiste du dossier, une fois les albums unifiés.
+        foreach (var item in all.Where(i => i.CreditSource is not null && i.Kind == "music"))
+        {
+            item.AlbumArtist = item.Artist;
+        }
+
         plan.Summary = new PlanSummary
         {
             Files = all.Count,

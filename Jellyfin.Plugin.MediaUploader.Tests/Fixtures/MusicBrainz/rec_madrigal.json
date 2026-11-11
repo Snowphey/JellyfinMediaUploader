@@ -1,0 +1,1137 @@
+{
+ "created": "2026-11-11T12:26:13.506Z",
+ "count": 3,
+ "offset": 0,
+ "recordings": [
+  {
+   "id": "4133b71c-c274-4ee7-8407-178352db18b6",
+   "score": 100,
+   "artist-credit-id": "9262a8f3-a823-382c-9702-130fa4ec9656",
+   "title": "The Family Madrigal",
+   "length": 257213,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": " and Cast",
+     "name": "Olga Merediz",
+     "artist": {
+      "id": "839896cf-32a5-4321-b898-1c3355019537",
+      "name": "Olga Merediz",
+      "sort-name": "Merediz, Olga"
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "edd868f7-706b-4080-87c6-24bbd542188a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Walt Disney World – Cool KIDS’ SUMMER",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "24addd7b-da10-4a4f-8b1d-4a967346f753",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Walt Disney World – Cool KIDS’ SUMMER",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2026-05-26",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2026-05-26",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 37,
+     "media": [
+      {
+       "id": "3981855d-91cb-4e54-a8e5-5a270d5814ef",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "6608293f-10af-4bc7-85c0-378ea11e15de",
+         "number": "24",
+         "title": "The Family Madrigal (From \"Encanto\"/Soundtrack version)",
+         "length": 257213
+        }
+       ],
+       "track-count": 37,
+       "track-offset": 23
+      }
+     ]
+    },
+    {
+     "id": "afe9fed1-ab9b-43d4-992f-631b28d3698c",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Disney Summer Songs 2",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "1612e47d-94a4-46e8-809b-9b59334eae80",
+      "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Disney Summer Songs 2",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Compilation"
+      ],
+      "secondary-type-ids": [
+       "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1"
+      ]
+     },
+     "date": "2023-09-25",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2023-09-25",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 20,
+     "media": [
+      {
+       "id": "28f3ffa8-d77f-3841-8d6a-f77146c3c9d5",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "ad96785b-8cf9-4bff-9a81-6b309629b4f1",
+         "number": "14",
+         "title": "The Family Madrigal (from “Encanto” soundtrack version)",
+         "length": 257000
+        }
+       ],
+       "track-count": 20,
+       "track-offset": 13
+      }
+     ]
+    },
+    {
+     "id": "6026b713-cc76-49f8-915b-97a633d7828a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Canciones originales de Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "b6a60c72-c85e-486c-b098-d19e9b4531b7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, Spanish version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2022",
+     "country": "MX",
+     "release-events": [
+      {
+       "date": "2022",
+       "area": {
+        "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+        "name": "Mexico",
+        "sort-name": "Mexico",
+        "iso-3166-1-codes": [
+         "MX"
+        ]
+       }
+      }
+     ],
+     "track-count": 15,
+     "media": [
+      {
+       "id": "a77157c4-661f-3861-a564-ba78336a25eb",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "ee811580-0036-4091-baa6-998f7ad2e3f9",
+         "number": "10",
+         "title": "The Family Madrigal",
+         "length": 257320
+        }
+       ],
+       "track-count": 15,
+       "track-offset": 9
+      }
+     ]
+    },
+    {
+     "id": "a8e0b7ce-585f-4825-a646-d68c16a521d7",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "disambiguation": "Target exclusive",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "fa58887b-ec06-3e5a-ac3f-0434a48f5441",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "41e55c4d-eec8-4335-9a91-94e6b34bf5bd",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 258026
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "70ab314e-eab3-4f06-aaf3-892936989931",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "AU",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+        "name": "Australia",
+        "sort-name": "Australia",
+        "iso-3166-1-codes": [
+         "AU"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "7c48c56a-a0c1-309a-a2bf-843e967bc393",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "405dece8-5fb2-4346-aac0-9ba5ac0a6c5b",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257000
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "6bc38737-d9ae-49a3-89a7-3642af908dc6",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "bedf4470-20dc-3edb-ab91-eebf4a9c4234",
+     "count": 1,
+     "title": "Encanto: Original Songs by Lin‐Manuel Miranda",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021",
+     "country": "XE",
+     "release-events": [
+      {
+       "date": "2021",
+       "area": {
+        "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+        "name": "Europe",
+        "sort-name": "Europe",
+        "iso-3166-1-codes": [
+         "XE"
+        ]
+       }
+      }
+     ],
+     "track-count": 9,
+     "media": [
+      {
+       "id": "ab80e168-2439-3061-8023-d7fbb8c96bb7",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "a0a68d57-0d27-4ace-8a9f-63453a1541ad",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257333
+        }
+       ],
+       "track-count": 9,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "9d907d36-c6f3-4099-8ee7-45cc3ea9aa45",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "b7bf12e0-adab-375c-9183-c522525eecc2",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "c32b8818-ad15-4603-896d-e876b3add2e5",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257213
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "a9bc9efe-9283-4132-8131-6add7ea0e0f2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "9654d0a0-fd2f-3c1a-b9c6-6f13ed00aaa7",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "93e7859d-7449-4710-94aa-1875a0ed8773",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257213
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "c75b0e31-bf55-4ec6-b347-1f447827f600",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-12-17",
+     "country": "NL",
+     "release-events": [
+      {
+       "date": "2021-12-17",
+       "area": {
+        "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+        "name": "Netherlands",
+        "sort-name": "Netherlands",
+        "iso-3166-1-codes": [
+         "NL"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "aef5e46a-cbad-3927-a635-0f64a9fa9d6e",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "a5973518-1003-47bd-883d-a2bcb66259e9",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 258026
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "0fd03d2e-5d8f-4116-b30b-2487e3030527",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto: Original Motion Picture Soundtrack",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "US",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States",
+        "iso-3166-1-codes": [
+         "US"
+        ]
+       }
+      }
+     ],
+     "track-count": 32,
+     "media": [
+      {
+       "id": "e94b6b71-ae76-343b-a07a-3cf94f942434",
+       "position": 1,
+       "format": "CD",
+       "track": [
+        {
+         "id": "5a72d130-9807-49de-a4ea-ef0db3062b85",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 258026
+        }
+       ],
+       "track-count": 32,
+       "track-offset": 0
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12112911"
+   ],
+   "tags": [
+    {
+     "count": 0,
+     "name": "offizielle charts"
+    },
+    {
+     "count": 1,
+     "name": "0 wochen"
+    }
+   ]
+  },
+  {
+   "id": "a8a866cf-ac98-4c2f-b1df-b8e46aa878c9",
+   "score": 93,
+   "artist-credit-id": "4a7eee1b-3595-449b-8e13-a9ac7af87504",
+   "title": "The Family Madrigal",
+   "length": 257027,
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": " & ",
+     "name": "Olga Merediz",
+     "artist": {
+      "id": "839896cf-32a5-4321-b898-1c3355019537",
+      "name": "Olga Merediz",
+      "sort-name": "Merediz, Olga"
+     }
+    },
+    {
+     "name": "Encanto - Cast",
+     "artist": {
+      "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+      "name": "Encanto - Cast",
+      "sort-name": "Encanto - Cast",
+      "disambiguation": "Cast from \"Encanto\""
+     }
+    }
+   ],
+   "first-release-date": "2023-09-15",
+   "releases": [
+    {
+     "id": "718ccd62-c073-4d44-967f-15ef5d3cf246",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+     "count": 1,
+     "title": "Songs and Story: Encanto",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "name": "Various Artists",
+       "artist": {
+        "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+        "name": "Various Artists",
+        "sort-name": "Various Artists",
+        "disambiguation": "add compilations to this artist"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "e0afee47-2177-4474-baac-578ffbbc58d7",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Songs and Story: Encanto",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 7,
+     "media": [
+      {
+       "id": "57156de0-c54f-4f3b-aef4-10167704d14f",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "b0c4f688-886a-40a8-b391-216a81878aaa",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257027
+        }
+       ],
+       "track-count": 7,
+       "track-offset": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "7a4298b0-4711-4768-8f1b-8b6b9456bb6c",
+   "score": 93,
+   "artist-credit-id": "78f5c072-986c-357a-b863-63aad3e967d4",
+   "title": "The Family Madrigal",
+   "length": 257312,
+   "disambiguation": "Dolby Atmos mix",
+   "video": null,
+   "artist-credit": [
+    {
+     "joinphrase": ", ",
+     "name": "Stephanie Beatriz",
+     "artist": {
+      "id": "6dca439d-0612-4c83-bf00-52747922fe62",
+      "name": "Stephanie Beatriz",
+      "sort-name": "Stephanie Beatriz",
+      "aliases": [
+       {
+        "sort-name": "Bischoff Alvizuri, Stephanie Beatriz",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Stephanie Beatriz Bischoff Alvizuri",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "joinphrase": " & Encanto - Cast",
+     "name": "Olga Merediz",
+     "artist": {
+      "id": "839896cf-32a5-4321-b898-1c3355019537",
+      "name": "Olga Merediz",
+      "sort-name": "Merediz, Olga"
+     }
+    }
+   ],
+   "first-release-date": "2021-11-19",
+   "releases": [
+    {
+     "id": "341610c8-f25f-486b-8bf0-93aedd283df2",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, Māori version",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "dc4db6bd-a827-4bc9-96c5-f7afe2cbfb16",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto Reo Māori (Original Motion Picture Soundtrack)",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2024-08-30",
+     "country": "NZ",
+     "release-events": [
+      {
+       "date": "2024-08-30",
+       "area": {
+        "id": "8524c7d9-f472-3890-a458-f28d5081d9c4",
+        "name": "New Zealand",
+        "sort-name": "New Zealand",
+        "iso-3166-1-codes": [
+         "NZ"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "a7f36af4-1ab0-4e2b-8b19-2a51f11158ca",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "6131b854-150b-475c-9280-43e482bd4451",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257312
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "201eca7d-b708-4918-b936-5879e0fa8fbb",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "ecf27fbf-09fd-4262-b6e6-a6c541be9f84",
+     "count": 1,
+     "title": "Encanto (Original Motion Picture Soundtrack)",
+     "status": "Official",
+     "artist-credit": [
+      {
+       "joinphrase": ", ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "joinphrase": " & ",
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      },
+      {
+       "name": "Encanto - Cast",
+       "artist": {
+        "id": "d9b505a5-d0bd-4b94-beb8-2448b61b1319",
+        "name": "Encanto - Cast",
+        "sort-name": "Encanto - Cast",
+        "disambiguation": "Cast from \"Encanto\""
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "date": "2021-11-19",
+     "country": "XW",
+     "release-events": [
+      {
+       "date": "2021-11-19",
+       "area": {
+        "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+        "name": "[Worldwide]",
+        "sort-name": "[Worldwide]",
+        "iso-3166-1-codes": [
+         "XW"
+        ]
+       }
+      }
+     ],
+     "track-count": 44,
+     "media": [
+      {
+       "id": "c1a29b2c-5bb1-4390-b4e0-9ed3c964c8a8",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "39ddb71a-95de-47bd-9286-f4ccaeec97bb",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257312
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 0
+      }
+     ]
+    },
+    {
+     "id": "19628a0e-fd30-46e6-af05-634ca76f3689",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "artist-credit-id": "b4cce0cb-0fec-3440-871b-439c22662c68",
+     "count": 1,
+     "title": "Encanto",
+     "status": "Official",
+     "disambiguation": "2021 film soundtrack, English version, Dolby Atmos mix",
+     "artist-credit": [
+      {
+       "joinphrase": " & ",
+       "name": "Lin‐Manuel Miranda",
+       "artist": {
+        "id": "925c7673-0e85-410f-b7e4-d9705a7aa619",
+        "name": "Lin‐Manuel Miranda",
+        "sort-name": "Miranda, Lin‐Manuel"
+       }
+      },
+      {
+       "name": "Germaine Franco",
+       "artist": {
+        "id": "b85ab6cb-4b6d-41f7-b367-3f15131c732b",
+        "name": "Germaine Franco",
+        "sort-name": "Franco, Germaine"
+       }
+      }
+     ],
+     "release-group": {
+      "id": "0266c80c-b550-43f3-824f-fb435977460c",
+      "type-id": "22a628ad-c082-3c4f-b1b6-d41665107b88",
+      "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+      "title": "Encanto",
+      "disambiguation": "2021 film soundtrack, English version",
+      "primary-type": "Album",
+      "secondary-types": [
+       "Soundtrack"
+      ],
+      "secondary-type-ids": [
+       "22a628ad-c082-3c4f-b1b6-d41665107b88"
+      ]
+     },
+     "track-count": 44,
+     "media": [
+      {
+       "id": "6e2a32b3-3e9c-3701-8ca8-58e47c19e0ba",
+       "position": 1,
+       "format": "Digital Media",
+       "track": [
+        {
+         "id": "8e252f0f-7907-4b46-a601-6fffa5045a1d",
+         "number": "1",
+         "title": "The Family Madrigal",
+         "length": 257312
+        }
+       ],
+       "track-count": 44,
+       "track-offset": 0
+      }
+     ]
+    }
+   ],
+   "isrcs": [
+    "USWD12213776"
+   ]
+  }
+ ]
+}
