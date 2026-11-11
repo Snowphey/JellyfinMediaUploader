@@ -19,7 +19,22 @@ public sealed record ArtistHit(string Id, string Name, string? Disambiguation, s
 /// <param name="Type">Album, EP, Single…</param>
 /// <param name="Extras">Types secondaires (Live, Compilation, Remix…).</param>
 /// <param name="Date">Date de première sortie.</param>
-public sealed record AlbumHit(string Id, string Title, string Type, IReadOnlyList<string> Extras, string? Date);
+public sealed record AlbumHit(string Id, string Title, string Type, IReadOnlyList<string> Extras, string? Date)
+{
+    /// <summary>Gets l'artiste crédité.</summary>
+    public string? Artist { get; init; }
+}
+
+/// <summary>Une édition (sortie) d'un album : réédition, version deluxe, pressage d'un pays…</summary>
+/// <param name="Id">Identifiant de la sortie.</param>
+/// <param name="Title">Titre de l'édition.</param>
+/// <param name="Disambiguation">Précision (« version orange », « 2011 remaster »…).</param>
+/// <param name="Status">Officielle, promotion, pirate…</param>
+/// <param name="Date">Date de sortie.</param>
+/// <param name="Country">Pays.</param>
+/// <param name="Formats">Supports (CD, Digital Media, Vinyl…).</param>
+/// <param name="Tracks">Nombre de pistes.</param>
+public sealed record EditionHit(string Id, string Title, string? Disambiguation, string? Status, string? Date, string? Country, string Formats, int Tracks);
 
 /// <summary>
 /// Catalogue d'artistes et d'albums via MusicBrainz et Cover Art Archive : données ouvertes, sans clé ni compte.
@@ -51,6 +66,145 @@ public static class MusicBrainzClient
     {
         var json = await GetAsync($"artist?query={Uri.EscapeDataString(EscapeLucene(query))}&fmt=json&limit=12", ct).ConfigureAwait(false);
         return ParseArtists(json);
+    }
+
+    /// <summary>
+    /// Cherche des albums d'après un texte libre : titre, artiste, ou les deux (« PNL Dans la légende »).
+    /// </summary>
+    /// <param name="query">Texte saisi.</param>
+    /// <param name="ct">Annulation.</param>
+    /// <returns>Albums, du plus pertinent au moins pertinent.</returns>
+    public static async Task<List<AlbumHit>> SearchAlbumsAsync(string query, CancellationToken ct)
+    {
+        var json = await GetAsync($"release-group?query={Uri.EscapeDataString(EscapeLucene(query))}&fmt=json&limit=15", ct).ConfigureAwait(false);
+        return ParseReleaseGroups(json).Items;
+    }
+
+    /// <summary>
+    /// Éditions d'un album (toutes ses sorties : rééditions, deluxe, pays…).
+    /// </summary>
+    /// <param name="releaseGroupId">Identifiant du groupe de sorties.</param>
+    /// <param name="ct">Annulation.</param>
+    /// <returns>Éditions, les officielles et les plus anciennes d'abord.</returns>
+    public static async Task<List<EditionHit>> AlbumEditionsAsync(string releaseGroupId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(releaseGroupId, out var id))
+        {
+            throw new ImportException("Identifiant d'album invalide.");
+        }
+
+        var json = await GetAsync($"release?release-group={id}&inc=media&fmt=json&limit=100", ct).ConfigureAwait(false);
+        return ParseEditions(json);
+    }
+
+    /// <summary>
+    /// Interprète la liste des sorties d'un groupe en éditions.
+    /// </summary>
+    /// <param name="json">Réponse MusicBrainz.</param>
+    /// <returns>Éditions avec pistes, les officielles et les plus anciennes d'abord.</returns>
+    public static List<EditionHit> ParseEditions(string json)
+    {
+        var root = JsonNode.Parse(json)?.AsObject();
+        return (root?["releases"] as JsonArray ?? new JsonArray()).OfType<JsonObject>()
+            .Where(r => Str(r, "id") is not null)
+            .Select(r =>
+            {
+                var media = (r["media"] as JsonArray ?? new JsonArray()).OfType<JsonObject>().ToList();
+                var formats = media.GroupBy(m => Str(m, "format") ?? "?")
+                    .Select(g => g.Count() > 1 ? $"{g.Count()}×{g.Key}" : g.Key);
+                return new EditionHit(
+                    Str(r, "id")!,
+                    Str(r, "title") ?? "Album",
+                    Str(r, "disambiguation") is { Length: > 0 } d ? d : null,
+                    Str(r, "status"),
+                    Str(r, "date") is { Length: > 0 } date ? date : null,
+                    Str(r, "country"),
+                    string.Join(" + ", formats),
+                    media.Sum(m => Int(m, "track-count") ?? (m["tracks"] as JsonArray)?.Count ?? 0));
+            })
+            .Where(e => e.Tracks > 0)
+            .OrderBy(e => e.Status == "Official" ? 0 : 1)
+            .ThenBy(e => e.Date ?? "9999", StringComparer.Ordinal)
+            .ThenBy(e => e.Tracks)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Pistes d'une édition précise d'un album.
+    /// </summary>
+    /// <param name="releaseId">Identifiant de la sortie.</param>
+    /// <param name="ct">Annulation.</param>
+    /// <returns>Album et ses pistes.</returns>
+    public static async Task<Listing> EditionListingAsync(string releaseId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(releaseId, out var id))
+        {
+            throw new ImportException("Identifiant d'édition invalide.");
+        }
+
+        string json;
+        try
+        {
+            json = await GetAsync($"release/{id}?inc=recordings%2Bartist-credits%2Bisrcs%2Brelease-groups&fmt=json", ct).ConfigureAwait(false);
+        }
+        catch (ImportException)
+        {
+            json = await GetAsync($"release/{id}?inc=recordings%2Bartist-credits%2Brelease-groups&fmt=json", ct).ConfigureAwait(false);
+        }
+
+        // La pochette de l'édition si elle en a une, sinon celle de l'album.
+        var group = ParseEditionGroup(json);
+        string? cover = $"https://coverartarchive.org/release/{id}/front-500";
+        if (!await CoverExistsAsync(cover, ct).ConfigureAwait(false))
+        {
+            cover = group is null ? null : $"https://coverartarchive.org/release-group/{group}/front-500";
+            if (cover is not null && !await CoverExistsAsync(cover, ct).ConfigureAwait(false))
+            {
+                cover = null;
+            }
+        }
+
+        var listing = ParseEdition(json, cover);
+        if (listing.Tracks.Count == 0)
+        {
+            throw new ImportException("Cette édition n'a aucune piste dans MusicBrainz.");
+        }
+
+        return listing;
+    }
+
+    /// <summary>
+    /// Interprète une sortie seule (édition choisie).
+    /// </summary>
+    /// <param name="json">Réponse MusicBrainz (« release/{id} »).</param>
+    /// <param name="coverUrl">Pochette (null si absente).</param>
+    /// <returns>Album et pistes.</returns>
+    public static Listing ParseEdition(string json, string? coverUrl)
+    {
+        JsonObject release;
+        try
+        {
+            release = JsonNode.Parse(json)?.AsObject() ?? throw new ImportException("Réponse MusicBrainz illisible.");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            throw new ImportException("Réponse MusicBrainz illisible.");
+        }
+
+        var wrapped = new JsonObject { ["releases"] = new JsonArray(release.DeepClone()) };
+        return ParseRelease(wrapped.ToJsonString(), Str(release["release-group"] as JsonObject, "id") ?? string.Empty, coverUrl);
+    }
+
+    private static string? ParseEditionGroup(string json)
+    {
+        try
+        {
+            return Str(JsonNode.Parse(json)?["release-group"] as JsonObject, "id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -277,7 +431,10 @@ public static class MusicBrainzClient
                 Str(g, "title")!,
                 Str(g, "primary-type") ?? "Autre",
                 (g["secondary-types"] as JsonArray ?? new JsonArray()).Select(x => x?.GetValue<string>()).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).ToList(),
-                Str(g, "first-release-date")))
+                Str(g, "first-release-date") is { Length: > 0 } date ? date : null)
+            {
+                Artist = CreditNames(g["artist-credit"], out _) is { Length: > 0 } artist ? artist : null
+            })
             .ToList();
         return (items, Int(root, "release-group-count") ?? items.Count);
     }

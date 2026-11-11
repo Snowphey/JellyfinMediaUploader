@@ -46,7 +46,7 @@ une fois les téléchargements terminés, la page invite à vérifier le lot (re
 - **Lien** : playlist, album ou titre Spotify (les métadonnées sont lues sans clé sur la page d'intégration de Spotify, qui n'expose que les **100 premiers titres** d'une playlist ; chaque titre est ensuite cherché sur YouTube),
   playlist YouTube / YouTube Music, album YouTube Music ou vidéo seule (via [yt-dlp](https://github.com/yt-dlp/yt-dlp)). La liste des morceaux s'affiche : vous décochez ce que vous ne voulez pas,
   puis choisissez le rangement (chaque titre dans son album d'origine, ou tout dans un album au nom de la playlist, sous « Various Artists »).
-- **Parcourir** : recherche d'un artiste, liste de ses albums / EP / singles (filtres pour live et compilations), cases à cocher, « Importer la sélection ».
+- **Parcourir** : recherche libre par artiste, par album ou les deux (« PNL Dans la légende ») ; un artiste ouvre sa discographie (albums / EP / singles, filtres pour live et compilations), un album se coche directement. « Éditions » liste les sorties d'un album (rééditions, deluxe, versions d'un autre pays…) pour en importer une précise ; par défaut, l'édition la plus courante, sans les bonus. Puis « Importer la sélection ».
   Le catalogue vient de [MusicBrainz](https://musicbrainz.org) (pistes, durées, ISRC) et des pochettes de Cover Art Archive ; chaque morceau est ensuite cherché sur YouTube (en comparant les durées) et téléchargé par yt-dlp ; le plugin écrit les tags et la pochette.
 
 ### Mise en place
@@ -227,7 +227,7 @@ Authentification : clé créée dans Tableau de bord > Clés API
 | POST | `/MediaUploader/Import/Albums` | Importe des albums choisis dans la navigation (identifiants MusicBrainz) |
 | GET / DELETE | `/MediaUploader/Import/Jobs/{id}` | État d'un import / arrêt |
 | POST | `/MediaUploader/Import/Jobs/{id}/Start` | Lance les téléchargements : `{trackIds, layout, createPlaylist, playlistPublic}` |
-| GET | `/MediaUploader/Browse/Artists?q=` · `/Browse/Artists/{id}/Albums` | Recherche d'artistes et albums (MusicBrainz) |
+| GET | `/MediaUploader/Browse/Search?q=` · `/Browse/Artists?q=` · `/Browse/Artists/{id}/Albums` · `/Browse/Albums/{id}/Editions` | Recherche d'artistes et d'albums, discographie, éditions d'un album (MusicBrainz) |
 | GET | `/MediaUploader/Library/Capabilities` | Droits de l'utilisateur et réglages de la page « Bibliothèque » |
 | GET | `/MediaUploader/Library/List?root=&path=` · `/Library/Search?root=&q=` · `/Library/Size?root=&path=` | Contenu d'un dossier, recherche par nom, poids d'un élément |
 | GET | `/MediaUploader/Library/File` · `/Library/Cover` · `/Library/Download` (`root`, `path`, `ApiKey`) | Lecture d'un fichier (par plages), pochette intégrée, téléchargement (zip pour un dossier ou une sélection) |

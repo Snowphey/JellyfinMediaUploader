@@ -558,6 +558,14 @@ True("environnement sans retour à la ligne", new ToolContext { ToolsDir = "/tmp
 True("nouvelle tentative détaillée", new ToolContext { Format = "m4a" }.WithVerbose().Verbose);
 Check("plantage PyInstaller : cause affichée", ProcessRunner.Summarize("Traceback (most recent call last):\n  File \"x.py\", line 1\nKeyError: 'name'\n[PYI-1430:ERROR] Failed to execute script '__main__' due to unhandled exception!"), "KeyError: 'name'");
 Check("MB : aucune sortie", MusicBrainzClient.ParseRelease("{\"releases\":[]}", "x", null).Tracks.Count, 0);
+var (foundAlbums, _) = MusicBrainzClient.ParseReleaseGroups("""{"release-groups":[{"id":"4939e393-ce2c-442c-95a4-ae6b636d9692","title":"Dans la légende","primary-type":"Album","first-release-date":"2016-09-16","artist-credit":[{"name":"PNL","joinphrase":""}]},{"id":"22222222-2222-2222-2222-222222222222","title":"Sans date","first-release-date":""}]}""");
+Check("MB recherche d'albums : artiste crédité", (foundAlbums[0].Artist, foundAlbums[1].Artist, foundAlbums[1].Date, foundAlbums[1].Type), ("PNL", (string?)null, (string?)null, "Autre"));
+var editions = MusicBrainzClient.ParseEditions("""{"releases":[{"id":"a1","title":"Dans la légende","status":"Official","date":"2019-10-04","country":"AF","media":[{"format":"Digital Media","track-count":18}]},{"id":"a2","title":"Dans la légende","disambiguation":"version orange","status":"Official","date":"2016-09-16","country":"FR","media":[{"format":"CD","track-count":17}]},{"id":"a3","title":"Dans la légende","status":"Official","date":"2016-09-16","country":"FR","media":[{"format":"CD","track-count":16}]},{"id":"a4","title":"Dans la légende","status":"Bootleg","date":"2015","media":[{"format":"CD","track-count":10},{"format":"CD","track-count":9}]},{"id":"a5","title":"Vide","status":"Official","media":[]}]}""");
+Check("MB éditions : officielles d'abord, plus anciennes d'abord, sans pistes écartées", editions.Select(e => e.Id).ToArray(), new[] { "a3", "a2", "a1", "a4" });
+Check("MB éditions : précision, supports et pistes", (editions[1].Disambiguation, editions[3].Formats, editions[3].Tracks), ((string?)"version orange", "2×CD", 19));
+var reissue = Rel("Discovery (Remastered)", "2021-02-22", 15);
+var edition = MusicBrainzClient.ParseEdition(reissue.Insert(1, "\"release-group\":{\"id\":\"11111111-1111-1111-1111-111111111111\"},"), "https://coverartarchive.org/release/x/front-500");
+Check("MB édition choisie : ses pistes et son titre", (edition.Tracks.Count, edition.Title, edition.Tracks[0].Year, edition.Tracks[0].Album), (15, "Discovery (Remastered)", (int?)2021, "Discovery (Remastered)"));
 
 var longName = "[Group] Show - 05 " + new string('x', 200) + " [1080p].mkv";
 var safeLong = PathBuilder.SanitizeFileName(longName, "file");

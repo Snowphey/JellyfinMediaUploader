@@ -25,6 +25,9 @@ public class ImportAlbumRef
 {
     /// <summary>Gets or sets l'identifiant MusicBrainz du groupe de sorties.</summary>
     public string? Id { get; set; }
+
+    /// <summary>Gets or sets l'édition choisie (identifiant de la sortie) ; la plus courante si omise.</summary>
+    public string? Release { get; set; }
 }
 
 /// <summary>Albums à importer en une fois.</summary>
@@ -278,7 +281,11 @@ public class ImportController : MediaUploaderControllerBase
             return denied;
         }
 
-        var ids = request.Albums.Select(a => a.Id).Where(i => Guid.TryParse(i, out _)).Select(i => i!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var ids = request.Albums
+            .Where(a => Guid.TryParse(a.Id, out _))
+            .Select(a => (Id: a.Id!, Release: Guid.TryParse(a.Release, out _) ? a.Release : null))
+            .DistinctBy(a => a.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (ids.Count == 0 || ids.Count > MaxAlbumsPerRequest)
         {
             return BadRequest(new { error = $"Choisissez de 1 à {MaxAlbumsPerRequest} albums." });
@@ -303,9 +310,11 @@ public class ImportController : MediaUploaderControllerBase
         ImportManager.StartResolve(job, ctx, async ct =>
         {
             var merged = new Listing { Kind = "album", Title = artist.Length > 0 ? artist : "Albums" };
-            foreach (var id in ids)
+            foreach (var (id, release) in ids)
             {
-                var album = await MusicBrainzClient.AlbumListingAsync(id, ct).ConfigureAwait(false);
+                var album = release is null
+                    ? await MusicBrainzClient.AlbumListingAsync(id, ct).ConfigureAwait(false)
+                    : await MusicBrainzClient.EditionListingAsync(release, ct).ConfigureAwait(false);
                 foreach (var t in album.Tracks)
                 {
                     merged.Tracks.Add(t.WithId("t" + (merged.Tracks.Count + 1)));
@@ -422,6 +431,61 @@ public class ImportController : MediaUploaderControllerBase
         try
         {
             return Ok(new { Artists = await MusicBrainzClient.SearchArtistsAsync(q, HttpContext.RequestAborted).ConfigureAwait(false) });
+        }
+        catch (ImportException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Recherche libre (MusicBrainz) : artistes et albums correspondant au texte (nom d'artiste, titre d'album, ou les deux).
+    /// </summary>
+    /// <param name="q">Texte saisi.</param>
+    /// <returns>Artistes et albums.</returns>
+    [HttpGet("Browse/Search")]
+    public async Task<ActionResult> Search([FromQuery] string? q)
+    {
+        var denied = Guard(requireTools: false);
+        if (denied is not null)
+        {
+            return denied;
+        }
+
+        if (string.IsNullOrWhiteSpace(q) || q.Length > 150)
+        {
+            return BadRequest(new { error = "Saisissez un nom d'artiste ou d'album." });
+        }
+
+        try
+        {
+            var artists = await MusicBrainzClient.SearchArtistsAsync(q, HttpContext.RequestAborted).ConfigureAwait(false);
+            var albums = await MusicBrainzClient.SearchAlbumsAsync(q, HttpContext.RequestAborted).ConfigureAwait(false);
+            return Ok(new { Artists = artists, Albums = albums });
+        }
+        catch (ImportException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Éditions d'un album (rééditions, deluxe, pays…), pour en importer une précise.
+    /// </summary>
+    /// <param name="id">MBID du groupe de sorties.</param>
+    /// <returns>Éditions.</returns>
+    [HttpGet("Browse/Albums/{id}/Editions")]
+    public async Task<ActionResult> AlbumEditions(string id)
+    {
+        var denied = Guard(requireTools: false);
+        if (denied is not null)
+        {
+            return denied;
+        }
+
+        try
+        {
+            return Ok(new { Editions = await MusicBrainzClient.AlbumEditionsAsync(id, HttpContext.RequestAborted).ConfigureAwait(false) });
         }
         catch (ImportException ex)
         {

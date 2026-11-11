@@ -74,6 +74,10 @@
   .albums { margin: .6em 0; border: 1px solid #2c2c2c; border-radius: 8px; background: #161616; max-height: 32em; overflow: auto; padding: .2em .8em; }
   .arow { display: flex; gap: .8em; align-items: center; padding: .4em 0; border-bottom: 1px solid #222; }
   .arow:last-child { border-bottom: 0; }
+  .arow .tt small { display: block; color: #999; font-weight: normal; }
+  .eds { margin: 0 0 .4em 3.6em; padding: .3em .6em; border-left: 2px solid #2f4b5a; font-size: .9em; }
+  .eds label { display: flex; gap: .6em; align-items: center; padding: .2em 0; cursor: pointer; }
+  .browse-h { margin: .9em 0 .2em; font-size: .95em; color: #bbb; }
   .arow img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; background: #222; flex: none; }
   .arow .tt { flex: 1; word-break: break-word; }
   .filters { display: flex; gap: 1em; flex-wrap: wrap; margin: .6em 0; font-size: .9em; color: #bbb; }
@@ -137,11 +141,11 @@
   </div>
 
   <div id="tabBrowse" style="display:none">
-    <div class="muted" style="margin-top:.8em">Cherchez un artiste, cochez ses albums : les pistes viennent de MusicBrainz et chaque morceau est retrouvé sur YouTube Music.</div>
+    <div class="muted" style="margin-top:.8em">Cherchez un artiste ou un album, cochez les albums voulus (« Éditions » pour choisir une réédition, une version deluxe…) : les pistes viennent de MusicBrainz et chaque morceau est retrouvé sur YouTube Music.</div>
     <div id="browseWarn" class="warn" style="display:none"></div>
     <div id="quotaBrowse" class="muted quota"></div>
     <div class="linkrow">
-      <input id="artistQ" type="text" placeholder="Nom de l'artiste" autocomplete="off">
+      <input id="artistQ" type="text" placeholder="Artiste, album, ou les deux (ex. : PNL Dans la légende)" autocomplete="off">
       <button id="artistGo" type="button">Chercher</button>
     </div>
     <div id="browseOut"></div>
@@ -1343,7 +1347,7 @@
 
   // ---------- Import : lien Spotify / YouTube, navigation artistes et albums ----------
   var JOB_KEY = 'mediauploader.job';
-  var I = { status: null, tab: 'files', job: null, view: null, polling: false, layout: 'source', sel: {}, artists: null, albums: null, artist: null, albumSel: {}, counts: {}, types: { Album: true, EP: true, Single: false, Other: false }, busy: false, entered: false, playlist: null, playlistPublic: true, quota: null, quotaFor: -1 };
+  var I = { status: null, tab: 'files', job: null, view: null, polling: false, layout: 'source', sel: {}, artists: null, found: null, albums: null, artist: null, albumSel: {}, counts: {}, known: {}, editions: {}, edition: {}, openEd: {}, types: { Album: true, EP: true, Single: false, Other: false }, busy: false, entered: false, playlist: null, playlistPublic: true, quota: null, quotaFor: -1 };
 
   function fmtDuration(sec) { if (!sec) { return ''; } return Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2); }
 
@@ -1644,11 +1648,13 @@
   function searchArtists() {
     var q = $('artistQ').value.trim();
     if (!q) { return; }
-    I.artists = null; I.albums = null; I.artist = null; I.albumSel = {};
-    $('browseOut').textContent = 'Recherche…';
-    api('GET', 'MediaUploader/Browse/Artists?q=' + encodeURIComponent(q)).then(function (res) {
+    I.artists = null; I.found = null; I.albums = null; I.artist = null; I.albumSel = {}; I.edition = {}; I.openEd = {};
+    $('browseOut').textContent = 'Recherche (artistes et albums)…';
+    api('GET', 'MediaUploader/Browse/Search?q=' + encodeURIComponent(q)).then(function (res) {
       if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
       I.artists = list(pick(res.body, 'Artists'));
+      I.found = list(pick(res.body, 'Albums'));
+      I.found.forEach(function (al) { I.known[pick(al, 'Id')] = al; });
       renderBrowse();
     }).catch(function (err) { $('browseOut').textContent = ''; showWarn(err.message); });
   }
@@ -1659,6 +1665,7 @@
     api('GET', 'MediaUploader/Browse/Artists/' + pick(a, 'Id') + '/Albums').then(function (res) {
       if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
       I.albums = list(pick(res.body, 'Albums'));
+      I.albums.forEach(function (al) { if (!pick(al, 'Artist')) { al.Artist = pick(a, 'Name'); } I.known[pick(al, 'Id')] = al; });
       renderBrowse();
     }).catch(function (err) { $('browseOut').textContent = ''; showWarn(err.message); });
   }
@@ -1674,7 +1681,7 @@
   // Nombre de pistes des albums cochés : une requête par album (MusicBrainz limite le débit), l'une après l'autre.
   var countQueue = [], counting = false;
   function ensureCounts(ids) {
-    ids.forEach(function (id) { if (I.counts[id] === undefined) { I.counts[id] = -1; countQueue.push(id); } });
+    ids.forEach(function (id) { if (I.counts[id] === undefined && !I.edition[id]) { I.counts[id] = -1; countQueue.push(id); } });
     if (!counting) { counting = true; nextCount(); }
   }
   function nextCount() {
@@ -1699,14 +1706,101 @@
     return c ? c + ' piste' + (c > 1 ? 's' : '') : 'pistes ?';
   }
 
+  function loadEditions(id) {
+    if (I.editions[id] && I.editions[id] !== 'error') { return; }
+    I.editions[id] = 'loading';
+    api('GET', 'MediaUploader/Browse/Albums/' + id + '/Editions').then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      I.editions[id] = list(pick(res.body, 'Editions'));
+    }).catch(function () { I.editions[id] = 'error'; }).then(renderBrowse);
+  }
+
+  function editionLabel(e) {
+    var bits = [pick(e, 'Date') ? String(pick(e, 'Date')).slice(0, 10) : '', pick(e, 'Country'), pick(e, 'Formats'), pick(e, 'Tracks') + ' piste' + (pick(e, 'Tracks') > 1 ? 's' : '')];
+    if (pick(e, 'Status') && pick(e, 'Status') !== 'Official') { bits.push(pick(e, 'Status')); }
+    return bits.filter(Boolean).join(' · ');
+  }
+
+  function chooseEdition(id, e) {
+    if (e) { I.edition[id] = pick(e, 'Id'); I.counts[id] = pick(e, 'Tracks'); }
+    else { delete I.edition[id]; delete I.counts[id]; }
+    I.albumSel[id] = true;
+    if (!e) { ensureCounts([id]); }
+    renderBrowse();
+  }
+
+  function albumRow(al, showArtist) {
+    var id = pick(al, 'Id'), date = pick(al, 'Date') || '', eds = I.editions[id], chosenEd = I.edition[id];
+    var img = h('img', { src: 'https://coverartarchive.org/release-group/' + id + '/front-250', loading: 'lazy', alt: '' });
+    img.addEventListener('error', function () { img.style.visibility = 'hidden'; });
+    var picked = chosenEd && Array.isArray(eds) ? eds.filter(function (e) { return pick(e, 'Id') === chosenEd; })[0] : null;
+    var title = h('span', { class: 'tt' }, [pick(al, 'Title')]);
+    var sub = [showArtist ? pick(al, 'Artist') : '', picked ? 'Édition : ' + (pick(picked, 'Disambiguation') || pick(picked, 'Title')) + ' (' + editionLabel(picked) + ')' : ''].filter(Boolean).join(' — ');
+    if (sub) { title.appendChild(h('small', { text: sub })); }
+    var edBtn = h('button', { type: 'button', class: 'secondary small', text: I.openEd[id] ? 'Masquer' : 'Éditions', title: 'Choisir une édition précise : réédition, deluxe, autre pays…', onclick: function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      I.openEd[id] = !I.openEd[id];
+      if (I.openEd[id]) { loadEditions(id); }
+      renderBrowse();
+    } });
+    var frag = [h('label', { class: 'arow' }, [
+      h('input', { type: 'checkbox', checked: !!I.albumSel[id], onchange: function (e) { I.albumSel[id] = e.target.checked; if (e.target.checked) { ensureCounts([id]); } renderBrowse(); } }),
+      img,
+      title,
+      h('span', { class: 'chip', text: [pick(al, 'Type')].concat(list(pick(al, 'Extras'))).join(' · ') }),
+      h('span', { class: 'muted', text: countLabel(id) }),
+      h('span', { class: 'muted', text: date.slice(0, 4) }),
+      edBtn
+    ])];
+    if (I.openEd[id]) {
+      var box = h('div', { class: 'eds' });
+      if (eds === 'loading' || eds === undefined) { box.appendChild(h('div', { class: 'muted', text: 'Chargement des éditions…' })); }
+      else if (eds === 'error') { box.appendChild(h('div', { class: 'muted', text: 'Éditions indisponibles (MusicBrainz injoignable).' })); }
+      else if (!eds.length) { box.appendChild(h('div', { class: 'muted', text: 'Aucune édition avec pistes dans MusicBrainz.' })); }
+      else {
+        var name = 'ed-' + id;
+        box.appendChild(h('label', {}, [h('input', { type: 'radio', name: name, checked: !chosenEd, onchange: function () { chooseEdition(id, null); } }), h('span', { text: 'Automatique (l\'édition la plus courante, sans les bonus)' })]));
+        eds.forEach(function (e) {
+          var label = pick(e, 'Title') + (pick(e, 'Disambiguation') ? ' (' + pick(e, 'Disambiguation') + ')' : '');
+          box.appendChild(h('label', {}, [
+            h('input', { type: 'radio', name: name, checked: chosenEd === pick(e, 'Id'), onchange: function () { chooseEdition(id, e); } }),
+            h('span', { text: label }),
+            h('span', { class: 'muted', text: editionLabel(e) })
+          ]));
+        });
+      }
+      frag.push(box);
+    }
+    return frag;
+  }
+
+  function importBar(shown) {
+    var chosen = Object.keys(I.albumSel).filter(function (k) { return I.albumSel[k]; });
+    var bar = h('div', {});
+    var knownTotal = chosen.reduce(function (a, id) { return a + (I.counts[id] > 0 ? I.counts[id] : 0); }, 0);
+    if (knownTotal > 0) { wantQuota(knownTotal); var bf = quotaForecast(I.quota, knownTotal); if (bf) { bar.appendChild(bf); } }
+    // Titre de l'import : l'artiste commun aux albums cochés, s'il y en a un.
+    var artists = chosen.map(function (id) { return I.known[id] ? pick(I.known[id], 'Artist') : null; });
+    var common = artists.length && artists.every(function (a) { return a && a === artists[0]; }) ? artists[0] : (I.artist ? pick(I.artist, 'Name') : '');
+    bar.appendChild(h('div', { class: 'row' }, [
+      h('button', { type: 'button', disabled: !chosen.length || I.busy, text: 'Importer la sélection (' + selectionLabel(chosen) + ')', onclick: function () {
+        startJob('MediaUploader/Import/Albums', { artist: common || null, albums: chosen.map(function (id) { return I.edition[id] ? { id: id, release: I.edition[id] } : { id: id }; }) });
+      } }),
+      h('button', { type: 'button', class: 'secondary small', text: 'Tout sélectionner (visibles)', onclick: function () { shown.forEach(function (al) { I.albumSel[pick(al, 'Id')] = true; }); ensureCounts(shown.map(function (al) { return pick(al, 'Id'); })); renderBrowse(); } }),
+      h('button', { type: 'button', class: 'secondary small', text: 'Aucun', onclick: function () { I.albumSel = {}; renderBrowse(); } })
+    ]));
+    return bar;
+  }
+
   function renderBrowse() {
     var box = $('browseOut');
     if (I.tab !== 'browse') { return; }
     if (I.view && pick(I.view, 'Source') === 'browse' && pick(I.view, 'State') === 'resolving') { box.textContent = 'Récupération des pistes (MusicBrainz, environ une seconde par album)…'; return; }
     box.textContent = '';
+    var rows;
     if (I.artist && I.albums) {
       box.appendChild(h('div', { class: 'row' }, [
-        h('button', { type: 'button', class: 'secondary small', text: '← Artistes', onclick: function () { I.artist = null; I.albums = null; renderBrowse(); } }),
+        h('button', { type: 'button', class: 'secondary small', text: '← Résultats', onclick: function () { I.artist = null; I.albums = null; renderBrowse(); } }),
         h('strong', { text: pick(I.artist, 'Name') })
       ]));
       var filters = h('div', { class: 'filters' });
@@ -1714,44 +1808,35 @@
         filters.appendChild(h('label', {}, [h('input', { type: 'checkbox', checked: !!I.types[f[0]], onchange: function (e) { I.types[f[0]] = e.target.checked; renderBrowse(); } }), f[1]]));
       });
       box.appendChild(filters);
-      var shown = visibleAlbums(), chosen = Object.keys(I.albumSel).filter(function (k) { return I.albumSel[k]; });
-      var rows = h('div', { class: 'albums' });
+      var shown = visibleAlbums();
+      rows = h('div', { class: 'albums' });
       if (!shown.length) { rows.appendChild(h('div', { class: 'muted', style: 'padding:.6em 0', text: 'Aucun album avec ces filtres.' })); }
-      shown.forEach(function (al) {
-        var id = pick(al, 'Id'), date = pick(al, 'Date') || '';
-        var img = h('img', { src: 'https://coverartarchive.org/release-group/' + id + '/front-250', loading: 'lazy', alt: '' });
-        img.addEventListener('error', function () { img.style.visibility = 'hidden'; });
-        rows.appendChild(h('label', { class: 'arow' }, [
-          h('input', { type: 'checkbox', checked: !!I.albumSel[id], onchange: function (e) { I.albumSel[id] = e.target.checked; if (e.target.checked) { ensureCounts([id]); } renderBrowse(); } }),
-          img,
-          h('span', { class: 'tt', text: pick(al, 'Title') }),
-          h('span', { class: 'chip', text: [pick(al, 'Type')].concat(list(pick(al, 'Extras'))).join(' · ') }),
-          h('span', { class: 'muted', text: countLabel(id) }),
-          h('span', { class: 'muted', text: date.slice(0, 4) })
-        ]));
-      });
+      shown.forEach(function (al) { albumRow(al, false).forEach(function (n) { rows.appendChild(n); }); });
       box.appendChild(rows);
-      var knownTotal = chosen.reduce(function (a, id) { return a + (I.counts[id] > 0 ? I.counts[id] : 0); }, 0);
-      if (knownTotal > 0) { wantQuota(knownTotal); var bf = quotaForecast(I.quota, knownTotal); if (bf) { box.appendChild(bf); } }
-      box.appendChild(h('div', { class: 'row' }, [
-        h('button', { type: 'button', disabled: !chosen.length || I.busy, text: 'Importer la sélection (' + selectionLabel(chosen) + ')', onclick: function () {
-          startJob('MediaUploader/Import/Albums', { artist: pick(I.artist, 'Name'), albums: chosen.map(function (id) { return { id: id }; }) });
-        } }),
-        h('button', { type: 'button', class: 'secondary small', text: 'Tout sélectionner (visibles)', onclick: function () { shown.forEach(function (al) { I.albumSel[pick(al, 'Id')] = true; }); ensureCounts(shown.map(function (al) { return pick(al, 'Id'); })); renderBrowse(); } }),
-        h('button', { type: 'button', class: 'secondary small', text: 'Aucun', onclick: function () { I.albumSel = {}; renderBrowse(); } })
-      ]));
+      box.appendChild(importBar(shown));
       return;
     }
-    if (I.artists) {
-      if (!I.artists.length) { box.appendChild(h('div', { class: 'muted', text: 'Aucun artiste trouvé.' })); return; }
-      var hits = h('div', { class: 'hits' });
-      I.artists.forEach(function (a) {
-        hits.appendChild(h('button', { type: 'button', class: 'hit secondary', onclick: function () { openArtist(a); } }, [
-          h('strong', { text: pick(a, 'Name') }),
-          h('span', { class: 'muted', text: '  ' + [pick(a, 'Type'), pick(a, 'Country'), pick(a, 'Disambiguation')].filter(Boolean).join(' · ') })
-        ]));
-      });
-      box.appendChild(hits);
+    if (I.artists || I.found) {
+      var artists = list(I.artists), found = list(I.found);
+      if (!artists.length && !found.length) { box.appendChild(h('div', { class: 'muted', text: 'Aucun artiste ni album trouvé.' })); return; }
+      if (artists.length) {
+        box.appendChild(h('div', { class: 'browse-h', text: 'Artistes (toute leur discographie)' }));
+        var hits = h('div', { class: 'hits' });
+        artists.slice(0, 6).forEach(function (a) {
+          hits.appendChild(h('button', { type: 'button', class: 'hit secondary', onclick: function () { openArtist(a); } }, [
+            h('strong', { text: pick(a, 'Name') }),
+            h('span', { class: 'muted', text: '  ' + [pick(a, 'Type'), pick(a, 'Country'), pick(a, 'Disambiguation')].filter(Boolean).join(' · ') })
+          ]));
+        });
+        box.appendChild(hits);
+      }
+      if (found.length) {
+        box.appendChild(h('div', { class: 'browse-h', text: 'Albums' }));
+        rows = h('div', { class: 'albums' });
+        found.forEach(function (al) { albumRow(al, true).forEach(function (n) { rows.appendChild(n); }); });
+        box.appendChild(rows);
+        box.appendChild(importBar(found));
+      }
     }
   }
 
