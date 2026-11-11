@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.4.4.0",
+        "changelog": "Version 1.4.4.0",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/Snowphey/JellyfinMediaUploader/releases/download/v1.4.4.0/Jellyfin.Plugin.MediaUploader_1.4.4.0.zip",
+        "checksum": "1e2c1aed8085ad8d01df3b09e1572f65",
+        "timestamp": "2026-11-11T15:58:08Z"
+      },
+      {
         "version": "1.4.3.0",
         "changelog": "Version 1.4.3.0",
         "targetAbi": "12.1.0.0",
