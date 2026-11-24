@@ -1558,7 +1558,8 @@ public class LibraryController : MediaUploaderControllerBase
             FileSize,
             useMb ? (title, credit) => Services.Import.MusicBrainzCredits.TryGetCached(title, credit, null, out var hit) ? (true, hit) : (!running, null) : null,
             Config.ArtistNames,
-            LibraryMusicIndex.ArtistKeys(r.Path));
+            LibraryMusicIndex.ArtistKeys(r.Path),
+            Directory.EnumerateDirectories(r.Path).Select(Path.GetFileName).Where(n => n is not null && !n.StartsWith('.')).Cast<string>().ToList());
         return Ok(new { Folder = folder, Pending = rows.Count(x => x.Source == "pending"), MusicBrainz = useMb, Rows = rows });
     }
 

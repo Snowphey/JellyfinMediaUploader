@@ -1001,6 +1001,20 @@ Check("MusicBrainz : dossier = artiste principal si la sortie est créditée aux
     ("disiz", "Lin‐Manuel Miranda, Germaine Franco & Encanto - Cast", "A"));
 Check("MusicBrainz : piste, disque et année de la sortie retenue", (mbSurface?.Track, mbSurface?.Disc, mbSurface?.Year), ((int?)3, (int?)1, (int?)2021));
 
+Check("MusicBrainz : titre nettoyé pour la recherche",
+    (MusicBrainzCredits.SearchTitle("Hips Don't Lie (feat. Wyclef Jean)"), MusicBrainzCredits.SearchTitle("Dracula (with JENNIE)"), MusicBrainzCredits.SearchTitle("(Sittin' On) the Dock of the Bay - Mono"),
+     MusicBrainzCredits.SearchTitle("Calling (Spider-Man: Across the Spider-Verse) (Metro Boomin & Swae Lee, NAV, feat. A Boogie Wit da Hoodie)"), MusicBrainzCredits.SearchTitle("Heroes - 2017 Remaster"), MusicBrainzCredits.SearchTitle("Aline (freestyle)")),
+    ("Hips Don't Lie", "Dracula", "(Sittin' On) the Dock of the Bay", "Calling (Spider-Man: Across the Spider-Verse)", "Heroes", "Aline (freestyle)"));
+string Rel2(string title, string date, string primary, string secondary, string number = "3") =>
+    "{\"title\":\"" + title + "\",\"status\":\"Official\",\"date\":\"" + date + "\",\"release-group\":{\"primary-type\":\"" + primary + "\",\"secondary-types\":[" + secondary + "]},\"media\":[{\"position\":1,\"track\":[{\"number\":\"" + number + "\"}]}]}";
+string Rec(string disambiguation, params string[] releases) => "{\"title\":\"Gimme More\",\"disambiguation\":\"" + disambiguation + "\",\"artist-credit\":[{\"name\":\"Britney Spears\",\"artist\":{\"id\":\"x\"}}],\"releases\":[" + string.Join(",", releases) + "]}";
+var studio = MusicBrainzCredits.ParseRecordings("{\"recordings\":[" + Rec("", Rel2("Live: The Femme Fatale Tour", "2011-11-21", "Album", "\"Live\""), Rel2("The Singles Collection", "2009-11-23", "Album", "\"Compilation\"")) + ","
+    + Rec("live, 2009", Rel2("Circus Live", "2009-06-01", "Album", "")) + "," + Rec("", Rel2("Gimme More", "2007-08-31", "Single", ""), Rel2("Blackout", "2007-10-25", "Album", "", "A1"), Rel2("Blackout (deluxe)", "2008-05-01", "Album", "")) + "]}", "Gimme More", "Britney Spears", null);
+Check("MusicBrainz sans album connu : album studio d'origine (pas live, compilation, single), piste « A1 » = 1", (studio?.Release, studio?.Track, studio?.Year), ("Blackout", (int?)1, (int?)2007));
+var mbOtis = MusicBrainzCredits.ParseRecordings(Fixture("rec_otis"), MusicBrainzCredits.SearchTitle("(Sittin' On) the Dock of the Bay - Mono"), "Otis Redding", null);
+Check("MusicBrainz : album inconnu et seulement des compilations : artiste trouvé, pas d'album", (mbOtis is null ? null : string.Join(" | ", mbOtis.Artists.Select(x => x.Name)), mbOtis?.Release, mbOtis?.Year), ("Otis Redding", (string?)null, (int?)0));
+var mbNight = MusicBrainzCredits.ParseRecordings(Fixture("rec_because"), "Because the Night", "Patti Smith", null);
+Check("MusicBrainz : l'original au-delà des 50 premiers résultats, pas un bootleg (« Ask the Angels »)", (mbNight?.Release, mbNight?.Track, mbNight?.Year), ("Easter", (int?)3, (int?)1978));
 // ---------- Dossiers créés par l'import d'une liste de lecture ----------
 var pfRoot = Path.Combine(Path.GetTempPath(), "mu-pf-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(Path.Combine(pfRoot, "Various Artists", "BINGO Pouzzz"));
@@ -1015,7 +1029,7 @@ var pfFiles = new List<(string, string, TagSnapshot)>
 {
     ("Various Artists/BINGO Pouzzz/73 - BIG BOSS LADY.m4a", pfDir + "73 - BIG BOSS LADY.m4a", new TagSnapshot("BIG BOSS LADY", "Theodora & Jahlys", "Various Artists", "BINGO Pouzzz", 0, 73, 0, null, true)),
     ("Various Artists/BINGO Pouzzz/21 - Iron.m4a", pfDir + "21 - Iron.m4a", new TagSnapshot("Iron", "Woodkid", "Various Artists", "BINGO Pouzzz", 0, 21, 0, null, true)),
-    ("Various Artists/BINGO Pouzzz/52 - Kongolese.m4a", pfDir + "52 - Kongolese.m4a", new TagSnapshot("Kongolese", "Gradur & Damso", "Various Artists", "BINGO Pouzzz", 2019, 52, 0, null, true)),
+    ("Various Artists/BINGO Pouzzz/52 - Kongolese.m4a", pfDir + "52 - Kongolese.m4a", new TagSnapshot("Kongolese (feat. Damso)", "Gradur & Damso", "Various Artists", "BINGO Pouzzz", 2019, 52, 0, null, true)),
 };
 var pfLibrary = new List<(string, TagInfo)>
 {
@@ -1027,10 +1041,10 @@ var pfLibrary = new List<(string, TagInfo)>
 };
 var pfPlan = PlaylistFolders.Plan("/m", pfFiles, pfLibrary, _ => true, p => p.EndsWith(".flac", StringComparison.Ordinal) ? 30 : 3,
     (title, credit) => title == "Iron" ? (true, new MbCredit(new[] { "Woodkid" }, "Woodkid", "Iron EP") { Track = 1, Year = 2011 }) : (false, null),
-    null, ArtistCredits.KnownKeys(new[] { "Gradur", "Damso", "Theodora" }));
+    null, ArtistCredits.KnownKeys(new[] { "Gradur", "Damso", "Theodora" }), new[] { "GRADUR" });
 Check("liste de lecture : doublon, copie sans perte conseillée", (pfPlan[0].Action, string.Join(" | ", pfPlan[0].Copies)), ("keep", "Theodora/MEGA BBL/21 - BIG BOSS LADY.flac | Theodora/BAD BOY LOVESTORY/10 - BIG BOSS LADY.m4a"));
 Check("liste de lecture : album d'origine d'après MusicBrainz", (pfPlan[1].Action, pfPlan[1].AlbumArtist, pfPlan[1].Album, pfPlan[1].Track, pfPlan[1].Year, pfPlan[1].Source), ("move", "Woodkid", "Iron EP", 1, 2011, "musicbrainz"));
-Check("liste de lecture : en attente de MusicBrainz, single en attendant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("Gradur; Damso", "Gradur", "Kongolese", 1, 2019, "pending"));
+Check("liste de lecture : en attente de MusicBrainz, single en attendant ; orthographe du dossier existant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("GRADUR; Damso", "GRADUR", "Kongolese", 1, 2019, "pending"));
 var restore = TagChanges.Restore(new TagSnapshot(null, "A; B", null, "Alb", 2020, 3, 0, null, false));
 Check("annulation : tags d'origine, champs vides effacés", (restore.Title, restore.Artist, restore.AlbumArtist, restore.Album, restore.Year, restore.Track, restore.Disc), ("", "A; B", "", "Alb", (uint?)2020, (uint?)3, (uint?)0));
 

@@ -125,8 +125,18 @@ public static class PlaylistFolders
         Func<string, long> sizeOf,
         Func<string, string, (bool Done, MbCredit? Credit)>? lookup,
         ICollection<string>? artistNames,
-        ISet<string>? libraryArtists)
+        ISet<string>? libraryArtists,
+        IEnumerable<string>? artistDirs = null)
     {
+        // Orthographe d'un dossier d'artiste existant (« Freeze Corleone » plutôt que « Freeze corleone » des tags) : pas de second dossier.
+        var spelled = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var dir in (artistDirs ?? Array.Empty<string>()).OrderBy(d => d, StringComparer.Ordinal))
+        {
+            spelled.TryAdd(MusicHealth.ArtistKey(dir), dir);
+        }
+
+        string Spell(string name) => spelled.TryGetValue(MusicHealth.ArtistKey(name), out var s) ? s : name;
+
         var root = rootPath.TrimEnd('/', '\\');
         var inFolder = files.Select(f => f.Full).ToHashSet(StringComparer.Ordinal);
         var others = library
@@ -171,7 +181,7 @@ public static class PlaylistFolders
                 var artists = mb.Artists.Concat(extra).ToList();
                 row.Artists = string.Join("; ", artists);
                 row.AlbumArtist = mb.FolderArtist;
-                row.Album = mb.Release ?? title;
+                row.Album = mb.Release ?? MusicBrainzCredits.SearchTitle(title);
                 row.Track = mb.Release is null ? 1 : mb.Track;
                 row.Disc = mb.Disc > 1 ? mb.Disc : 0;
                 row.Year = mb.Year > 0 ? mb.Year : row.Year;
@@ -181,11 +191,13 @@ public static class PlaylistFolders
             {
                 row.Artists = string.Join("; ", split.Artists);
                 row.AlbumArtist = ArtistCredits.FolderArtist(split.Artists);
-                row.Album = title;
+                row.Album = MusicBrainzCredits.SearchTitle(title);
                 row.Track = 1;
                 row.Source = done ? "rules" : "pending";
             }
 
+            row.AlbumArtist = Spell(row.AlbumArtist);
+            row.Artists = string.Join("; ", row.Artists.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Spell));
             rows.Add(row);
         }
 

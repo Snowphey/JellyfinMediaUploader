@@ -66,6 +66,28 @@ public static class MusicBrainzCredits
     private static readonly ConcurrentDictionary<string, (DateTime At, MbCredit? Credit)> Cache = new();
     private static readonly ConcurrentDictionary<string, string?> LatinNames = new();
 
+    // Mentions d'un titre YouTube ou Spotify que MusicBrainz n'écrit pas : invités entre parenthèses, « - Mono », « - Remastered 2011 ».
+    private static readonly System.Text.RegularExpressions.Regex TitleNoise = new(
+        @"\s*[\(\[](?:[^\)\]]*[\s,])?(?:feat\.?|ft\.?|featuring)\s[^\)\]]*[\)\]]|\s*[\(\[](?:with|avec)\s[^\)\]]*[\)\]]|\s+-\s+(?:mono|stereo|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?|single version|radio edit)\s*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    // Sorties qui ne sont pas l'album d'origine : live, remix, compilation…
+    private static readonly HashSet<string> NotOriginal = new(StringComparer.OrdinalIgnoreCase) { "Live", "Remix", "Compilation", "DJ-mix", "Mixtape/Street", "Demo", "Interview", "Spokenword", "Audio drama", "Field recording" };
+
+    // Enregistrements d'une autre version (« live, 2009-05-21 », « remix »), écartés sauf si le titre cherché le demande.
+    private static readonly System.Text.RegularExpressions.Regex OtherVersion = new(@"\b(live|demo|remix|acoustic|instrumental|karaoke|a cappella|edit)\b", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Titre tel que MusicBrainz l'écrit probablement : sans les invités entre parenthèses ni « - Mono » / « - Remastered ».
+    /// </summary>
+    /// <param name="title">Titre (tags).</param>
+    /// <returns>Titre nettoyé (le titre d'origine s'il ne reste rien).</returns>
+    public static string SearchTitle(string title)
+    {
+        var clean = TitleNoise.Replace(title, string.Empty).Trim();
+        return clean.Length > 0 ? clean : title.Trim();
+    }
+
     /// <summary>
     /// Clé de cache d'un morceau.
     /// </summary>
@@ -111,15 +133,17 @@ public static class MusicBrainzCredits
         }
 
         var lead = ArtistCredits.Candidates(credit).FirstOrDefault() ?? credit;
+        var cacheTitle = title;
+        title = SearchTitle(title);
         var query = $"recording:\"{MusicBrainzClient.EscapeLucene(title)}\" AND artist:\"{MusicBrainzClient.EscapeLucene(lead)}\"";
-        var json = await MusicBrainzClient.GetJsonAsync($"recording?query={Uri.EscapeDataString(query)}&fmt=json&limit=15", ct).ConfigureAwait(false);
+        var json = await MusicBrainzClient.GetJsonAsync($"recording?query={Uri.EscapeDataString(query)}&fmt=json&limit=100", ct).ConfigureAwait(false);
         var match = ParseRecordings(json, title, credit, album);
 
         // L'artiste principal des tags n'a pas toujours le même nom sur MusicBrainz (« Carolina Gaitán - La Gaita ») : le titre seul, filtré ensuite.
         if (match is null)
         {
             var byTitle = $"recording:\"{MusicBrainzClient.EscapeLucene(title)}\"";
-            json = await MusicBrainzClient.GetJsonAsync($"recording?query={Uri.EscapeDataString(byTitle)}&fmt=json&limit=25", ct).ConfigureAwait(false);
+            json = await MusicBrainzClient.GetJsonAsync($"recording?query={Uri.EscapeDataString(byTitle)}&fmt=json&limit=100", ct).ConfigureAwait(false);
             match = ParseRecordings(json, title, credit, album);
         }
         MbCredit? result = null;
@@ -167,7 +191,7 @@ public static class MusicBrainzCredits
             result = artists.Count > 0 ? new MbCredit(artists, albumArtist, match.Release) { OriginalNames = match.Artists.Select(a => a.Name).ToList(), Track = match.Track, Disc = match.Disc, Year = match.Year } : null;
         }
 
-        Cache[CacheKey(title, credit, album)] = (DateTime.UtcNow, result);
+        Cache[CacheKey(cacheTitle, credit, album)] = (DateTime.UtcNow, result);
         return result;
     }
 
@@ -201,8 +225,17 @@ public static class MusicBrainzCredits
         // sur des compilations (« Disney Hits »), on préfère la sortie qui porte le nom de l'album des tags, sinon une sortie d'origine.
         MbMatch? best = null;
         var bestScore = -1;
+        var bestDate = string.Empty;
+        var wantVersion = OtherVersion.IsMatch(title);
         foreach (var rec in recordings.OfType<JsonObject>())
         {
+            // Enregistrement d'une autre version (live, remix…) ou clip : écarté, sauf si c'est ce qui est cherché.
+            var disambiguation = rec["disambiguation"]?.GetValue<string>() ?? string.Empty;
+            if ((!wantVersion && OtherVersion.IsMatch(disambiguation)) || rec["video"] is JsonValue v && v.TryGetValue<bool>(out var isVideo) && isVideo)
+            {
+                continue;
+            }
+
             var names = Credit(rec["artist-credit"]);
             var overlap = names.Count(n => creditKeys.Contains(ArtistCredits.Key(n.Name))
                 || creditKeys.Any(k => k.Length > 3 && ArtistCredits.Key(n.Name).Length > 3 && (ArtistCredits.Key(n.Name).Contains(k, StringComparison.Ordinal) || k.Contains(ArtistCredits.Key(n.Name), StringComparison.Ordinal))));
@@ -228,23 +261,45 @@ public static class MusicBrainzCredits
 
             // Une sortie d'origine portant le nom de l'album gagne ; une sortie d'origine quelconque passe avant une compilation,
             // même si celle-ci porte le nom de l'album (« We Don't Talk About Bruno: As Heard Around the World »).
+            // Sans album connu : l'album studio d'origine (pas un live, une compilation ni un remix), un album plutôt qu'un single,
+            // puis la sortie la plus ancienne.
             int ReleaseScore(JsonObject r)
             {
-                var comp = IsCompilation(r);
+                var comp = IsCompilation(r) || (albumKey.Length == 0 && Foreign(r, names));
                 var exact = AlbumKey(r["title"]?.GetValue<string>()) == albumKey;
-                return (Matches(r) ? (comp ? 25 : 100) : 0) + (exact && !comp ? 5 : 0) + (comp ? 0 : 30) + (r["status"]?.GetValue<string>() is null or "Official" ? 1 : 0);
+                var secondary = (r["release-group"]?["secondary-types"] as JsonArray)?.Select(t => t?.GetValue<string>() ?? string.Empty).ToList() ?? new List<string>();
+                var notOriginal = secondary.Any(NotOriginal.Contains);
+                var primary = r["release-group"]?["primary-type"]?.GetValue<string>() switch { "Album" => 12, "EP" => 8, "Single" => 6, _ => 0 };
+
+                // Album inconnu : une bande originale (film, jeu) passe après l'album de l'artiste.
+                var soundtrack = albumKey.Length == 0 && secondary.Contains("Soundtrack", StringComparer.OrdinalIgnoreCase) ? -15 : 0;
+                return (Matches(r) ? (comp ? 25 : 100) : 0) + (exact && !comp ? 5 : 0) + (comp ? 0 : 30) + (notOriginal ? -40 : 0) + primary + soundtrack
+                    + (r["status"]?.GetValue<string>() switch { null or "Official" => 1, "Bootleg" when albumKey.Length == 0 => -20, _ => 0 });
             }
 
-            var release = releases.OrderByDescending(ReleaseScore).FirstOrDefault();
+            static string DateOf(JsonObject r) => r["date"]?.GetValue<string>() is { Length: >= 4 } d ? d : "9999";
+
+            var release = releases.OrderByDescending(ReleaseScore).ThenBy(DateOf, StringComparer.Ordinal).FirstOrDefault();
             var score = (release is null ? 0 : ReleaseScore(release)) + overlap;
-            if (score <= bestScore)
+            var date = release is null ? "9999" : DateOf(release);
+            if (score < bestScore || (score == bestScore && string.CompareOrdinal(date, bestDate) >= 0))
             {
                 continue;
             }
 
+            bestDate = date;
+
+            // Album inconnu et seule une compilation (ou la bande originale d'un autre) trouvée : pas d'album plutôt qu'un mauvais.
+            if (release is not null && albumKey.Length == 0 && !Original(release, names))
+            {
+                release = null;
+            }
+
             var albumCredit = release?["artist-credit"] is JsonArray rc ? CreditWithJoins(rc) : CreditWithJoins(rec["artist-credit"] as JsonArray);
             var medium = (release?["media"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault();
-            var trackNo = int.TryParse((medium?["track"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault()?["number"]?.GetValue<string>(), out var tn) ? tn : 0;
+            // Numéro de piste : « 3 », ou « A3 » sur un vinyle ; 1 à défaut.
+            var number = System.Text.RegularExpressions.Regex.Match((medium?["track"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault()?["number"]?.GetValue<string>() ?? string.Empty, @"\d+").Value;
+            var trackNo = int.TryParse(number, out var tn) && tn > 0 ? tn : (release is null ? 0 : 1);
             var discNo = medium?["position"] is JsonValue pos && pos.TryGetValue<int>(out var dn) ? dn : 0;
             var year = int.TryParse((release?["date"]?.GetValue<string>() ?? string.Empty).Split('-')[0], out var y) ? y : 0;
             best = new MbMatch(names.Select(n => (n.Name, n.Id)).ToList(), albumCredit, release?["title"]?.GetValue<string>()) { Track = trackNo, Disc = discNo, Year = year };
@@ -282,6 +337,25 @@ public static class MusicBrainzCredits
 
     // Titre d'album comparable : sans les parenthèses (« Encanto (Original Motion Picture Soundtrack) » et « Encanto » se valent).
     private static string AlbumKey(string? album) => NameTools.TitleKey(System.Text.RegularExpressions.Regex.Replace(album ?? string.Empty, @"[\(\[][^\)\]]*[\)\]]", " "));
+
+    // Sortie créditée à d'autres que les interprètes du morceau (bande originale de « Top Gun » : Harold Faltermeyer).
+    private static bool Foreign(JsonObject release, List<(string Name, string? Id)> performers)
+    {
+        if (release["artist-credit"] is not JsonArray credit || credit.Count == 0)
+        {
+            return false;
+        }
+
+        var mine = performers.Select(p => ArtistCredits.Key(p.Name)).ToHashSet(StringComparer.Ordinal);
+        return !credit.OfType<JsonObject>().Any(c => mine.Contains(ArtistCredits.Key(c["name"]?.GetValue<string>() ?? string.Empty)));
+    }
+
+    // Sortie d'origine de l'artiste : ni compilation, ni live ou remix, ni sortie d'un autre.
+    private static bool Original(JsonObject release, List<(string Name, string? Id)> performers)
+    {
+        var secondary = (release["release-group"]?["secondary-types"] as JsonArray)?.Select(t => t?.GetValue<string>() ?? string.Empty) ?? Enumerable.Empty<string>();
+        return !IsCompilation(release) && !Foreign(release, performers) && !secondary.Any(NotOriginal.Contains);
+    }
 
     private static bool IsCompilation(JsonObject release)
     {
