@@ -56,8 +56,6 @@ public sealed class PlaylistFolderRow
 /// </summary>
 public static class PlaylistFolders
 {
-    private static readonly HashSet<string> Lossless = new(StringComparer.OrdinalIgnoreCase) { ".flac", ".wav", ".alac", ".aiff", ".aif", ".ape", ".wv", ".dsf" };
-
     /// <summary>
     /// Dossiers « Various Artists/X » dont le nom est celui d'une liste de lecture Jellyfin.
     /// </summary>
@@ -145,6 +143,7 @@ public static class PlaylistFolders
             .Where(e => e.Key is not null)
             .ToList();
 
+        var perFolder = library.GroupBy(e => System.IO.Path.GetDirectoryName(e.Path) ?? string.Empty, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
         var rows = new List<PlaylistFolderRow>();
         foreach (var (relative, full, tags) in files)
         {
@@ -156,12 +155,8 @@ public static class PlaylistFolders
             var key = DuplicateMatcher.Key(credit, title);
             if (key is not null)
             {
-                row.Copies = others.Where(o => DuplicateMatcher.Same(key, o.Key!) && exists(o.Path))
-                    .Select(o => o.Path)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderByDescending(p => Lossless.Contains(System.IO.Path.GetExtension(p)))
-                    .ThenBy(p => p.Contains(System.IO.Path.DirectorySeparatorChar + ArtistCredits.VariousArtists + System.IO.Path.DirectorySeparatorChar, StringComparison.Ordinal))
-                    .ThenByDescending(sizeOf)
+                var copies = others.Where(o => DuplicateMatcher.Same(key, o.Key!) && exists(o.Path)).Select(o => o.Path).Distinct(StringComparer.Ordinal);
+                row.Copies = MusicHealth.RankCopies(copies, d => perFolder.GetValueOrDefault(d), sizeOf)
                     .Select(p => p[(root.Length + 1)..].Replace('\\', '/'))
                     .ToList();
             }
@@ -176,10 +171,7 @@ public static class PlaylistFolders
             var (done, mb) = lookup?.Invoke(title, credit) ?? (true, null);
             if (mb is not null)
             {
-                var known = mb.Artists.Concat(mb.OriginalNames).Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
-                var extra = split.Artists.Where(a => !known.Contains(ArtistCredits.Key(a)) && !known.Any(k => k.Length > 3 && ArtistCredits.Key(a).Contains(k, StringComparison.Ordinal)));
-                var artists = mb.Artists.Concat(extra).ToList();
-                row.Artists = string.Join("; ", artists);
+                row.Artists = string.Join("; ", MusicBrainzCredits.WithTagArtists(mb, split.Artists));
                 row.AlbumArtist = mb.FolderArtist;
                 row.Album = mb.Release ?? MusicBrainzCredits.SearchTitle(title);
                 row.Track = mb.Release is null ? 1 : mb.Track;

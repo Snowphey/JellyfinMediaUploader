@@ -184,6 +184,12 @@ public class TagOverride
 
     /// <summary>Gets or sets a value indicating whether ce fichier est laissé tel quel.</summary>
     public bool Skip { get; set; }
+
+    /// <summary>
+    /// Gets or sets la copie à garder quand ce morceau est déjà rangé ailleurs (chemin relatif) : celui-ci va à la corbeille.
+    /// Chaîne vide : ranger ce morceau quand même. Null : ce que propose l'aperçu.
+    /// </summary>
+    public string? Keep { get; set; }
 }
 
 /// <summary>Dossier créé par l'import d'une liste de lecture : plan ou répartition.</summary>
@@ -1142,6 +1148,13 @@ public class LibraryController : MediaUploaderControllerBase
         var perRow = new Dictionary<TagRow, TagChanges>();
         var overrides = (request.Overrides ?? new List<TagOverride>()).Where(o => !string.IsNullOrWhiteSpace(o.Path)).GroupBy(o => o.Path!.Trim(), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Last(), StringComparer.Ordinal);
         var libraryArtists = request.SplitArtists ? LibraryMusicIndex.ArtistKeys(r.Path) : null;
+        var useMb = request.SplitArtists && Config.MusicBrainzArtists;
+        var mbTodo = new List<(string Title, string Credit, string? Album)>();
+        var lookupKey = "tags|" + string.Join("|", files.OrderBy(f => f, StringComparer.Ordinal));
+
+        // Ranger / Regrouper : un morceau déjà rangé ailleurs (même artiste, même titre, même version) est proposé en doublon ;
+        // la copie conseillée est celle de l'album le plus complet (« Rêves bizarres » de l'album plutôt que le single en featuring).
+        var dupIndex = request.SplitArtists && CanDelete ? DuplicateIndex(r.Path) : null;
         var rows = new List<TagRow>();
         foreach (var file in files)
         {
@@ -1178,10 +1191,48 @@ public class LibraryController : MediaUploaderControllerBase
             var merged = Merge(before, rc);
             if (request.SplitArtists && changes.Artist is null && !string.IsNullOrWhiteSpace(merged.Artist))
             {
-                var split = ArtistCredits.Split(NameTools.DedupeArtists(merged.Artist) ?? merged.Artist, Config.ArtistNames, libraryArtists);
-                if (split.Artists.Count > 1)
+                var credit = NameTools.DedupeArtists(merged.Artist) ?? merged.Artist;
+                var split = ArtistCredits.Split(credit, Config.ArtistNames, libraryArtists);
+                IReadOnlyList<string> artists = split.Artists;
+
+                // « A & B », « A x B » : duo ou deux artistes, MusicBrainz tranche (vérification en arrière-plan ; les règles en attendant).
+                var title = string.IsNullOrWhiteSpace(merged.Title) ? Path.GetFileNameWithoutExtension(full) : merged.Title!;
+                if (useMb && ArtistCredits.HasJoiner(credit))
                 {
-                    rc.Artist = string.Join("; ", split.Artists);
+                    if (Services.Import.MusicBrainzCredits.TryGetCached(title, credit, merged.Album, out var mb))
+                    {
+                        if (mb is not null && mb.Artists.Count > 0)
+                        {
+                            artists = Services.Import.MusicBrainzCredits.WithTagArtists(mb, split.Artists);
+                            row.Source = "musicbrainz";
+                        }
+                    }
+                    else
+                    {
+                        mbTodo.Add((title, credit, merged.Album));
+                        row.Source = "pending";
+                    }
+                }
+
+                if (artists.Count > 1 || !string.Equals(artists.FirstOrDefault(), merged.Artist, StringComparison.Ordinal))
+                {
+                    rc.Artist = string.Join("; ", artists);
+                }
+            }
+
+            // Doublon d'un morceau déjà rangé ailleurs : garder l'autre copie (proposé), ou ranger celui-ci quand même.
+            if (dupIndex is not null)
+            {
+                row.Copies = DuplicateCopies(dupIndex, full, before);
+                var keep = ov?.Keep is { } k ? k.Trim() : row.Copies.FirstOrDefault();
+                if (!string.IsNullOrEmpty(keep) && row.Copies.Contains(keep, StringComparer.Ordinal) && LibraryFs.TryResolve(r, keep, out var keepFull, out _) && System.IO.File.Exists(keepFull))
+                {
+                    row.KeepFull = keepFull;
+                    row.Status = "duplicate";
+                    row.Message = "Doublon : retiré au profit de « " + keep + " ».";
+                    row.After = before;
+                    rows.Add(row);
+                    continue;
                 }
             }
 
@@ -1216,21 +1267,62 @@ public class LibraryController : MediaUploaderControllerBase
 
         if (request.DryRun)
         {
+            if (mbTodo.Count > 0)
+            {
+                PlaylistFolderLookups.Ensure(lookupKey, mbTodo, _logger);
+            }
+
+            var running = PlaylistFolderLookups.IsRunning(lookupKey);
+            foreach (var x in rows.Where(x => x.Source == "pending" && !running))
+            {
+                // Vérification terminée sans réponse de MusicBrainz : les règles.
+                x.Source = null;
+            }
+
             return Ok(new
             {
                 Files = rows.Count,
                 Errors = rows.Count(x => x.Status == "error"),
                 Moves = rows.Count(x => x.TargetRelative is not null),
                 Conflicts = rows.Count(x => x.Conflict),
-                Rows = rows.Take(request.SplitArtists || overrides.Count > 0 ? 1000 : 150).Select(x => new { x.Path, x.Status, x.Message, x.Conflict, Target = x.TargetRelative, Before = Brief(x.Before), After = Brief(x.After), Edited = overrides.ContainsKey(x.Path) }).ToList()
+                Duplicates = rows.Count(x => x.Status == "duplicate"),
+                Pending = rows.Count(x => x.Source == "pending"),
+                Rows = rows.Take(request.SplitArtists || overrides.Count > 0 ? 1000 : 150).Select(x => new { x.Path, x.Status, x.Message, x.Conflict, Target = x.TargetRelative, Before = Brief(x.Before), After = Brief(x.After), Edited = overrides.ContainsKey(x.Path), x.Copies, x.Source }).ToList()
             });
         }
 
         // Écriture des tags, puis rangement éventuel.
-        var capturedTags = request.Reorganize ? CaptureItems(r, files) : new Dictionary<Guid, string>();
+        var dupRows = rows.Where(x => x.Status == "duplicate" && x.KeepFull is not null).ToList();
+        var capturedTags = request.Reorganize || dupRows.Count > 0 ? CaptureItems(r, files) : new Dictionary<Guid, string>();
         var touchedDirs = new HashSet<string>(StringComparer.Ordinal);
         var removed = new List<string>();
         var touched = new List<string>();
+        var trashed = new List<UndoTrash>();
+
+        // Doublons : à la corbeille ; les listes de lecture renverront vers la copie gardée.
+        if (dupRows.Count > 0)
+        {
+            var mode = Config.LibraryDeleteMode == "permanent" ? "permanent" : "trash";
+            foreach (var x in LibraryFs.Delete(r, dupRows.Select(d => d.Path).ToList(), mode, CurrentUserName, dryRun: false, IsBusy, DateTime.UtcNow))
+            {
+                var row = dupRows.First(d => d.Path == x.Source);
+                if (x.Status is "trashed" or "deleted")
+                {
+                    row.Status = "removed";
+                    removed.Add(row.Path);
+                    touchedDirs.Add(Path.GetDirectoryName(row.Full)!);
+                    if (x.TrashId is not null)
+                    {
+                        trashed.Add(new UndoTrash { TrashId = x.TrashId, Path = x.Source });
+                    }
+                }
+                else
+                {
+                    row.Status = "error";
+                    row.Message = x.Message;
+                }
+            }
+        }
         foreach (var row in rows.Where(x => x.Status == "ok"))
         {
             // Modifications propres à chaque morceau (artistes séparés d'après sa mention, corrections à la main).
@@ -1287,12 +1379,19 @@ public class LibraryController : MediaUploaderControllerBase
             CleanupAfterReorganize(r, rows, touchedDirs, removed, touched, sidecars);
         }
 
+        var removedDups = rows.Count(x => x.Status == "removed");
         var ok = rows.Count(x => x.Status is "tagged" or "moved");
         string? undoId = null;
-        if (ok > 0)
+        if (ok > 0 || removedDups > 0)
         {
             SizeCache.Clear();
             var movedFiles = rows.Where(x => x.Moved && x.TargetRelative is not null).ToDictionary(x => x.Full, x => Full(r, x.TargetRelative!), StringComparer.Ordinal);
+            foreach (var x in rows.Where(x => x.Status == "removed"))
+            {
+                // La copie gardée a peut-être été rangée elle aussi : sa nouvelle place.
+                movedFiles[x.Full] = movedFiles.TryGetValue(x.KeepFull!, out var keptMoved) ? keptMoved : x.KeepFull!;
+            }
+
             Relink(capturedTags, old => movedFiles.TryGetValue(old, out var moved) ? moved : null);
             var summary = new List<string>();
             if (changes.Album is not null)
@@ -1326,8 +1425,10 @@ public class LibraryController : MediaUploaderControllerBase
             }
 
             var movedCount = rows.Count(x => x.Moved);
-            var name = $"{CurrentUserName} a modifié les tags de {ok} fichier{(ok > 1 ? "s" : string.Empty)}" + (movedCount > 0 ? $" et en a rangé {movedCount}" : string.Empty) + $" ({r.Label})";
-            var lines = rows.Where(x => x.Status is "tagged" or "moved").Select(x => $"{x.Path}" + (x.Before is null || x.After is null ? string.Empty : " : " + Diff(x.Before, x.After)) + (x.Moved ? $" → {x.TargetRelative}" : string.Empty)).ToList();
+            var name = $"{CurrentUserName} a modifié les tags de {ok} fichier{(ok > 1 ? "s" : string.Empty)}" + (movedCount > 0 ? $" et en a rangé {movedCount}" : string.Empty) + (removedDups > 0 ? $", {removedDups} doublon{(removedDups > 1 ? "s" : string.Empty)} retiré{(removedDups > 1 ? "s" : string.Empty)}" : string.Empty) + $" ({r.Label})";
+            var lines = rows.Where(x => x.Status is "tagged" or "moved").Select(x => $"{x.Path}" + (x.Before is null || x.After is null ? string.Empty : " : " + Diff(x.Before, x.After)) + (x.Moved ? $" → {x.TargetRelative}" : string.Empty))
+                .Concat(rows.Where(x => x.Status == "removed").Select(x => $"{x.Path} : doublon de {LibraryFs.Relative(r, x.KeepFull!)}, retiré"))
+                .ToList();
             PluginActivity.Log(name, "MediaUploaderLibrary", CurrentUserId, string.Join(", ", summary), ActivityText.LibraryDetail(lines, MaxActivityLines));
             AfterChange(r, removed, touched, tagsChanged: true);
 
@@ -1340,10 +1441,11 @@ public class LibraryController : MediaUploaderControllerBase
             }
 
             journal.Files.AddRange(sidecars);
+            journal.Trashed.AddRange(trashed);
             undoId = UndoJournal.Add(journal);
         }
 
-        return Ok(new { UndoId = undoId, Files = rows.Count, Done = ok, Errors = rows.Count(x => x.Status == "error"), Skipped = rows.Count(x => x.Status == "tagged" && x.TargetRelative is not null), Rows = rows.Take(150).Select(x => new { x.Path, x.Status, x.Message, Target = x.TargetRelative }).ToList() });
+        return Ok(new { UndoId = undoId, Files = rows.Count, Done = ok, Removed = removedDups, Errors = rows.Count(x => x.Status == "error"), Skipped = rows.Count(x => x.Status == "tagged" && x.TargetRelative is not null), Rows = rows.Take(150).Select(x => new { x.Path, x.Status, x.Message, Target = x.TargetRelative }).ToList() });
     }
 
     /// <summary>
@@ -1543,7 +1645,7 @@ public class LibraryController : MediaUploaderControllerBase
         var key = "pf|" + folderFull;
         if (useMb && request.Lookup)
         {
-            var todo = files.Select(f => (Title: string.IsNullOrWhiteSpace(f.Item3.Title) ? Path.GetFileNameWithoutExtension(f.Item2) : f.Item3.Title!, Credit: NameTools.DedupeArtists(f.Item3.Artist) ?? f.Item3.Artist ?? string.Empty))
+            var todo = files.Select(f => (Title: string.IsNullOrWhiteSpace(f.Item3.Title) ? Path.GetFileNameWithoutExtension(f.Item2) : f.Item3.Title!, Credit: NameTools.DedupeArtists(f.Item3.Artist) ?? f.Item3.Artist ?? string.Empty, Album: (string?)null))
                 .Where(t => t.Credit.Length > 0 && !Services.Import.MusicBrainzCredits.TryGetCached(t.Title, t.Credit, null, out _))
                 .ToList();
             PlaylistFolderLookups.Ensure(key, todo, _logger);
@@ -1775,6 +1877,58 @@ public class LibraryController : MediaUploaderControllerBase
         return Ok(new { UndoId = undoId, Moved = movedCount, Removed = dups.Count(d => newPath.ContainsKey(d.Full)), Playlists = captured.Count, Problems = problems });
     }
 
+    // Morceaux de la bibliothèque musique groupés par artiste, pour retrouver les doublons d'un morceau.
+    private sealed record DupIndex(string Root, Dictionary<string, List<(string Path, SongKey Key)>> ByArtist, Dictionary<string, int> PerFolder);
+
+    private static DupIndex DuplicateIndex(string rootPath)
+    {
+        var library = LibraryMusicIndex.Under(rootPath);
+        var byArtist = new Dictionary<string, List<(string Path, SongKey Key)>>(StringComparer.Ordinal);
+        foreach (var (path, tags) in library)
+        {
+            if (path.Contains(LibraryFs.TrashDirName, StringComparison.Ordinal) || DuplicateMatcher.Key(NameTools.DedupeArtists(tags.Artist), tags.Title) is not { } key)
+            {
+                continue;
+            }
+
+            foreach (var a in key.Artists.DefaultIfEmpty(key.ArtistFull))
+            {
+                if (!byArtist.TryGetValue(a, out var list))
+                {
+                    byArtist[a] = list = new List<(string Path, SongKey Key)>();
+                }
+
+                list.Add((path, key));
+            }
+        }
+
+        var perFolder = library.GroupBy(e => Path.GetDirectoryName(e.Path) ?? string.Empty, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        return new DupIndex(rootPath.TrimEnd('/', '\\'), byArtist, perFolder);
+    }
+
+    // Autres copies du même morceau (relatives), la conseillée en premier ; vide si ce fichier-ci est lui-même la copie conseillée.
+    private static List<string> DuplicateCopies(DupIndex index, string full, TagSnapshot before)
+    {
+        if (DuplicateMatcher.Key(NameTools.DedupeArtists(before.Artist), before.Title) is not { } key)
+        {
+            return new List<string>();
+        }
+
+        var same = key.Artists.DefaultIfEmpty(key.ArtistFull)
+            .SelectMany(a => index.ByArtist.TryGetValue(a, out var list) ? list : new List<(string Path, SongKey Key)>())
+            .Where(e => e.Path != full && DuplicateMatcher.SameTitle(key, e.Key) && System.IO.File.Exists(e.Path))
+            .Select(e => e.Path)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (same.Count == 0)
+        {
+            return same;
+        }
+
+        var ranked = MusicHealth.RankCopies(same.Append(full), d => index.PerFolder.GetValueOrDefault(d), FileSize);
+        return ranked[0] == full ? new List<string>() : ranked.Where(p => p != full).Select(p => p[(index.Root.Length + 1)..].Replace('\\', '/')).ToList();
+    }
+
     private sealed class TagRow
     {
         public string Path { get; set; } = string.Empty;
@@ -1794,6 +1948,14 @@ public class LibraryController : MediaUploaderControllerBase
         public string Status { get; set; } = "ok";
 
         public string? Message { get; set; }
+
+        // Le même morceau déjà rangé ailleurs, la copie conseillée en premier ; KeepFull : la copie gardée (ce fichier-ci va à la corbeille).
+        public List<string> Copies { get; set; } = new();
+
+        public string? KeepFull { get; set; }
+
+        // Origine des artistes : "musicbrainz", "pending" (vérification en cours) ou null (règles).
+        public string? Source { get; set; }
     }
 
     private string Full(LibraryRoot root, string relative)

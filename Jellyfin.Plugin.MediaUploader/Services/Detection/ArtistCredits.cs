@@ -44,7 +44,14 @@ public static class ArtistCredits
     public static bool IsMultiple(string? credit) => !string.IsNullOrWhiteSpace(credit) && Separators.IsMatch(credit);
 
     /// <summary>
-    /// Vrai si la mention cite peut-être plusieurs artistes, mots de liaison compris (« A &amp; B », « A x B ») : à faire trancher par MusicBrainz.
+    /// Vrai si la mention contient un mot de liaison (« A &amp; B », « A x B », « A et B ») : duo ou deux artistes, à faire trancher par MusicBrainz.
+    /// </summary>
+    /// <param name="credit">Mention.</param>
+    /// <returns>Résultat.</returns>
+    public static bool HasJoiner(string? credit) => !string.IsNullOrWhiteSpace(credit) && Joiners.IsMatch(credit);
+
+    /// <summary>
+    /// Vrai si la mention est ambiguë : plusieurs noms, ou un « &amp; », « x », « et »… qui peut lier un duo ou deux artistes.
     /// </summary>
     /// <param name="credit">Mention.</param>
     /// <returns>Résultat.</returns>

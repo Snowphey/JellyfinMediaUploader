@@ -17,7 +17,7 @@ public sealed record DuplicateSongCopy(string Path, long Size);
 /// <summary>Un morceau présent plusieurs fois dans la bibliothèque.</summary>
 /// <param name="Label">« Artiste — Titre ».</param>
 /// <param name="Copies">Copies.</param>
-/// <param name="Keep">Indice de la copie conseillée (sans perte, sinon la plus grosse).</param>
+/// <param name="Keep">Indice de la copie conseillée : sans perte, hors « Various Artists », dans l'album le plus complet, puis la plus grosse.</param>
 public sealed record DuplicateSongGroup(string Label, IReadOnlyList<DuplicateSongCopy> Copies, int Keep);
 
 /// <summary>Résultat des contrôles de cohérence de la bibliothèque musique.</summary>
@@ -247,6 +247,26 @@ public static class MusicHealth
         return result;
     }
 
+    /// <summary>
+    /// Copies d'un même morceau, la conseillée en premier : sans perte, hors « Various Artists », dans l'album le plus complet
+    /// (l'album ou son édition deluxe plutôt qu'un single : l'album reste entier, le dossier en trop se vide), puis la plus grosse.
+    /// </summary>
+    /// <param name="fullPaths">Chemins complets des copies.</param>
+    /// <param name="tracksIn">Nombre de morceaux d'un dossier.</param>
+    /// <param name="sizeOf">Taille d'un fichier.</param>
+    /// <returns>Copies classées.</returns>
+    public static List<string> RankCopies(IEnumerable<string> fullPaths, Func<string, int> tracksIn, Func<string, long> sizeOf)
+    {
+        var various = Path.DirectorySeparatorChar + ArtistCredits.VariousArtists + Path.DirectorySeparatorChar;
+        return fullPaths
+            .OrderByDescending(p => Lossless.Contains(Path.GetExtension(p)))
+            .ThenBy(p => p.Contains(various, StringComparison.Ordinal))
+            .ThenByDescending(p => tracksIn(Path.GetDirectoryName(p) ?? string.Empty))
+            .ThenByDescending(sizeOf)
+            .ThenBy(p => p, StringComparer.Ordinal)
+            .ToList();
+    }
+
     private static List<DuplicateSongGroup> DuplicateSongs(string rootPath, IEnumerable<(string Path, TagInfo Tags)> known, Func<string, bool> exists, Func<string, long> sizeOf, ref bool truncated)
     {
         var root = rootPath.TrimEnd('/', '\\');
@@ -316,6 +336,9 @@ public static class MusicHealth
         }
 
     Done:
+        // Nombre de morceaux de chaque dossier d'album : la copie d'un album complet (ou de son édition deluxe) passe avant celle d'un single,
+        // pour que l'album reste entier et que le dossier en trop se vide.
+        var perFolder = seenPaths.GroupBy(p => Path.GetDirectoryName(p) ?? string.Empty, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
         var result = new List<DuplicateSongGroup>();
         foreach (var g in Enumerable.Range(0, songs.Count).GroupBy(Find).Where(g => g.Count() > 1))
         {
@@ -332,10 +355,8 @@ public static class MusicHealth
             }
 
             var withSize = copies.Select(p => new DuplicateSongCopy(p[(root.Length + 1)..].Replace('\\', '/'), sizeOf(p))).OrderBy(c => c.Path, StringComparer.OrdinalIgnoreCase).ToList();
-            var keep = withSize.Select((c, i) => (c, i))
-                .OrderByDescending(t => Lossless.Contains(Path.GetExtension(t.c.Path)))
-                .ThenByDescending(t => t.c.Size)
-                .First().i;
+            var best = RankCopies(copies, d => perFolder.GetValueOrDefault(d), sizeOf).First();
+            var keep = withSize.FindIndex(c => Path.Combine(root, c.Path.Replace('/', Path.DirectorySeparatorChar)) == best);
             result.Add(new DuplicateSongGroup(songs[g.First()].Label, withSize, keep));
         }
 

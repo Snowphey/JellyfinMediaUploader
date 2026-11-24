@@ -16,9 +16,9 @@ public static class PlaylistFolderLookups
     /// Lance (si besoin) la vérification sur MusicBrainz des morceaux d'un dossier, une requête par seconde, en arrière-plan.
     /// </summary>
     /// <param name="key">Identifiant du dossier.</param>
-    /// <param name="songs">Titre et mention d'artistes de chaque morceau pas encore vérifié.</param>
+    /// <param name="songs">Titre, mention d'artistes et album (null si inconnu) de chaque morceau pas encore vérifié.</param>
     /// <param name="logger">Logger.</param>
-    public static void Ensure(string key, IReadOnlyList<(string Title, string Credit)> songs, ILogger logger)
+    public static void Ensure(string key, IReadOnlyList<(string Title, string Credit, string? Album)> songs, ILogger logger)
     {
         if (songs.Count == 0 || Running.ContainsKey(key))
         {
@@ -39,13 +39,13 @@ public static class PlaylistFolderLookups
                         await Task.Delay(TimeSpan.FromSeconds(15 * round)).ConfigureAwait(false);
                     }
 
-                    var failed = new List<(string Title, string Credit)>();
+                    var failed = new List<(string Title, string Credit, string? Album)>();
                     var streak = 0;
                     foreach (var song in left)
                     {
                         try
                         {
-                            await MusicBrainzCredits.LookupAsync(song.Title, song.Credit, null, CancellationToken.None).ConfigureAwait(false);
+                            await MusicBrainzCredits.LookupAsync(song.Title, song.Credit, song.Album, CancellationToken.None).ConfigureAwait(false);
                             streak = 0;
                         }
                         catch (ImportException ex)

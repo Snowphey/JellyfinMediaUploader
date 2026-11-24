@@ -66,6 +66,9 @@ public static class MusicBrainzCredits
     private static readonly ConcurrentDictionary<string, (DateTime At, MbCredit? Credit)> Cache = new();
     private static readonly ConcurrentDictionary<string, string?> LatinNames = new();
 
+    // Membres d'une fiche « A & B » qui n'est qu'une collaboration (par identifiant MusicBrainz) ; null : un vrai groupe ou duo.
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<string>?> Collaborations = new();
+
     // Mentions d'un titre YouTube ou Spotify que MusicBrainz n'écrit pas : invités entre parenthèses, « - Mono », « - Remastered 2011 ».
     private static readonly System.Text.RegularExpressions.Regex TitleNoise = new(
         @"\s*[\(\[](?:[^\)\]]*[\s,])?(?:feat\.?|ft\.?|featuring)\s[^\)\]]*[\)\]]|\s*[\(\[](?:with|avec)\s[^\)\]]*[\)\]]|\s+-\s+(?:mono|stereo|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?|single version|radio edit)\s*$",
@@ -78,6 +81,38 @@ public static class MusicBrainzCredits
     private static readonly System.Text.RegularExpressions.Regex OtherVersion = new(@"\b(live|demo|remix|acoustic|instrumental|karaoke|a cappella|edit)\b", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>
+    /// Membres d'une fiche MusicBrainz « A &amp; B » qui n'est qu'une collaboration : chaque partie du nom est le nom complet d'un membre.
+    /// </summary>
+    /// <param name="json">Fiche de l'artiste (inc=artist-rels).</param>
+    /// <param name="name">Nom crédité.</param>
+    /// <returns>Membres dans l'ordre du nom, ou null pour un vrai groupe ou duo (« Bigflo &amp; Oli »).</returns>
+    public static IReadOnlyList<string>? ParseCollaboration(string json, string name)
+    {
+        try
+        {
+            var members = (JsonNode.Parse(json)?["relations"] as JsonArray)?.OfType<JsonObject>()
+                .Where(r => r["type"]?.GetValue<string>() == "member of band" && r["direction"]?.GetValue<string>() == "backward")
+                .Select(r => r["artist"]?["name"]?.GetValue<string>())
+                .OfType<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToList() ?? new List<string>();
+            var parts = ArtistCredits.Candidates(name).ToList();
+            if (parts.Count < 2 || members.Count < parts.Count)
+            {
+                return null;
+            }
+
+            // Chaque morceau du nom doit être le nom complet d'un membre (« Fred Falke ») ; « Bigflo » ou « Simon » ne le sont pas.
+            var byKey = members.GroupBy(ArtistCredits.Key).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            return parts.All(p => byKey.ContainsKey(ArtistCredits.Key(p))) ? parts.Select(p => byKey[ArtistCredits.Key(p)]).ToList() : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Titre tel que MusicBrainz l'écrit probablement : sans les invités entre parenthèses ni « - Mono » / « - Remastered ».
     /// </summary>
     /// <param name="title">Titre (tags).</param>
@@ -86,6 +121,20 @@ public static class MusicBrainzCredits
     {
         var clean = TitleNoise.Replace(title, string.Empty).Trim();
         return clean.Length > 0 ? clean : title.Trim();
+    }
+
+
+    /// <summary>
+    /// Artistes d'après MusicBrainz, plus ceux des tags qu'il ne cite pas (invité absent de MusicBrainz).
+    /// </summary>
+    /// <param name="mb">Réponse de MusicBrainz.</param>
+    /// <param name="tagArtists">Artistes d'après les tags (règles de découpage).</param>
+    /// <returns>Artistes.</returns>
+    public static List<string> WithTagArtists(MbCredit mb, IEnumerable<string> tagArtists)
+    {
+        var known = mb.Artists.Concat(mb.OriginalNames).Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
+        var extra = tagArtists.Where(a => !known.Contains(ArtistCredits.Key(a)) && !known.Any(k => k.Length > 3 && ArtistCredits.Key(a).Contains(k, StringComparison.Ordinal)));
+        return mb.Artists.Concat(extra).ToList();
     }
 
     /// <summary>
@@ -166,13 +215,34 @@ public static class MusicBrainzCredits
                 return latin ?? name;
             }
 
+            // « Alan Braxe & Fred Falke » : une fiche MusicBrainz au nom de ses membres est une collaboration, pas un groupe (« Bigflo & Oli »).
+            async Task<IReadOnlyList<string>?> Members(string name, string? id)
+            {
+                if (id is null || !ArtistCredits.HasJoiner(name))
+                {
+                    return null;
+                }
+
+                if (!Collaborations.TryGetValue(id, out var members))
+                {
+                    var artistJson = await MusicBrainzClient.GetJsonAsync($"artist/{Uri.EscapeDataString(id)}?inc=artist-rels&fmt=json", ct).ConfigureAwait(false);
+                    members = ParseCollaboration(artistJson, name);
+                    Collaborations[id] = members;
+                }
+
+                return members;
+            }
+
             var artists = new List<string>();
             foreach (var (name, id) in match.Artists)
             {
-                var n = await Latin(name, id).ConfigureAwait(false);
-                if (!artists.Any(a => ArtistCredits.Key(a) == ArtistCredits.Key(n)))
+                var names = await Members(name, id).ConfigureAwait(false) ?? new[] { await Latin(name, id).ConfigureAwait(false) };
+                foreach (var n in names)
                 {
-                    artists.Add(n);
+                    if (!artists.Any(a => ArtistCredits.Key(a) == ArtistCredits.Key(n)))
+                    {
+                        artists.Add(n);
+                    }
                 }
             }
 

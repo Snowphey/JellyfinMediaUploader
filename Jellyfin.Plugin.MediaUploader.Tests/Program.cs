@@ -1015,6 +1015,10 @@ var mbOtis = MusicBrainzCredits.ParseRecordings(Fixture("rec_otis"), MusicBrainz
 Check("MusicBrainz : album inconnu et seulement des compilations : artiste trouvé, pas d'album", (mbOtis is null ? null : string.Join(" | ", mbOtis.Artists.Select(x => x.Name)), mbOtis?.Release, mbOtis?.Year), ("Otis Redding", (string?)null, (int?)0));
 var bonus = MusicBrainzCredits.ParseRecordings("{\"recordings\":[" + Rec("", Rel2("Gimme More", "2007-08-31", "Single", "", "1"), Rel2("In the Zone (2011 reissue)", "2003-11-12", "Album", "", "13")).Replace("\"releases\"", "\"first-release-date\":\"2007-08-31\",\"releases\"") + "]}", "Gimme More", "Britney Spears", null);
 Check("MusicBrainz : un album d'une autre année (bonus d'une réédition) perd face au single d'origine", (bonus?.Release, bonus?.Track), ("Gimme More", (int?)1));
+Check("découpage : « Fred again.. » garde ses deux points", string.Join(" | ", ArtistCredits.Split("Fred again.., Skepta, D Double E", null).Artists), "Fred again.. | Skepta | D Double E");
+string Members(params string[] names) => "{\"relations\":[" + string.Join(",", names.Select(n => "{\"type\":\"member of band\",\"direction\":\"backward\",\"artist\":{\"name\":\"" + n + "\"}}")) + "]}";
+Check("MusicBrainz : fiche « A & B » au nom de ses membres = collaboration", string.Join(" | ", MusicBrainzCredits.ParseCollaboration(Members("Fred Falke", "Alan Braxe"), "Alan Braxe & Fred Falke") ?? Array.Empty<string>()), "Alan Braxe | Fred Falke");
+Check("MusicBrainz : vrais duos gardés entiers", (MusicBrainzCredits.ParseCollaboration(Members("Florian Ordoñez", "Olivio Ordonez"), "Bigflo & Oli"), MusicBrainzCredits.ParseCollaboration(Members("Paul Simon", "Art Garfunkel"), "Simon & Garfunkel")), ((IReadOnlyList<string>?)null, (IReadOnlyList<string>?)null));
 var mbNight = MusicBrainzCredits.ParseRecordings(Fixture("rec_because"), "Because the Night", "Patti Smith", null);
 Check("MusicBrainz : l'original au-delà des 50 premiers résultats, pas un bootleg (« Ask the Angels »)", (mbNight?.Release, mbNight?.Track, mbNight?.Year), ("Easter", (int?)3, (int?)1978));
 // ---------- Dossiers créés par l'import d'une liste de lecture ----------
@@ -1120,6 +1124,32 @@ Check("clé d'artiste", (MusicHealth.ArtistKey("K/DA") == MusicHealth.ArtistKey(
 
         var hdup = rep.DuplicateSongs.SingleOrDefault();
         Check("morceau en double : copies existantes seulement, sans perte conseillé", (hdup?.Copies.Count, hdup is null ? null : hdup.Copies[hdup.Keep].Path), ((int?)2, "Various Artists/SHADYXV/Eminem - Lose Yourself.flac"));
+
+        // Album et son édition deluxe : la copie de l'album le plus complet est conseillée ; une démo n'est pas un doublon.
+        foreach (var d in new[] { "Theodora/BBL", "Theodora/MEGA BBL", "Theodora/FNG", "Vald/NQNT3", "Vald/XEU" })
+        {
+            Directory.CreateDirectory(F(d));
+        }
+
+        var healthDups = new List<(string, TagInfo)>();
+        void DupSong(string path, string artist, string album, string title, int size = 10)
+        {
+            File.WriteAllBytes(F(path), new byte[size]);
+            healthDups.Add((F(path), new TagInfo(artist, album, title)));
+        }
+
+        DupSong("Theodora/FNG/01 - FNG.m4a", "Theodora", "FNG", "FNG", 30);
+        DupSong("Theodora/BBL/01 - FNG.m4a", "Theodora", "BBL", "FNG", 20);
+        DupSong("Theodora/BBL/02 - X.m4a", "Theodora", "BBL", "X");
+        DupSong("Theodora/MEGA BBL/01 - FNG.m4a", "Theodora", "MEGA BBL", "FNG");
+        DupSong("Theodora/MEGA BBL/02 - X.m4a", "Theodora", "MEGA BBL", "X");
+        DupSong("Theodora/MEGA BBL/03 - Y.m4a", "Theodora", "MEGA BBL", "Y");
+        DupSong("Vald/NQNT3/14 - Trophée (Démo).m4a", "Vald", "NQNT3", "Trophée (Démo)");
+        DupSong("Vald/XEU/17 - Trophée.m4a", "Vald", "XEU", "Trophée");
+        var dlRep = MusicHealth.Analyze(hlib, healthDups, File.Exists, p => new FileInfo(p).Length);
+        var fng = dlRep.DuplicateSongs.SingleOrDefault(g => g.Label.EndsWith("FNG", StringComparison.Ordinal));
+        Check("doublon : copie de l'album le plus complet conseillée (pas le single, même plus gros)", fng is null ? null : fng.Copies[fng.Keep].Path, "Theodora/MEGA BBL/01 - FNG.m4a");
+        Check("doublon : « (Démo) » est une autre version", dlRep.DuplicateSongs.Any(g => g.Label.Contains("Trophée", StringComparison.Ordinal)), false);
     }
     finally
     {

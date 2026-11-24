@@ -725,7 +725,7 @@
   function tagsDialog(items, opts) {
     opts = opts || {};
     var root = 'music';
-    var st = { fields: {}, dirty: {}, ov: {} };
+    var st = { fields: {}, dirty: {}, ov: {}, pending: 0, poll: null };
     var body = h('div', {}, [h('div', { class: 'muted', text: 'Lecture des tags…' })]);
     var preview = h('div', {});
     var reorg = h('input', { type: 'checkbox', checked: true });
@@ -739,26 +739,38 @@
       ['Year', 'Track', 'Disc'].forEach(function (k) { if (st.dirty[k]) { var v = parseInt(st.fields[k].value, 10); c[k.charAt(0).toLowerCase() + k.slice(1)] = isNaN(v) ? 0 : v; } });
       return c;
     }
-    function overrides() { return Object.keys(st.ov).map(function (p) { var o = st.ov[p]; return { path: p, artist: o.artist, skip: !!o.skip }; }); }
+    function overrides() { return Object.keys(st.ov).map(function (p) { var o = st.ov[p]; return { path: p, artist: o.artist, skip: !!o.skip, keep: o.keep }; }); }
     function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry, splitArtists: !!opts.splitArtists, overrides: overrides() }; }
     function setOv(path, key, value) { st.ov[path] = st.ov[path] || {}; st.ov[path][key] = value; later(); }
 
     // Aperçu de « Ranger » / « Regrouper » : chaque morceau, ses artistes (modifiables) et sa destination ; un morceau décoché reste tel quel.
     function editableTable(rows) {
-      var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['', 'Morceau', 'Artistes (« ; » entre deux)', 'Artiste de l\'album', 'Destination'].map(function (t) { return h('th', { text: t }); }))])]);
+      var anyDup = rows.some(function (r) { return list(pick(r, 'Copies')).length > 0; });
+      var heads = ['', 'Morceau'].concat(anyDup ? ['Que faire'] : []).concat(['Artistes (« ; » entre deux)', 'Artiste de l\'album', 'Destination']);
+      var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, heads.map(function (t) { return h('th', { text: t }); }))])]);
       var tb = h('tbody', {});
       rows.forEach(function (r) {
         var path = pick(r, 'Path'), b = pick(r, 'Before') || {}, a = pick(r, 'After') || {}, skipped = pick(r, 'Status') === 'skipped', ov = st.ov[path] || {};
-        var artist = h('input', { type: 'text', value: ov.artist !== undefined ? ov.artist : (pick(a, 'Artist') || pick(b, 'Artist') || ''), title: 'Avant : ' + (pick(b, 'Artist') || '∅'), class: ov.artist !== undefined ? 'dirty' : '', disabled: skipped });
+        var dup = pick(r, 'Status') === 'duplicate', copies = list(pick(r, 'Copies')), src = pick(r, 'Source');
+        var artist = h('input', { type: 'text', value: ov.artist !== undefined ? ov.artist : (pick(a, 'Artist') || pick(b, 'Artist') || ''), title: 'Avant : ' + (pick(b, 'Artist') || '∅'), class: ov.artist !== undefined ? 'dirty' : '', disabled: skipped || dup });
         artist.addEventListener('change', function () { setOv(path, 'artist', artist.value); });
         var split = (pick(a, 'Artist') || '') !== (pick(b, 'Artist') || '');
-        tb.appendChild(h('tr', { class: skipped ? 'off' : '' }, [
+        // Le même morceau déjà rangé ailleurs : garder cette autre copie (celui-ci va à la corbeille, les listes de lecture suivent) ou ranger celui-ci quand même.
+        var what = null;
+        if (copies.length) {
+          what = h('select', { disabled: skipped, onchange: function (e) { setOv(path, 'keep', e.target.value); } },
+            copies.map(function (c, i) { return h('option', { value: c, text: 'Garder ' + c + (i === 0 ? ' (conseillé)' : '') }); }).concat([h('option', { value: '', text: 'Ranger celui-ci quand même' })]));
+          what.value = ov.keep !== undefined ? ov.keep : (dup ? copies[0] : '');
+        }
+        var note = src === 'pending' ? h('span', { class: 'src wait', text: 'vérification…' }) : src === 'musicbrainz' ? h('span', { class: 'src mb', text: 'MusicBrainz' }) : (split || dup || ov.artist !== undefined ? null : h('span', { class: 'muted', style: 'font-size:.85em', text: 'inchangé' }));
+        tb.appendChild(h('tr', { class: skipped || dup ? 'off' : '' }, [
           h('td', {}, [h('input', { type: 'checkbox', checked: !skipped, title: 'Décocher : laisser ce morceau tel quel', onchange: function (e) { setOv(path, 'skip', !e.target.checked); } })]),
-          h('td', { class: pick(r, 'Status') === 'error' ? 'bad' : '', text: baseName(path) + (pick(r, 'Message') && !skipped ? ' — ' + pick(r, 'Message') : '') }),
-          h('td', {}, [artist, split || ov.artist !== undefined ? null : h('div', { class: 'muted', style: 'font-size:.85em', text: 'inchangé' })]),
-          h('td', { text: pick(a, 'AlbumArtist') || '∅' }),
-          h('td', { class: pick(r, 'Conflict') ? 'mid' : 'muted', text: skipped ? 'laissé tel quel' : pick(r, 'Target') ? parentOf(pick(r, 'Target')) + (pick(r, 'Conflict') ? ' (conflit)' : '') : 'reste sur place' })
-        ]));
+          h('td', { class: pick(r, 'Status') === 'error' ? 'bad' : '', text: baseName(path) + (pick(r, 'Message') && !skipped && !dup ? ' — ' + pick(r, 'Message') : '') })
+        ].concat(anyDup ? [h('td', {}, what ? [what] : [])] : []).concat([
+          h('td', {}, [artist, note ? h('div', {}, [note]) : null]),
+          h('td', { text: dup ? '' : (pick(a, 'AlbumArtist') || '∅') }),
+          h('td', { class: pick(r, 'Conflict') ? 'mid' : 'muted', text: skipped ? 'laissé tel quel' : dup ? 'corbeille (doublon)' : pick(r, 'Target') ? parentOf(pick(r, 'Target')) + (pick(r, 'Conflict') ? ' (conflit)' : '') : 'reste sur place' })
+        ])));
       });
       tbl.appendChild(tb);
       return tbl;
@@ -771,13 +783,23 @@
         if (res.status !== 200 || !res.body) { preview.textContent = ''; preview.appendChild(h('div', { class: 'bad', text: errText(res) })); go.disabled = true; return; }
         var d = res.body, rows = list(pick(d, 'Rows'));
         var skippedCount = rows.filter(function (r) { return pick(r, 'Status') === 'skipped'; }).length;
-        preview.textContent = '';
         if (opts.splitArtists) {
-          preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'morceau', 'morceaux') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (skippedCount ? ' · ' + plural(skippedCount, 'laissé tel quel', 'laissés tels quels') : '') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + '. Vérifiez les artistes de chaque morceau : corrigez-les à la main (« Bigflo & Oli » reste entier, « A; B » sépare), ou décochez un morceau pour ne pas y toucher. Tout reste annulable après coup.' }));
+          st.pending = pick(d, 'Pending') || 0;
+          // Vérification sur MusicBrainz en cours : on redemande l'aperçu toutes les 3 s (sans redessiner pendant une saisie).
+          clearTimeout(st.poll);
+          if (st.pending && dlg && dlg.isConnected) { st.poll = setTimeout(function () { if (dlg.isConnected) { refresh(); } }, 3000); }
+          var dupCount = pick(d, 'Duplicates') || 0;
+          go.textContent = st.pending ? 'Vérification sur MusicBrainz… (' + st.pending + ' restant' + (st.pending > 1 ? 's' : '') + ')' : 'Appliquer';
+          go.disabled = st.pending > 0 || pick(d, 'Files') === pick(d, 'Errors') + skippedCount;
+          if (dlg && dlg.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && preview.contains(document.activeElement)) { return; }
+          preview.textContent = '';
+          preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'morceau', 'morceaux') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (dupCount ? ' · ' + plural(dupCount, 'doublon retiré', 'doublons retirés') + ' (copie déjà rangée gardée, les listes de lecture suivent)' : '') + (skippedCount ? ' · ' + plural(skippedCount, 'laissé tel quel', 'laissés tels quels') : '') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + '.'
+            + (st.pending ? ' MusicBrainz : ' + plural(st.pending, 'mention', 'mentions') + ' « A & B » en cours de vérification (duo ou deux artistes) ; « Appliquer » attend la fin.' : '')
+            + ' Vérifiez les artistes de chaque morceau : corrigez-les à la main (« Bigflo & Oli » reste entier, « A; B » sépare), ou décochez un morceau pour ne pas y toucher. Tout reste annulable après coup.' }));
           preview.appendChild(editableTable(rows));
-          go.disabled = pick(d, 'Files') === pick(d, 'Errors') + skippedCount;
           return;
         }
+        preview.textContent = '';
         preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'fichier concerné', 'fichiers concernés') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') }));
         var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['Fichier', 'Album', 'Artiste', 'Destination'].map(function (t) { return h('th', { text: t }); }))])]);
         var tb = h('tbody', {});
@@ -838,12 +860,13 @@
     }).catch(function (e) { body.textContent = ''; body.appendChild(h('div', { class: 'bad', text: e.message })); });
 
     go.addEventListener('click', function () {
+      if (st.pending) { return; }
       go.disabled = true;
       api('POST', 'Library/Tags/Apply', request(false)).then(function (res) {
         if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
         var d = res.body;
         closeDialog();
-        toast(plural(pick(d, 'Done'), 'fichier mis à jour', 'fichiers mis à jour') + (pick(d, 'Errors') ? ', ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + (pick(d, 'Skipped') ? ', ' + plural(pick(d, 'Skipped'), 'non rangé (nom déjà pris)', 'non rangés (nom déjà pris)') : '') + '.', pick(d, 'Done') === 0, undoAction(pick(d, 'UndoId')));
+        toast(plural(pick(d, 'Done'), 'fichier mis à jour', 'fichiers mis à jour') + (pick(d, 'Removed') ? ', ' + plural(pick(d, 'Removed'), 'doublon retiré', 'doublons retirés') : '') + (pick(d, 'Errors') ? ', ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + (pick(d, 'Skipped') ? ', ' + plural(pick(d, 'Skipped'), 'non rangé (nom déjà pris)', 'non rangés (nom déjà pris)') : '') + '.', pick(d, 'Done') === 0, undoAction(pick(d, 'UndoId')));
         L.sel = {}; L.sizes = {};
         if (isRoot(L.view)) { loadList(); } else if (L.view === 'health') { openHealth(); }
       }).catch(function (e) { go.disabled = false; toast(e.message, true); });
