@@ -70,7 +70,8 @@ public static class PathBuilder
         var sb = new StringBuilder(value.Length);
         foreach (var c in value)
         {
-            if (Array.IndexOf(invalid, c) >= 0 || c == '/' || c == '\\' || char.IsControl(c))
+            // Caractères interdits sous Windows refusés partout : un dossier « Album: Titre » ou « Quoi ? » casse un partage SMB.
+            if (Array.IndexOf(invalid, c) >= 0 || c == '/' || c == '\\' || "<>:\"|?*".IndexOf(c) >= 0 || char.IsControl(c))
             {
                 sb.Append(' ');
             }

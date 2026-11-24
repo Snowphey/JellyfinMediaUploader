@@ -125,6 +125,14 @@ public static class MusicBrainzCredits
 
 
     /// <summary>
+    /// Typographie de MusicBrainz ramenée à celle des tags et des dossiers : trait d'union « ‐ » (U+2010) et apostrophe courbe.
+    /// « JAY‐Z » rejoint ainsi le dossier « JAY-Z ».
+    /// </summary>
+    /// <param name="name">Nom.</param>
+    /// <returns>Nom avec « - » et « ' ».</returns>
+    public static string Plain(string name) => name.Replace('\u2010', '-').Replace('\u2011', '-').Replace('\u2019', '\'');
+
+    /// <summary>
     /// Artistes d'après MusicBrainz, plus ceux des tags qu'il ne cite pas (invité absent de MusicBrainz).
     /// </summary>
     /// <param name="mb">Réponse de MusicBrainz.</param>
@@ -237,7 +245,7 @@ public static class MusicBrainzCredits
             foreach (var (name, id) in match.Artists)
             {
                 var names = await Members(name, id).ConfigureAwait(false) ?? new[] { await Latin(name, id).ConfigureAwait(false) };
-                foreach (var n in names)
+                foreach (var n in names.Select(Plain))
                 {
                     if (!artists.Any(a => ArtistCredits.Key(a) == ArtistCredits.Key(n)))
                     {
@@ -255,10 +263,10 @@ public static class MusicBrainzCredits
                     sb.Append(await Latin(name, id).ConfigureAwait(false)).Append(join);
                 }
 
-                albumArtist = sb.ToString().Trim();
+                albumArtist = Plain(sb.ToString().Trim());
             }
 
-            result = artists.Count > 0 ? new MbCredit(artists, albumArtist, match.Release) { OriginalNames = match.Artists.Select(a => a.Name).ToList(), Track = match.Track, Disc = match.Disc, Year = match.Year } : null;
+            result = artists.Count > 0 ? new MbCredit(artists, albumArtist, match.Release is null ? null : Plain(match.Release)) { OriginalNames = match.Artists.Select(a => a.Name).ToList(), Track = match.Track, Disc = match.Disc, Year = match.Year } : null;
         }
 
         Cache[CacheKey(cacheTitle, credit, album)] = (DateTime.UtcNow, result);

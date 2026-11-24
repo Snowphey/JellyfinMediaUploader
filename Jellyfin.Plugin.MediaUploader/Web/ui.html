@@ -714,7 +714,8 @@
       kids.push(field('Type de bibliothèque', ksel));
     } else if (kind === 'music') {
       artistAlbumFields(v).forEach(function (f) { kids.push(f); });
-      kids.push(txt('Titre (sert à détecter les doublons)', 'title'));
+      kids.push(txt('Titre (sert à détecter les doublons et à nommer le fichier)', 'title'));
+      kids.push(h('label', { class: 'check' }, [h('input', { type: 'checkbox', checked: v.keepName, onchange: function (e) { v.keepName = e.target.checked; } }), 'Garder le nom d\'origine (sinon « 05 - Titre »)']));
     } else {
       var tsel = h('select', { onchange: function (e) { v.kind = e.target.value; loadTitles(v.kind); } }, [
         h('option', { value: 'movie', text: 'Film', selected: v.kind === 'movie' }),
@@ -728,7 +729,7 @@
       var patch = {};
       if (role === 'subtitle') { patch.pairWith = v.pairWith || null; patch.keepName = !!v.keepName; }
       else if (role === 'extra') { patch.kind = v.kind || null; }
-      else if (kind === 'music') { patch.artist = v.artist; patch.album = v.album; patch.title = v.title; }
+      else if (kind === 'music') { patch.artist = v.artist; patch.album = v.album; patch.title = v.title; patch.keepName = !!v.keepName; }
       else {
         patch.kind = v.kind; patch.title = v.title;
         patch.year = v.year === '' ? 0 : parseInt(v.year, 10) || 0;
@@ -1109,14 +1110,17 @@
 
   function renderGroup(g) {
     var key = pick(g, 'Key'), kind = pick(g, 'Kind'), status = pick(g, 'Status'), items = list(pick(g, 'Items')), missing = !!pick(g, 'Missing');
-    var inc = isIncluded(g), open = S.open[key] !== undefined ? S.open[key] : (status === 'review' || items.length <= 6);
+    // Que des doublons : rien à trancher (ils restent de côté), affiché « Déjà présent » et replié.
+    var dupOnly = duplicatesOnly(g);
+    if (dupOnly && status === 'review') { status = 'present'; }
+    var inc = isIncluded(g), open = S.open[key] !== undefined ? S.open[key] : (status === 'review' || (items.length <= 6 && !dupOnly));
     var box = h('div', { class: 'group ' + (status === 'review' ? 'review ' : '') + (inc ? '' : 'off') });
     var head = h('div', { class: 'ghead' });
     var check = h('input', { type: 'checkbox', checked: inc, disabled: kind === 'ignored' || S.committing, onchange: function (e) { S.include[key] = e.target.checked; render(); } });
     if (kind !== 'ignored') { head.appendChild(check); }
     head.appendChild(h('span', { class: 'gtitle', text: pick(g, 'Label'), onclick: function () { S.open[key] = !open; render(); } }));
     head.appendChild(h('span', { class: 'chip kind', text: kind === 'ignored' ? 'Ignoré' : (KINDS[pick(items[0] || {}, 'Kind')] || KINDS[kind] || kind) }));
-    head.appendChild(h('span', { class: 'chip ' + (status === 'review' ? 'review' : status === 'ignored' ? 'ignored' : 'ready'), text: status === 'review' ? 'À vérifier' : status === 'ignored' ? 'Ignoré' : 'Prêt' }));
+    head.appendChild(h('span', { class: 'chip ' + (status === 'review' ? 'review' : status === 'ignored' || status === 'present' ? 'ignored' : 'ready'), text: status === 'review' ? 'À vérifier' : status === 'ignored' ? 'Ignoré' : status === 'present' ? 'Déjà présent' : 'Prêt' }));
     head.appendChild(h('span', { class: 'chip', text: items.length + ' fichier' + (items.length > 1 ? 's' : '') }));
     var dups = items.filter(function (i) { return pick(i, 'Status') === 'duplicate'; });
     if (dups.length && !S.committing) {
@@ -1207,7 +1211,7 @@
     var got = receivable.filter(function (i) { return complete(pick(i, 'Id')); }).length;
     var pct = receivable.length ? Math.round(got * 100 / receivable.length) : 100;
     var sel = selectedItems(), ready = sel.every(function (i) { return complete(pick(i, 'Id')); });
-    var doubts = groups.filter(function (g) { return pick(g, 'Status') === 'review'; }).length;
+    var doubts = groups.filter(function (g) { return pick(g, 'Status') === 'review' && !duplicatesOnly(g); }).length;
 
     $('sumtext').textContent = (pick(sum, 'Groups') || 0) + ' groupe(s), ' + (pick(sum, 'Files') || 0) + ' fichier(s)' + (doubts ? ' · ' + doubts + ' à vérifier' : '') + (pick(sum, 'Rejected') ? ' · ' + pick(sum, 'Rejected') + ' ignoré(s)' : '');
     $('recvbar').value = pct;
@@ -1289,7 +1293,7 @@
     var receivable = planItems().filter(function (i) { return !rejected(i); });
     if (!receivable.length || !receivable.every(function (i) { return complete(pick(i, 'Id')); })) { return; }
     var groups = list(pick(S.plan, 'Groups'));
-    if (mode === 'doubtful' && groups.some(function (g) { return pick(g, 'Status') === 'review'; })) { return; }
+    if (mode === 'doubtful' && groups.some(function (g) { return pick(g, 'Status') === 'review' && !duplicatesOnly(g); })) { return; }
     S.autoDone = true;
     commit(receivable.filter(function (i) { return pick(i, 'Status') !== 'duplicate'; }).map(function (i) { return pick(i, 'Id'); }), linkedDuplicates());
   }
@@ -1479,8 +1483,9 @@
         I.view = res.body;
         var state = pick(res.body, 'State'), batchId = pick(res.body, 'BatchId');
         if (first && state === 'ready') {
-          // Rangement proposé par défaut : un lien de playlist YouTube n'a pas d'albums, une playlist Spotify ou un album en ont.
-          I.layout = pick(res.body, 'Source') === 'youtube' && pick(res.body, 'Kind') === 'playlist' ? 'playlist' : 'source';
+          // Rangement proposé par défaut : chaque morceau dans son album d'origine (MusicBrainz le retrouve pour une vidéo sans album) ;
+          // la liste de lecture Jellyfin garde l'ordre de la playlist.
+          I.layout = 'source';
           list(pick(res.body, 'Tracks')).forEach(function (t) { I.sel[pick(t, 'Id')] = true; });
           I.playlist = null;
         }
@@ -1529,8 +1534,8 @@
     ]));
     if (pick(v, 'Message')) { box.appendChild(h('div', { class: 'warn', text: pick(v, 'Message') })); }
     var layout = h('select', { onchange: function (e) { I.layout = e.target.value; } }, [
-      h('option', { value: 'source', text: 'Chaque morceau dans son album d\'origine', selected: I.layout === 'source' }),
-      h('option', { value: 'playlist', text: 'Tout dans un album « ' + pick(v, 'Title') + ' »', selected: I.layout === 'playlist' })
+      h('option', { value: 'source', text: 'Chaque morceau dans son album d\'origine (MusicBrainz pour une vidéo sans album, sinon un single « Artiste/Titre »)', selected: I.layout === 'source' }),
+      h('option', { value: 'playlist', text: 'Tout dans un dossier « Various Artists/' + pick(v, 'Title') + ' » (doublons possibles avec la bibliothèque)', selected: I.layout === 'playlist' })
     ]);
     box.appendChild(h('div', { class: 'row' }, [h('label', { text: 'Rangement' }), layout]));
     box.appendChild(h('div', { class: 'muted', text: 'Liste de lecture Jellyfin (nom, publique ou privée) : à choisir à la vérification, avant l\'envoi' + (pick(v, 'Kind') === 'playlist' && pick(I.status, 'CreatePlaylist') ? ' (proposée d\'office pour une playlist).' : '.') }));

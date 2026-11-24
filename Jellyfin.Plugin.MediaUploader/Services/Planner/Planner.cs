@@ -31,6 +31,14 @@ public static class Planner
 
         public bool Placed { get; set; }
 
+        // Mention d'artistes et titre lus dans le nom du fichier (« Freeze Corleone - Mini Requiem ») quand les tags ne citent que la chaîne YouTube.
+        public string? NameCredit { get; set; }
+
+        public string? NameTitle { get; set; }
+
+        // Dossier d'album déjà présent (orthographe exacte, « : » compris) à réutiliser.
+        public string? AlbumFolder { get; set; }
+
         public bool Rejected => Item.Status is "skipped" or "error";
     }
 
@@ -65,6 +73,9 @@ public static class Planner
             works.Add(Classify(f, ov, forcedMode, o, engine));
         }
 
+        // 0 -. Morceau sans album dont les tags ne citent que la chaîne YouTube : l'artiste du nom de fichier (« Ziak - OPPS »), s'il est déjà connu.
+        ArtistFromFileName(works, o, fs);
+
         // 0. Mentions de plusieurs artistes (« K/DA, Madison Beer ») : interprètes séparés, dossier au nom de l'artiste principal (ou de l'album selon MusicBrainz).
         ResolveCredits(works, o);
 
@@ -73,6 +84,9 @@ public static class Planner
 
         // 0 bis. Un artiste = une seule orthographe (« Freeze corleone » / « Freeze Corleone », « VALD » / « Vald ») : celle d'un dossier existant, sinon la plus soignée du lot.
         UnifyArtistSpelling(works, o, fs);
+
+        // 0 ter. Un album = un seul dossier : celui qui existe déjà sous cet artiste (« La Vie de rêve » / « La vie de rêve », « c'est » / « c’est », « (2011 Remaster) »).
+        UnifyAlbumFolders(works, o, fs);
 
         // 1. Fichiers principaux (audio, vidéo) : destination et nom.
         var taken = new HashSet<string>(StringComparer.Ordinal);
@@ -354,12 +368,164 @@ public static class Planner
 
         var structured = Structured(kind, o);
         w.Dir = DirFor(kind, root, det, structured);
+        if (structured && kind == "music" && w.AlbumFolder is not null && !string.IsNullOrWhiteSpace(det.Artist))
+        {
+            // Dossier d'album existant : son nom exact (un « : » reste tel quel).
+            w.Dir = Path.Combine(Path.GetDirectoryName(w.Dir)!, w.AlbumFolder);
+        }
+
         if (structured && !det.HasIdentity)
         {
             item.Notes.Add(kind == "music" ? "Pas d'artiste ni d'album : placé à la racine" : "Titre non reconnu : placé à la racine");
         }
 
-        Finish(w, root, PathBuilder.SanitizeFileName(item.Name, "file"), o, fs, taken);
+        Finish(w, root, MusicFileName(w) ?? PathBuilder.SanitizeFileName(item.Name, "file"), o, fs, taken);
+    }
+
+    // Nom d'un morceau d'après ses tags, comme dans le reste de la bibliothèque : « 05 - Titre.m4a » (« 2-05 - » sur un 2e disque),
+    // « Titre.m4a » sans numéro ; sans les mentions « (Official Video) », « [HD] »… Null : garder le nom du fichier.
+    private static string? MusicFileName(Work w)
+    {
+        if (w.Det?.Kind != "music" || !w.IsAudio || w.Ov?.KeepName == true)
+        {
+            return null;
+        }
+
+        var title = !Blank(w.Ov?.Title) ? w.Ov!.Title : w.NameTitle ?? w.File.Tags?.Title;
+        title = Import.TrackNaming.CleanTitle(title);
+        if (title.Length == 0)
+        {
+            return null;
+        }
+
+        var tags = w.File.Tags;
+
+        // Titre des tags pollué (artiste en tête lu dans le nom du fichier, « (Clip Officiel) ») : le titre propre y sera écrit aussi.
+        if (Blank(w.Ov?.Title) && !Blank(tags?.Title) && !string.Equals(title, tags!.Title!.Trim(), StringComparison.Ordinal))
+        {
+            w.Item.TagTitle = title;
+        }
+
+        return Import.TrackNaming.FileName(tags?.Disc is > 1 ? tags.Disc : null, tags?.Track is > 0 ? tags.Track : null, title, w.Ext);
+    }
+
+    // Morceau sans album dont l'artiste des tags n'est que la chaîne YouTube qui l'a mis en ligne (« Neeskow juudson ») : le nom du fichier
+    // « Artiste - Titre » (ou « Titre - Artiste ») l'emporte quand cet artiste est déjà dans la bibliothèque ou dans le lot (« Freeze Corleone »).
+    // Une chaîne « X Official », « X Music », « X - Topic » devient « X » dans les mêmes conditions.
+    private static void ArtistFromFileName(List<Work> works, PlannerOptions o, IFileProbe fs)
+    {
+        var known = new HashSet<string>(StringComparer.Ordinal);
+        if (o.LibraryArtists is not null)
+        {
+            known.UnionWith(o.LibraryArtists);
+        }
+
+        if (!string.IsNullOrEmpty(o.MusicRoot))
+        {
+            known.UnionWith(fs.ListDirs(o.MusicRoot).Select(ArtistCredits.Key));
+        }
+
+        foreach (var w in works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Kind: "music", Artist: not null } && !Blank(w.File.Tags?.Album)))
+        {
+            known.Add(ArtistCredits.Key(w.Det!.Artist!));
+        }
+
+        bool Known(string credit) => ArtistCredits.Split(credit, o.ArtistNames, o.LibraryArtists).Artists.Take(1).Any(a => known.Contains(ArtistCredits.Key(a)));
+
+        foreach (var w in works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Kind: "music", Artist: not null, RuleId: null } && Blank(w.Ov?.Artist) && Blank(w.File.Tags?.Album)))
+        {
+            var channel = w.Det!.Artist!;
+            var stem = NameTools.StemOf(w.Item.Name);
+            stem = System.Text.RegularExpressions.Regex.Replace(stem, @"^\s*\d{1,3}\s*[.\-_]\s*", string.Empty);
+            string? credit = null;
+            string? title = null;
+            var parts = System.Text.RegularExpressions.Regex.Split(stem, @"\s+[-–—]\s+");
+            if (parts.Length == 2 && parts[0].Trim().Length > 0 && parts[1].Trim().Length > 0)
+            {
+                var (a, b) = (parts[0].Trim(), Import.TrackNaming.CleanTitle(parts[1]));
+                if (Known(a) && !known.Contains(ArtistCredits.Key(channel)))
+                {
+                    (credit, title) = (a, b);
+                }
+                else if (Known(b) && !Known(a) && !known.Contains(ArtistCredits.Key(channel)))
+                {
+                    (credit, title) = (b, Import.TrackNaming.CleanTitle(parts[0]));
+                }
+            }
+
+            if (credit is null)
+            {
+                var plain = System.Text.RegularExpressions.Regex.Replace(Import.TrackNaming.ArtistFromChannel(channel), @"\s*(?:official|officiel|music|musique|-)\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                if (plain.Length > 0 && plain != channel && known.Contains(ArtistCredits.Key(plain)))
+                {
+                    credit = plain;
+                }
+            }
+
+            if (credit is null || ArtistCredits.Key(credit) == ArtistCredits.Key(channel))
+            {
+                continue;
+            }
+
+            w.NameCredit = credit;
+            w.NameTitle = title;
+            w.Det.Artist = ArtistCredits.Split(credit, o.ArtistNames, o.LibraryArtists).Lead;
+            w.Item.Artist = w.Det.Artist;
+            w.Item.Notes.Add($"Artiste lu dans le nom du fichier : « {credit} » (les tags ne citaient que « {channel} »)");
+            Raise(w.Item, "guess");
+        }
+    }
+
+    // Clé d'un nom d'album pour retrouver son dossier : sans casse, accents ni ponctuation, sans « (2011 Remaster) » / « (Deluxe Edition) ».
+    private static string AlbumFolderKey(string? album) => NameTools.TitleKey(System.Text.RegularExpressions.Regex.Replace(
+        album ?? string.Empty,
+        @"\s*[\(\[][^\)\]]*\b(?:remaster(?:ed)?|deluxe|edition|édition|expanded|anniversary|bonus)\b[^\)\]]*[\)\]]",
+        string.Empty,
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+
+    private static void UnifyAlbumFolders(List<Work> works, PlannerOptions o, IFileProbe fs)
+    {
+        if (string.IsNullOrEmpty(o.MusicRoot) || !o.MusicStructured)
+        {
+            return;
+        }
+
+        var music = works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Kind: "music" } d && !string.IsNullOrWhiteSpace(d.Artist) && !string.IsNullOrWhiteSpace(d.Album) && Blank(w.Ov?.Album)).ToList();
+        var existingByArtist = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (var g in music.GroupBy(w => (Artist: PathBuilder.SanitizeSegment(w.Det!.Artist, "Unknown Artist"), Album: AlbumFolderKey(w.Det!.Album))).Where(g => g.Key.Album.Length > 0))
+        {
+            if (!existingByArtist.TryGetValue(g.Key.Artist, out var existing))
+            {
+                existing = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var dir in fs.ListDirs(Path.Combine(o.MusicRoot, g.Key.Artist)).OrderBy(d => d, StringComparer.Ordinal))
+                {
+                    existing.TryAdd(AlbumFolderKey(dir), dir);
+                }
+
+                existingByArtist[g.Key.Artist] = existing;
+            }
+
+            // Dossier existant, sinon l'orthographe la plus fréquente du lot.
+            var target = existing.TryGetValue(g.Key.Album, out var dirName) ? dirName : null;
+            var spelling = target ?? g.GroupBy(w => w.Det!.Album!, StringComparer.Ordinal).OrderByDescending(x => x.Count()).ThenBy(x => x.Key, StringComparer.Ordinal).First().Key;
+            foreach (var w in g)
+            {
+                if (target is not null)
+                {
+                    w.AlbumFolder = target;
+                }
+
+                if (!string.Equals(w.Det!.Album, spelling, StringComparison.Ordinal))
+                {
+                    w.Item.Notes.Add(target is not null ? $"Album déjà présent : rangé dans le dossier « {target} »" : $"Même album que « {spelling} » : un seul dossier");
+                    if (target is null)
+                    {
+                        w.Det.Album = spelling;
+                        w.Item.Album = spelling;
+                    }
+                }
+            }
+        }
     }
 
     // Applique le nom final, résout les collisions et remplit la destination.
@@ -772,8 +938,8 @@ public static class Planner
         foreach (var w in works.Where(w => w.IsAudio && !w.Rejected && w.Det is { Artist: not null, RuleId: null } && Blank(w.Ov?.Artist)))
         {
             var tags = w.File.Tags;
-            var credit = NameTools.DedupeArtists(tags?.Performers ?? tags?.Artist) ?? w.Det!.Artist!;
-            var mb = o.CreditLookup?.Invoke(tags?.Title, tags?.Performers ?? tags?.Artist, tags?.Album);
+            var credit = w.NameCredit ?? NameTools.DedupeArtists(tags?.Performers ?? tags?.Artist) ?? w.Det!.Artist!;
+            var mb = o.CreditLookup?.Invoke(tags?.Title, w.NameCredit ?? tags?.Performers ?? tags?.Artist, tags?.Album);
             var split = ArtistCredits.Split(credit, o.ArtistNames, o.LibraryArtists);
             if (mb is not null)
             {
@@ -783,20 +949,20 @@ public static class Planner
                 var extra = split.Artists.Where(a => !Known(a)).ToList();
                 split = new CreditSplit(mb.Artists.Concat(extra).ToList(), "musicbrainz");
             }
-            if (split.Source == "single" && mb is null)
+            if (split.Source == "single" && mb is null && w.NameCredit is null)
             {
                 continue;
             }
 
             w.Item.Credit = credit;
             w.Item.CreditSource = split.Source;
-            if (split.Artists.Count > 1 || mb is not null)
+            if (split.Artists.Count > 1 || mb is not null || w.NameCredit is not null)
             {
                 w.Item.Artists = split.Artists.ToList();
             }
 
             // L'artiste de l'album écrit dans les tags l'emporte ; sinon MusicBrainz, sinon l'artiste principal (« Various Artists » pour une distribution de film).
-            var albumArtistTag = tags?.Performers is not null && tags.Artist is not null && ArtistCredits.Key(tags.Artist) != ArtistCredits.Key(tags.Performers);
+            var albumArtistTag = w.NameCredit is null && tags?.Performers is not null && tags.Artist is not null && ArtistCredits.Key(tags.Artist) != ArtistCredits.Key(tags.Performers);
             var folder = albumArtistTag ? w.Det!.Artist! : mb?.FolderArtist ?? ArtistCredits.FolderArtist(split.Artists);
             if (!string.Equals(folder, w.Det!.Artist, StringComparison.Ordinal))
             {
@@ -804,7 +970,7 @@ public static class Planner
                 w.Item.Artist = folder;
             }
 
-            var from = split.Source switch { "musicbrainz" => "MusicBrainz", "name" => "nom confirmé", _ => "règles" };
+            var from = split.Source switch { "musicbrainz" => "MusicBrainz", "name" => "nom confirmé", _ => w.NameCredit is not null ? "nom du fichier" : "règles" };
             w.Item.Notes.Add(split.Artists.Count > 1
                 ? $"Artistes : {string.Join(" · ", split.Artists)} ({from}) ; dossier « {folder} »"
                 : $"Artiste : {split.Artists[0]} ({from})");
@@ -876,10 +1042,12 @@ public static class Planner
         foreach (var w in works.Where(w => w.Item.Role == "main" && w.IsAudio && !w.Rejected && w.Placed && w.File.Analyzed))
         {
             var title = !Blank(w.Ov?.Title) ? w.Ov!.Title : w.File.Tags?.Title;
-            var key = DuplicateMatcher.Key(NameTools.DedupeArtists(w.File.Tags?.Artist) ?? w.Item.Artist, title);
+            // Les interprètes d'abord : l'artiste de l'album peut être « Various Artists » (playlist importée, compilation).
+            var credit = w.File.Tags?.Performers ?? w.File.Tags?.Artist;
+            var key = DuplicateMatcher.Key(NameTools.DedupeArtists(credit) ?? w.Item.Artist, title);
 
             // Artiste corrigé à la main (ou unifié pour l'album) : il compte aussi, pour retrouver « Daft punk » rangé sous « Daft Punk ».
-            var alt = !Blank(w.Item.Artist) && !string.Equals(w.Item.Artist, w.File.Tags?.Artist, StringComparison.OrdinalIgnoreCase) ? DuplicateMatcher.Key(w.Item.Artist, title) : null;
+            var alt = !Blank(w.Item.Artist) && !string.Equals(w.Item.Artist, credit, StringComparison.OrdinalIgnoreCase) && w.Item.Artist != ArtistCredits.VariousArtists ? DuplicateMatcher.Key(w.Item.Artist, title) : null;
             if (key is null && alt is null)
             {
                 continue;

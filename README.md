@@ -45,7 +45,10 @@ une fois les téléchargements terminés, la page invite à vérifier le lot (re
 
 - **Lien** : playlist, album ou titre Spotify (les métadonnées sont lues sans clé sur la page d'intégration de Spotify, qui n'expose que les **100 premiers titres** d'une playlist ; chaque titre est ensuite cherché sur YouTube),
   playlist YouTube / YouTube Music, album YouTube Music ou vidéo seule (via [yt-dlp](https://github.com/yt-dlp/yt-dlp)). La liste des morceaux s'affiche : vous décochez ce que vous ne voulez pas,
-  puis choisissez le rangement (chaque titre dans son album d'origine, ou tout dans un album au nom de la playlist, sous « Various Artists »).
+  puis choisissez le rangement : par défaut **chaque titre dans son album d'origine** ; un titre sans album (vidéo YouTube, playlist Spotify) est cherché sur
+  **MusicBrainz** au téléchargement (album studio d'origine, piste, année, interprètes séparés, collaborations comprises), sinon rangé en single « Artiste/Titre ».
+  La liste de lecture Jellyfin créée avec l'import garde l'ordre de la playlist. L'option « tout dans un dossier Various Artists/<playlist> » reste possible
+  (déconseillée : doublons avec la bibliothèque, artistes non séparés).
 - **Parcourir** : recherche libre par artiste, par album ou les deux (« PNL Dans la légende ») ; un artiste ouvre sa discographie (albums / EP / singles, filtres pour live et compilations), un album se coche directement. « Éditions » liste les sorties d'un album (rééditions, deluxe, versions d'un autre pays…) pour en importer une précise ; par défaut, l'édition la plus courante, sans les bonus. Puis « Importer la sélection ».
   Le catalogue vient de [MusicBrainz](https://musicbrainz.org) (pistes, durées, ISRC) et des pochettes de Cover Art Archive ; chaque morceau est ensuite cherché sur YouTube (en comparant les durées) et téléchargé par yt-dlp ; le plugin écrit les tags et la pochette.
 
@@ -133,6 +136,9 @@ Les morceaux dont les tags n'ont pas d'artiste et/ou d'album (et que les règles
 chaque fichier indiquant ce qui manque (« sans artiste », « sans album »). Ils peuvent appartenir à des artistes ou albums différents : cochez-les **par dossier d'origine** (case du dossier)
 ou **un par un**, puis **Renseigner la sélection** (artiste et/ou album ; un champ laissé vide n'est pas modifié). Les morceaux renseignés quittent le groupe et rejoignent leur album ;
 recommencez avec une autre sélection pour les suivants. ✎ permet aussi de renseigner un seul morceau (et un titre, qui sert à détecter les doublons).
+Quand les tags ne citent que la **chaîne YouTube** qui a mis le morceau en ligne, le nom du fichier « Artiste - Titre » (ou « Titre - Artiste ») l'emporte si cet artiste est déjà
+dans la bibliothèque ou dans le lot (« Ziak - OPPS » chez « underthemask » → `Ziak/`) ; une chaîne « Camellia Official », « Mister V Music », « X - Topic » devient l'artiste
+connu « Camellia », « Mister V »… Un groupe fait uniquement de doublons est affiché « Déjà présent » (replié), plus « À vérifier ».
 Les champs artiste et album proposent par **autocomplétion** les artistes et albums déjà présents dans la bibliothèque (noms de dossiers) et dans le lot, pour réutiliser un nom existant
 plutôt que d'en créer une variante (« Daft punk » / « Daft Punk »).
 La même autocomplétion existe partout où l'on corrige le rangement (groupe ou fichier) : artiste et album pour la musique, titre pour les films et séries (choisir un titre connu renseigne son année).
@@ -165,7 +171,13 @@ Un artiste corrigé à la main n'est jamais modifié. Deux albums distincts qui 
 | Film | `Titre (Année)/fichier` | nom du fichier, ou dossier parent `Titre (Année)/` ; sinon racine |
 | Série / animé | `Série (Année)/Season 01/fichier` (`Season 00` pour les spéciaux) | nom du fichier (`S01E02`, `1x02`, `Season 1 Episode 2`…), complété par les dossiers déposés ; sinon racine du dossier séries |
 
-Le nom d'origine est toujours conservé (sauf collision : suffixe `(2)`, ou écrasement si activé dans les paramètres).
+Un morceau est nommé d'après ses tags, comme le reste de la bibliothèque : `05 - Titre.m4a` (`2-05 - Titre.m4a` sur un 2e disque, `Titre.m4a` sans numéro de piste),
+sans les mentions « (Official Video) », « [HD] », « (Clip Officiel) »… ; « garder le nom d'origine » (✎) l'évite. Films, séries et morceaux sans titre gardent leur nom
+d'origine (sauf collision : suffixe `(2)`, ou écrasement si activé dans les paramètres).
+
+Un album déjà présent sous cet artiste est réutilisé même s'il est écrit autrement (« La Vie de rêve » / « La vie de rêve », « c'est » / « c’est »,
+« Clair Obscur: Expedition 33 (Original Soundtrack) » / « …: Original Soundtrack », « The Game » / « The Game (2011 Remaster) »). Les caractères interdits sous Windows
+(`: * ? " < > |`) ne sont plus écrits dans les nouveaux noms (partages SMB).
 
 ### Sous-titres
 
@@ -308,6 +320,7 @@ là où l'interface de Jellyfin est laborieuse :
   - **dossiers créés par l'import d'une liste de lecture** (« Various Artists/Nom de la liste/52 - Titre.m4a », repérés d'après le nom d'une liste de lecture Jellyfin, même privée) : « Répartir dans la bibliothèque » retire les morceaux déjà rangés ailleurs (la copie de la bibliothèque est gardée) et range les autres dans « Artiste/Album » d'après MusicBrainz : l'album studio d'origine (pas un live, une compilation ni la bande originale d'un autre ; un album plutôt qu'un single, le plus ancien), avec numéro de piste et année ; un single « Artiste/Titre » sinon. Les mentions « (feat. …) », « (with …) », « - Mono », « - Remastered » sont ignorées pour la recherche, et l'orthographe d'un dossier d'artiste existant est reprise (« Freeze Corleone »). Aperçu modifiable morceau par morceau (garder une autre copie, ranger, laisser, corriger artistes, album, piste) ; « Répartir » attend la fin de la vérification sur MusicBrainz (refaite automatiquement en cas d’échec, jusqu’à 4 tours), qui continue si la fenêtre est fermée. La liste de lecture garde tous ses morceaux, dans le même ordre ;
   - **séparateur d'artistes** de la bibliothèque Jellyfin : bouton « Activer le séparateur « ; » » s'il manque ;
   - **artistes répartis sur plusieurs dossiers** (« K DA, X » et « K DA, Y », « Orelsan » et « OrelSan », « Freeze Corleone » et « Freeze Corleone, ASHE 22 ») : « Regrouper » écrit l'artiste principal (orthographe des tags, « K/DA ») dans « artiste de l'album » et range les morceaux dans un seul dossier ; les artistes de chaque morceau ne changent pas (« & » ne sépare pas : « Bigflo & Oli » reste un artiste) ;
+  - **artistes non séparés dans Jellyfin** (fiche « Alpha Wann & Freeze Corleone », « Dr. Dre featuring Snoop Dogg », « Bigflo & Oli; Black M », « Erik Satie/Philippe Entremont » alors que les fichiers sont bien rangés) : « Séparer » (ou « Tout séparer ») écrit les artistes un par un dans les tags (« A; B », une seule valeur, « & » et « x » vérifiés sur MusicBrainz) sans déplacer les fichiers, puis fait relire chaque morceau par Jellyfin. Un duo connu comme un seul artiste (« Bigflo & Oli ») n'est pas signalé ;
   - **aperçu de « Ranger » et « Regrouper »** : chaque « A & B » est vérifié sur MusicBrainz (duo ou deux artistes ; « Appliquer » attend la fin) ; un morceau déjà rangé ailleurs (« Rêves bizarres » en single alors que l'album le contient) est proposé en doublon : la copie conseillée est gardée, celui-ci va à la corbeille et les listes de lecture suivent (« Ranger celui-ci quand même » reste possible) ;
   - **albums répartis entre plusieurs artistes** (chaque morceau rangé sous ses invités) : « Regrouper » leur donne le même album et le même artiste de l'album (l'artiste commun, sinon « Various Artists ») ; un titre courant (« Greatest Hits ») d'artistes sans rapport n'est pas signalé ;
   - **morceaux en double** (même comparaison souple qu'à l'envoi, d'après l'index de Jellyfin ; une démo, un live, un remix… reste une autre version) : la copie conseillée est sans perte, hors « Various Artists », puis celle de l'album le plus complet (l'album ou son édition deluxe plutôt qu'un single : l'album reste entier et le dossier en trop se vide), puis la plus grosse ; les autres vont à la corbeille ;

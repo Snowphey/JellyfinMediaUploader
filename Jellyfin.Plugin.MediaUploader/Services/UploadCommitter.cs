@@ -77,11 +77,12 @@ public static class UploadCommitter
             }
 
             // Interprètes séparés et artiste de l'album (mentions « A, B » résolues) : écrits avant le rangement.
-            if (item.Kind == "music" && item.Role == "main" && item.CreditSource is not null && (item.Artists.Count > 0 || item.AlbumArtist is not null))
+            var credits = item.CreditSource is not null && (item.Artists.Count > 0 || item.AlbumArtist is not null);
+            if (item.Kind == "music" && item.Role == "main" && (credits || item.TagTitle is not null))
             {
                 try
                 {
-                    AudioTagReader.WriteCredits(temp, Path.GetExtension(item.Name), item.Artists, item.AlbumArtist);
+                    AudioTagReader.WriteCredits(temp, Path.GetExtension(item.Name), credits ? item.Artists : Array.Empty<string>(), credits ? item.AlbumArtist : null, item.TagTitle);
                     if (item.Artists.Count > 1)
                     {
                         notes.Add("Artistes séparés dans les tags");

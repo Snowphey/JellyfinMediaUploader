@@ -27,7 +27,10 @@ public static class TrackTagger
         using var file = TagLib.File.Create(path);
         var tag = file.Tag;
         tag.Title = title;
-        tag.Performers = new[] { artist };
+        // « A; B » (interprètes séparés, d'après MusicBrainz) : une seule valeur, que Jellyfin sépare avec le séparateur « ; »
+        // (plusieurs valeurs deviendraient « A/B » dans un mp3, qu'il ne sépare pas).
+        var performers = artist.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        tag.Performers = new[] { performers.Length > 0 ? string.Join("; ", performers) : artist };
         tag.AlbumArtists = new[] { albumArtist };
         tag.Album = album;
         tag.Track = track is > 0 ? (uint)track.Value : 0;

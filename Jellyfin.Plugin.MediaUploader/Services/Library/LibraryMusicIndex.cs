@@ -17,6 +17,7 @@ public static class LibraryMusicIndex
     private static ILibraryManager? _libraryManager;
     private static ILogger? _logger;
     private static List<(string Path, TagInfo Tags)>? _all;
+    private static List<(string Path, IReadOnlyList<string> Artists)> _artistLists = new();
     private static DateTime _at;
 
     /// <summary>
@@ -92,6 +93,7 @@ public static class LibraryMusicIndex
             }
 
             var list = new List<(string, TagInfo)>();
+            var artistLists = new List<(string Path, IReadOnlyList<string> Artists)>();
             var lm = _libraryManager;
             if (lm is not null)
             {
@@ -115,6 +117,11 @@ public static class LibraryMusicIndex
                         {
                             list.Add((item.Path, new TagInfo(artists, item.Album, item.Name)));
                         }
+
+                        if (item.Artists is { Count: > 0 } raw)
+                        {
+                            artistLists.Add((item.Path, raw.ToList()));
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -125,8 +132,23 @@ public static class LibraryMusicIndex
             }
 
             _all = list;
+            _artistLists = artistLists;
             _at = DateTime.UtcNow;
             return list;
+        }
+    }
+
+    /// <summary>
+    /// Artistes de chaque morceau tels que Jellyfin les a lus (un par fiche d'artiste), sous un dossier.
+    /// </summary>
+    /// <param name="root">Dossier musique.</param>
+    /// <returns>Chemin et artistes.</returns>
+    public static IReadOnlyList<(string Path, IReadOnlyList<string> Artists)> ArtistLists(string root)
+    {
+        Snapshot();
+        lock (Gate)
+        {
+            return string.IsNullOrWhiteSpace(root) ? Array.Empty<(string, IReadOnlyList<string>)>() : _artistLists.Where(e => e.Path.StartsWith(root, StringComparison.Ordinal)).ToList();
         }
     }
 }

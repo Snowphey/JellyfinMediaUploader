@@ -9,6 +9,9 @@ public sealed class ImportTrackState
     /// <summary>Gets le morceau.</summary>
     public required TrackSpec Spec { get; init; }
 
+    /// <summary>Gets or sets les métadonnées retenues au téléchargement (album d'origine trouvé sur MusicBrainz…).</summary>
+    public TrackMeta? Meta { get; set; }
+
     /// <summary>Gets or sets l'identifiant du fichier correspondant dans le lot.</summary>
     public string? ItemId { get; set; }
 
@@ -414,6 +417,14 @@ public static class ImportManager
                 c => YtDlpClient.DownloadAsync(c, t.Spec, work, ct, (phase, percent) => SetPhase(job, t, phase, percent)), ctx, work, t, logger, ct).ConfigureAwait(false);
             SetPhase(job, t, "tagging", null);
             var meta = ImportNaming.Resolve(t.Spec, job.Title, job.Layout, PositionOf(job, t));
+
+            // Sans album à la source : MusicBrainz donne l'album d'origine, la piste et les artistes (comme « Répartir » dans Santé).
+            if (meta.Guessed && Plugin.Instance?.Configuration.MusicBrainzArtists == true)
+            {
+                meta = await CompleteFromMusicBrainzAsync(meta, t.Spec.Title, logger, ct).ConfigureAwait(false);
+            }
+
+            t.Meta = meta;
             // Sans pochette propre au morceau, celle de la liste sert quand tout est rangé dans un album du nom de la liste.
             var coverUrl = t.Spec.CoverUrl ?? (job.Layout == "playlist" ? job.CoverUrl : null);
             var cover = coverUrl is null ? null : await GetCoverAsync(covers, coverUrl, logger, ct).ConfigureAwait(false);
@@ -477,6 +488,27 @@ public static class ImportManager
         return false;
     }
 
+    // Album d'origine d'un morceau sans album, d'après MusicBrainz (file d'attente commune, une requête par seconde au plus) ;
+    // sans réponse après quelques essais, le morceau reste un single.
+    private static async Task<TrackMeta> CompleteFromMusicBrainzAsync(TrackMeta meta, string title, ILogger logger, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            try
+            {
+                var mb = await MusicBrainzCredits.LookupAsync(title, meta.Artist, null, ct).ConfigureAwait(false);
+                return mb is null ? meta : ImportNaming.FromMusicBrainz(meta, mb, title);
+            }
+            catch (ImportException ex)
+            {
+                logger.LogDebug("MediaUploader: MusicBrainz sans réponse pour {Title} (essai {Attempt}) : {Message}", title, attempt + 1, ex.Message);
+                await Task.Delay(TimeSpan.FromSeconds(10 * (attempt + 1)), ct).ConfigureAwait(false);
+            }
+        }
+
+        return meta;
+    }
+
     // Une pochette par adresse, téléchargée une seule fois pour tout l'import. Un échec n'est pas gardé : le morceau suivant réessaie.
     private static async Task<byte[]?> GetCoverAsync(ConcurrentDictionary<string, byte[]> covers, string url, ILogger logger, CancellationToken ct)
     {
@@ -530,7 +562,7 @@ public static class ImportManager
             var item = batch.Items.FirstOrDefault(i => i.Id == t.ItemId);
             if (item is not null && UploadStore.Batches.ContainsKey(batch.Id))
             {
-                var meta = ImportNaming.Resolve(t.Spec, job.Title, job.Layout, PositionOf(job, t));
+                var meta = t.Meta ?? ImportNaming.Resolve(t.Spec, job.Title, job.Layout, PositionOf(job, t));
                 item.TempPath = part;
                 item.Size = size;
                 item.Received = size;

@@ -334,6 +334,22 @@ Check("artistes répétés retirés", (NameTools.DedupeArtists("Yoshimasa Terui;
 True("année YYYYMMDD ramenée à l'année", NameTools.NormalizeYear(20170118) == 2017 && NameTools.NormalizeYear(201701) == 2017 && NameTools.NormalizeYear(1984) == 1984);
 
 // Doublon dans toute la bibliothèque (index de Jellyfin) : rangé sous un autre artiste, et chemin gardé pour la liste de lecture.
+// Nom des morceaux d'après les tags ; dossier d'album existant réutilisé ; artiste lu dans le nom du fichier.
+var named = Run(new List<PlanFile> { new() { Id = "1", ClientPath = "Stade (2).m4a", Analyzed = true, Tags = new TagInfo("Bigflo & Oli", "La vie de rêve", "Stade (Clip Officiel)", null, 16, 1) } }, "auto", null, null, Music + "/Bigflo & Oli/La Vie de rêve/01 - Intro.m4a");
+Check("nom « NN - Titre » d'après les tags, dossier d'album existant (casse)", Item(named, "Stade (2).m4a").Dest, "Bigflo & Oli/La Vie de rêve/16 - Stade.m4a");
+var remaster = Run(new List<PlanFile> { new() { Id = "1", ClientPath = "x.m4a", Analyzed = true, Tags = new TagInfo("Queen", "The Game", "Save Me", null, 2) } }, "auto", null, null, Music + "/Queen/The Game (2011 Remaster)/01 - Play the Game.m4a");
+Check("dossier d'album existant : « (2011 Remaster) » ignoré", Item(remaster, "x.m4a").Dest, "Queen/The Game (2011 Remaster)/02 - Save Me.m4a");
+var colon = Run(new List<PlanFile> { new() { Id = "1", ClientPath = "x.m4a", Analyzed = true, Tags = new TagInfo("Lorien Testard", "Clair Obscur: Expedition 33 (Original Soundtrack)", "Lumière", null, 3) } }, "auto", null, null, Music + "/Lorien Testard/Clair Obscur: Expedition 33: Original Soundtrack/01 - A.m4a");
+Check("dossier d'album existant : ponctuation ignorée, nom exact gardé", Item(colon, "x.m4a").Dest, "Lorien Testard/Clair Obscur: Expedition 33: Original Soundtrack/03 - Lumière.m4a");
+var chan = Run(new List<PlanFile>
+{
+    new() { Id = "1", ClientPath = "Ziak - OPPS ft. Freeze Corleone (Clip Officiel).m4a", Analyzed = true, Tags = new TagInfo("underthemask", null, "Ziak - OPPS ft. Freeze Corleone (Clip Officiel)") },
+    new() { Id = "2", ClientPath = "Mini Requiem.m4a", Analyzed = true, Tags = new TagInfo("Camellia Official", null, "Mini Requiem") },
+    new() { Id = "3", ClientPath = "Inconnu - Titre.m4a", Analyzed = true, Tags = new TagInfo("SomeChannel", null, "Inconnu - Titre") },
+}, "auto", null, null, Music + "/Ziak/Akimbo/01 - A.m4a", Music + "/Camellia/X/01 - B.m4a");
+Check("artiste lu dans « Artiste - Titre » quand il est connu, titre nettoyé", Item(chan, "Ziak - OPPS ft. Freeze Corleone (Clip Officiel).m4a").Dest, "Ziak/OPPS ft. Freeze Corleone.m4a");
+Check("chaîne « X Official » : X quand il est connu", Item(chan, "Mini Requiem.m4a").Dest, "Camellia/Mini Requiem.m4a");
+Check("artiste inconnu dans le nom : la chaîne reste", Item(chan, "Inconnu - Titre.m4a").Dest, "SomeChannel/Inconnu - Titre.m4a");
 var idxFs = new FakeFs(new[] { Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a" });
 idxFs.Known.Add((Music + "/Various Artists/Ma Playlist/03 - Get Lucky.m4a", new TagInfo("Daft Punk, Pharrell Williams", "Ma Playlist", "Get Lucky")));
 var idxDup = Planner.Build(new List<PlanFile> { Song("a", "gl.m4a", "Daft Punk", "Get Lucky (Official Audio)") }, new Dictionary<string, ItemOverride>(), "auto", Opts(), engine, idxFs);
@@ -413,19 +429,19 @@ var proj = Run(new List<PlanFile> {
     new() { Id = "2", ClientPath = "Alicia.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur: Expedition 33 (OST)", "Alicia") },
     new() { Id = "3", ClientPath = "Autre.mp3", Analyzed = true, Tags = new TagInfo("Lorien Testard, Alice Duport-Percier", "Clair Obscur", "Autre") } });
 Check("préfixe commun : le plus court", (Item(proj, "Autre.mp3").Dest, Item(proj, "Autre.mp3").Status), ("Lorien Testard/Clair Obscur/Autre.mp3", "ready"));
-Check("autre album : dossier de l'artiste principal (plus de dossier à virgule)", Item(proj, "Alicia.mp3").Dest, "Lorien Testard/Clair Obscur: Expedition 33 (OST)/Alicia.mp3");
+Check("autre album : dossier de l'artiste principal (plus de dossier à virgule)", Item(proj, "Alicia.mp3").Dest, "Lorien Testard/Clair Obscur Expedition 33 (OST)/Alicia.mp3");
 var lead = Run(new List<PlanFile> { Song("1", "a.flac", "Duo, X", "A"), Song("2", "b.flac", "Duo, Y", "B") }, ov: null);
-Check("même premier nom : unifié", (Item(lead, "a.flac").Dest, Item(lead, "b.flac").Dest), ("Duo/Album/a.flac", "Duo/Album/b.flac"));
+Check("même premier nom : unifié", (Item(lead, "a.flac").Dest, Item(lead, "b.flac").Dest), ("Duo/Album/A.flac", "Duo/Album/B.flac"));
 var keepOv = Run(new List<PlanFile> { Song("1", "a.flac", "P", "A"), Song("2", "b.flac", "Q", "B") }, ov: new() { ["1"] = new ItemOverride { Artist = "Moi" } });
-Check("artiste corrigé à la main : respecté", Item(keepOv, "a.flac").Dest, "Moi/Album/a.flac");
+Check("artiste corrigé à la main : respecté", Item(keepOv, "a.flac").Dest, "Moi/Album/A.flac");
 
 // Featurings sur un album de rap.
 var rap = Run(new List<PlanFile> { Song("1", "1.flac", "Kendrick Lamar", "A"), Song("2", "2.flac", "Kendrick Lamar, SZA", "B"), Song("3", "3.flac", "Kendrick Lamar feat. Drake", "C"), Song("4", "4.flac", "Kendrick Lamar & Rihanna", "D") });
-Check("rap : featurings, un seul dossier, sûr", (rap.Groups.Count(g => g.Kind == "music"), rap.Summary.ToReview, Item(rap, "3.flac").Dest), (1, 0, "Kendrick Lamar/Album/3.flac"));
+Check("rap : featurings, un seul dossier, sûr", (rap.Groups.Count(g => g.Kind == "music"), rap.Summary.ToReview, Item(rap, "3.flac").Dest), (1, 0, "Kendrick Lamar/Album/C.flac"));
 var rap2 = Run(new List<PlanFile> { Song("1", "1.flac", "Drake", "A"), Song("2", "2.flac", "Future, Drake", "B"), Song("3", "3.flac", "Drake, Future", "C") });
-Check("rap : ordre inversé, nom commun, à vérifier", (Item(rap2, "2.flac").Dest, Item(rap2, "2.flac").Status), ("Drake/Album/2.flac", "guess"));
+Check("rap : ordre inversé, nom commun, à vérifier", (Item(rap2, "2.flac").Dest, Item(rap2, "2.flac").Status), ("Drake/Album/B.flac", "guess"));
 var rap3 = Run(new List<PlanFile> { Song("1", "1.flac", "Duo, X", "A"), Song("2", "2.flac", "Duo, Y", "B") });
-Check("même artiste principal, invités différents : sûr", (Item(rap3, "1.flac").Dest, Item(rap3, "1.flac").Status), ("Duo/Album/1.flac", "ready"));
+Check("même artiste principal, invités différents : sûr", (Item(rap3, "1.flac").Dest, Item(rap3, "1.flac").Status), ("Duo/Album/A.flac", "ready"));
 
 // Choix incertain : les possibilités sont proposées ; le choix de l'utilisateur lève le doute.
 Check("choix incertain : propositions", string.Join(" | ", Item(rap2, "2.flac").ArtistChoices), "Drake | Future | Various Artists");
@@ -472,7 +488,12 @@ var specA = new TrackSpec { Id = "t1", Title = "Song", Artist = "Artist", AlbumA
 var specNoAlbum = new TrackSpec { Id = "t2", Title = "Vid", Artist = "Someone" };
 Check("rangement source", ImportNaming.Resolve(specA, "List", "source", 9), new TrackMeta("Artist", "Band", "Record", 3, 1, 2020));
 Check("rangement playlist", ImportNaming.Resolve(specA, "List", "playlist", 9), new TrackMeta("Artist", "Various Artists", "List", 9, null, 2020));
-Check("sans album -> album de la liste", ImportNaming.Resolve(specNoAlbum, "List", "source", 4), new TrackMeta("Someone", "Various Artists", "List", 4, null, null));
+Check("sans album -> single « Artiste/Titre » en attendant MusicBrainz", ImportNaming.Resolve(specNoAlbum, "List", "source", 4), new TrackMeta("Someone", "Someone", "Vid", 1, null, null, true));
+Check("sans album, invités : dossier de l'artiste principal, titre nettoyé", ImportNaming.Resolve(new TrackSpec { Id = "t3", Title = "São Paulo (feat. Anitta)", Artist = "The Weeknd, Anitta" }, "List", "source", 2), new TrackMeta("The Weeknd, Anitta", "The Weeknd", "São Paulo", 1, null, null, true));
+var fromMb = ImportNaming.FromMusicBrainz(ImportNaming.Resolve(new TrackSpec { Id = "t4", Title = "Intro", Artist = "Alan Braxe & Fred Falke" }, "L", "source", 1), new MbCredit(new[] { "Alan Braxe", "Fred Falke" }, "Alan Braxe & Fred Falke", "Intro") { Track = 1, Year = 2000, OriginalNames = new[] { "Alan Braxe & Fred Falke" } }, "Intro");
+Check("import sans album : album, piste, année et artistes de MusicBrainz", fromMb, new TrackMeta("Alan Braxe; Fred Falke", "Alan Braxe", "Intro", 1, null, 2000));
+var noRelease = ImportNaming.FromMusicBrainz(ImportNaming.Resolve(specNoAlbum, "L", "source", 1), new MbCredit(new[] { "Someone" }, null, null), "Vid");
+Check("import sans album : MusicBrainz sans sortie retenue, single gardé", (noRelease.AlbumArtist, noRelease.Album, noRelease.Guessed), ("Someone", "Vid", false));
 Check("chemin client", ImportNaming.ClientPath(ImportNaming.Resolve(specA, "List", "source", 1), "Song", ".m4a"), "Band/Record/03 - Song.m4a");
 Check("layout normalisé", ImportNaming.NormalizeLayout("PLAYLIST"), "playlist");
 
@@ -1054,6 +1075,17 @@ Check("liste de lecture : doublon, copie sans perte conseillée", (pfPlan[0].Act
 Check("liste de lecture : album d'origine d'après MusicBrainz", (pfPlan[1].Action, pfPlan[1].AlbumArtist, pfPlan[1].Album, pfPlan[1].Track, pfPlan[1].Year, pfPlan[1].Source), ("move", "Woodkid", "Iron EP", 1, 2011, "musicbrainz"));
 Check("liste de lecture : en attente de MusicBrainz, single en attendant ; orthographe du dossier existant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("GRADUR; Damso", "GRADUR", "Kongolese", 1, 2019, "pending"));
 Check("liste de lecture : la chaîne nommée dans le titre n'est pas un artiste, l'invité « (with …) » si", (pfPlan[3].Artists, pfPlan[4].Artists), ("Ino Casablanca", "Tame Impala; JENNIE"));
+var unsplit = UnsplitArtists.Find("/m", new List<(string, IReadOnlyList<string>)>
+{
+    ("/m/Alpha Wann/A/01 - X.m4a", new[] { "Alpha Wann & Freeze Corleone" }),
+    ("/m/Bigflo & Oli/B/01 - Y.m4a", new[] { "Bigflo & Oli; Black M; Soprano" }),
+    ("/m/Bigflo & Oli/B/02 - Z.m4a", new[] { "Bigflo & Oli" }),
+    ("/m/Dr. Dre/C/01 - W.mp3", new[] { "Dr. Dre featuring Snoop Dogg" }),
+    ("/m/Erik Satie/D/01 - G.mp3", new[] { "Erik Satie/Philippe Entremont" }),
+    ("/m/AC DC/E/01 - H.mp3", new[] { "AC/DC" }),
+    ("/m/Alpha Wann/A/02 - V.m4a", new[] { "Alpha Wann", "Freeze Corleone" }),
+}, p => p.Contains("Satie") ? 2 : 1, null, ArtistCredits.KnownKeys(new[] { "Bigflo & Oli", "Alpha Wann" }));
+Check("artistes lus d'un bloc par Jellyfin : à séparer", string.Join(" | ", unsplit.OrderBy(g => g.Name).Select(g => g.Name + ":" + g.Reason)), "Alpha Wann & Freeze Corleone:check | Bigflo & Oli; Black M; Soprano:reread | Dr. Dre featuring Snoop Dogg:split | Erik Satie/Philippe Entremont:slash");
 var restore = TagChanges.Restore(new TagSnapshot(null, "A; B", null, "Alb", 2020, 3, 0, null, false));
 Check("annulation : tags d'origine, champs vides effacés", (restore.Title, restore.Artist, restore.AlbumArtist, restore.Album, restore.Year, restore.Track, restore.Disc), ("", "A; B", "", "Alb", (uint?)2020, (uint?)3, (uint?)0));
 

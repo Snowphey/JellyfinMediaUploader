@@ -59,12 +59,12 @@ public static class LibraryTags
 
             if (c.Artist is not null)
             {
-                t.Performers = Split(c.Artist);
+                t.Performers = OneValue(c.Artist);
             }
 
             if (c.AlbumArtist is not null)
             {
-                t.AlbumArtists = Split(c.AlbumArtist);
+                t.AlbumArtists = OneValue(c.AlbumArtist);
             }
 
             if (c.Album is not null)
@@ -74,7 +74,7 @@ public static class LibraryTags
 
             if (c.Genre is not null)
             {
-                t.Genres = Split(c.Genre);
+                t.Genres = c.Genre.Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             }
 
             if (c.Year is not null)
@@ -123,7 +123,13 @@ public static class LibraryTags
         }
     }
 
-    private static string[] Split(string value) => value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    // Plusieurs artistes : une seule valeur « A; B », que Jellyfin sépare avec le séparateur « ; ». Plusieurs valeurs seraient écrites « A/B »
+    // dans un mp3 (ID3v2.3), que Jellyfin ne sépare pas sans « / » (exclu pour « AC/DC », « K/DA »).
+    private static string[] OneValue(string value)
+    {
+        var parts = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 0 ? Array.Empty<string>() : new[] { string.Join("; ", parts) };
+    }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

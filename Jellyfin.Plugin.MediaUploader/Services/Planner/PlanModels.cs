@@ -382,6 +382,9 @@ public sealed class PlanItem
     /// <summary>Gets or sets l'artiste de l'album écrit dans les tags à la confirmation (null : inchangé).</summary>
     public string? AlbumArtist { get; set; }
 
+    /// <summary>Gets or sets le titre nettoyé écrit dans les tags à la confirmation (« Mini Requiem » au lieu de « Freeze Corleone - Mini Requiem (Clip Officiel) » ; null : inchangé).</summary>
+    public string? TagTitle { get; set; }
+
     /// <summary>Gets or sets la mention d'artistes d'origine (tags).</summary>
     public string? Credit { get; set; }
 

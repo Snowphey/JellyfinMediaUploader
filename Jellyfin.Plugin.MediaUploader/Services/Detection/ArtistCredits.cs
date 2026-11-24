@@ -20,6 +20,9 @@ public sealed record CreditSplit(IReadOnlyList<string> Artists, string Source)
 /// </summary>
 public static class ArtistCredits
 {
+    /// <summary>Préfixe des clés d'une mention connue en entier (« Bigflo &amp; Oli » : un seul artiste).</summary>
+    public const string StandalonePrefix = "=";
+
     /// <summary>Artiste des compilations et des bandes originales sans artiste unique.</summary>
     public const string VariousArtists = "Various Artists";
 
@@ -31,7 +34,6 @@ public static class ArtistCredits
     };
 
     private static readonly Regex Separators = new(@"\s*[;,]\s*|\s+(?:feat\.?|ft\.?|featuring)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private const string StandalonePrefix = "=";
     private static readonly Regex Joiners = new(@"\s+(?:&|x|et|and|with)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Ampersand = new(@"\s+&\s+", RegexOptions.Compiled);
     private static readonly Regex Cast = new(@"(^|[\s-])cast$", RegexOptions.Compiled | RegexOptions.IgnoreCase);

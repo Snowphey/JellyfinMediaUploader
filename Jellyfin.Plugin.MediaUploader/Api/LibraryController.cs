@@ -863,8 +863,24 @@ public class LibraryController : MediaUploaderControllerBase
         }).ToList();
         var music = Roots().FirstOrDefault(r => r.Key == "music");
         List<PlaylistFolder> playlistFolders = new();
+        List<UnsplitArtist> unsplit = new();
         if (music is not null)
         {
+            // Artistes que Jellyfin a lus d'un bloc (« Alpha Wann & Freeze Corleone », « Bigflo & Oli; Black M ») : à séparer dans les tags, ou à faire relire.
+            try
+            {
+                unsplit = UnsplitArtists.Find(
+                    music.Path,
+                    LibraryMusicIndex.ArtistLists(music.Path),
+                    p => LibraryTags.Read(p)?.Artist?.Split(';', StringSplitOptions.RemoveEmptyEntries).Length ?? 0,
+                    Config.ArtistNames,
+                    LibraryMusicIndex.ArtistKeys(music.Path));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogDebug(ex, "MediaUploader: artistes des morceaux illisibles");
+            }
+
             try
             {
                 var names = _userManager.GetUsersIds().SelectMany(id => _playlistManager.GetPlaylists(id)).Select(p => p.Name).Distinct(StringComparer.Ordinal).ToList();
@@ -876,7 +892,7 @@ public class LibraryController : MediaUploaderControllerBase
             }
         }
 
-        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>(), ArtistDelimiter = DelimiterStatus(), PlaylistFolders = playlistFolders });
+        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>(), ArtistDelimiter = DelimiterStatus(), PlaylistFolders = playlistFolders, UnsplitArtists = unsplit });
     }
 
     /// <summary>
@@ -1154,7 +1170,7 @@ public class LibraryController : MediaUploaderControllerBase
 
         // Ranger / Regrouper : un morceau déjà rangé ailleurs (même artiste, même titre, même version) est proposé en doublon ;
         // la copie conseillée est celle de l'album le plus complet (« Rêves bizarres » de l'album plutôt que le single en featuring).
-        var dupIndex = request.SplitArtists && CanDelete ? DuplicateIndex(r.Path) : null;
+        var dupIndex = request.SplitArtists && request.Reorganize && CanDelete ? DuplicateIndex(r.Path) : null;
         var rows = new List<TagRow>();
         foreach (var file in files)
         {
@@ -2445,6 +2461,11 @@ public class LibraryController : MediaUploaderControllerBase
             if (mode == "full")
             {
                 _libraryManager.QueueLibraryScan();
+                if (tagsChanged)
+                {
+                    ReadTagsAgain(root, touchedRelatives);
+                }
+
                 return;
             }
 
@@ -2454,11 +2475,43 @@ public class LibraryController : MediaUploaderControllerBase
             {
                 RefreshLibrary(root, true, imagesChanged);
             }
+
+            // Une actualisation de la bibliothèque ne relit pas les tags d'un fichier resté à sa place : chaque morceau retagué est relu en entier
+            // (sinon Jellyfin garde « A & B » ou « A; B » comme un seul artiste). Un fichier déplacé est un nouvel élément, lu de toute façon.
+            if (tagsChanged)
+            {
+                ReadTagsAgain(root, touchedRelatives);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "MediaUploader: mise à jour de la médiathèque Jellyfin impossible après une action sur la bibliothèque");
         }
+    }
+
+    // Relit en entier (tags compris) les morceaux donnés, déjà connus de Jellyfin.
+    private int ReadTagsAgain(LibraryRoot root, IEnumerable<string> relatives)
+    {
+        var count = 0;
+        foreach (var relative in relatives.Distinct(StringComparer.Ordinal).Take(5000))
+        {
+            if (!LibraryFs.TryResolve(root, relative, out var full, out _) || !System.IO.File.Exists(full) || _libraryManager.FindByPath(full, false) is not { } item)
+            {
+                continue;
+            }
+
+            var options = new MetadataRefreshOptions(new DirectoryService(_fileSystem))
+            {
+                MetadataRefreshMode = MetadataRefreshMode.FullRefresh,
+                ImageRefreshMode = MetadataRefreshMode.None,
+                ReplaceAllMetadata = true,
+                ReplaceAllImages = false
+            };
+            _providerManager.QueueRefresh(item.Id, options, RefreshPriority.High);
+            count++;
+        }
+
+        return count;
     }
 
     // Actualise le dossier racine d'une bibliothèque dans Jellyfin, sans images : seuls les fichiers nouveaux ou modifiés sont examinés.

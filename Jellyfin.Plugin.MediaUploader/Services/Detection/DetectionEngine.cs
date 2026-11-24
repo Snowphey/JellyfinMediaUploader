@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.MediaUploader.Services;
 /// <param name="Album">Album.</param>
 /// <param name="Title">Titre du morceau.</param>
 /// <param name="Performers">Interprètes du morceau tels qu'écrits (sans l'artiste d'album), ou null si inconnus.</param>
-public sealed record TagInfo(string? Artist, string? Album, string? Title, string? Performers = null);
+public sealed record TagInfo(string? Artist, string? Album, string? Title, string? Performers = null, int? Track = null, int? Disc = null);
 
 /// <summary>
 /// Résultat de la détection pour un fichier.

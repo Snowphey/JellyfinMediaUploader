@@ -12,6 +12,12 @@ public record AudioTags(string? Artist, string? Album, string? Title, byte[]? Co
 {
     /// <summary>Gets les interprètes tels qu'écrits (sans l'artiste d'album).</summary>
     public string? Performers { get; init; }
+
+    /// <summary>Gets le numéro de piste (null : absent).</summary>
+    public int? Track { get; init; }
+
+    /// <summary>Gets le numéro de disque (null : absent).</summary>
+    public int? Disc { get; init; }
 }
 
 /// <summary>
@@ -72,7 +78,7 @@ public static class AudioTagReader
             }
 
             var performers = tag.Performers is { Length: > 0 } p ? Clean(string.Join("; ", p.Where(x => !string.IsNullOrWhiteSpace(x)))) : null;
-            return new AudioTags(artist, album, title, cover, coverExt) { Performers = performers };
+            return new AudioTags(artist, album, title, cover, coverExt) { Performers = performers, Track = tag.Track > 0 ? (int)tag.Track : null, Disc = tag.Disc > 0 ? (int)tag.Disc : null };
         }
         catch (Exception)
         {
@@ -128,7 +134,7 @@ public static class AudioTagReader
     public static TagInfo? ReadInfo(string path, string originalExtension)
     {
         var tags = Read(path, originalExtension);
-        return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title, tags.Performers);
+        return tags is null ? null : new TagInfo(tags.Artist, tags.Album, tags.Title, tags.Performers, tags.Track, tags.Disc);
     }
 
     /// <summary>
@@ -139,18 +145,25 @@ public static class AudioTagReader
     /// <param name="originalExtension">Extension d'origine.</param>
     /// <param name="artists">Interprètes (vide : inchangés).</param>
     /// <param name="albumArtist">Artiste de l'album (null : inchangé).</param>
-    public static void WriteCredits(string path, string originalExtension, IReadOnlyList<string> artists, string? albumArtist)
+    /// <param name="title">Titre (null : inchangé).</param>
+    public static void WriteCredits(string path, string originalExtension, IReadOnlyList<string> artists, string? albumArtist, string? title = null)
     {
         var abstraction = new NamedFile(path, "file" + originalExtension);
         using var file = TagLib.File.Create(abstraction);
         if (artists.Count > 0)
         {
-            file.Tag.Performers = artists.ToArray();
+            // Une seule valeur « A; B » : plusieurs valeurs deviennent « A/B » dans un mp3, que Jellyfin ne sépare pas.
+            file.Tag.Performers = new[] { string.Join("; ", artists) };
         }
 
         if (!string.IsNullOrWhiteSpace(albumArtist))
         {
             file.Tag.AlbumArtists = new[] { albumArtist };
+        }
+
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            file.Tag.Title = title;
         }
 
         file.Save();

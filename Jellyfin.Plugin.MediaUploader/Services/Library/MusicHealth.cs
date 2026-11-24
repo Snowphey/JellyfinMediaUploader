@@ -363,3 +363,78 @@ public static class MusicHealth
         return result.OrderBy(r => r.Label, StringComparer.OrdinalIgnoreCase).ToList();
     }
 }
+
+/// <summary>Un artiste tel que Jellyfin l'a lu, qui réunit plusieurs artistes (« Alpha Wann &amp; Freeze Corleone », « Bigflo &amp; Oli; Black M »).</summary>
+/// <param name="Name">Artiste lu par Jellyfin.</param>
+/// <param name="Reason">"reread" (tags déjà séparés « A; B », Jellyfin doit les relire), "split" (« feat. », virgule), "check" (« &amp; », « x » : MusicBrainz tranche) ou "slash" (« A/B » d'un mp3).</param>
+/// <param name="Items">Morceaux concernés (chemins relatifs).</param>
+public sealed record UnsplitArtist(string Name, string Reason, IReadOnlyList<string> Items);
+
+/// <summary>
+/// Morceaux dont Jellyfin montre un artiste qui en réunit plusieurs : fiche « Dr. Dre featuring Snoop Dogg » au lieu de deux fiches.
+/// </summary>
+public static class UnsplitArtists
+{
+    private const int MaxGroups = 300;
+
+    /// <summary>
+    /// Artistes à séparer, les plus fréquents d'abord.
+    /// </summary>
+    /// <param name="rootPath">Dossier musique.</param>
+    /// <param name="items">Morceaux et artistes lus par Jellyfin.</param>
+    /// <param name="tagCount">Nombre d'artistes dans les tags du fichier (pour « A/B » : deux valeurs, ou un nom comme « AC/DC »).</param>
+    /// <param name="artistNames">Noms à virgule confirmés.</param>
+    /// <param name="libraryArtists">Clés des artistes de la bibliothèque (« Bigflo &amp; Oli » connu comme un seul artiste n'est pas signalé).</param>
+    /// <returns>Groupes.</returns>
+    public static List<UnsplitArtist> Find(string rootPath, IEnumerable<(string Path, IReadOnlyList<string> Artists)> items, Func<string, int> tagCount, ICollection<string>? artistNames, ISet<string>? libraryArtists)
+    {
+        var root = rootPath.TrimEnd('/', '\\');
+        var groups = new Dictionary<string, (string Reason, List<string> Items)>(StringComparer.Ordinal);
+        foreach (var (path, artists) in items)
+        {
+            if (path.Length <= root.Length + 1 || path.Contains(LibraryFs.TrashDirName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (var a in artists.Where(a => !string.IsNullOrWhiteSpace(a)))
+            {
+                string? reason = null;
+                if (a.Contains(';', StringComparison.Ordinal))
+                {
+                    reason = "reread";
+                }
+                else if (ArtistCredits.Split(a, artistNames, libraryArtists).Artists.Count > 1)
+                {
+                    reason = "split";
+                }
+                else if (ArtistCredits.HasJoiner(a) && libraryArtists?.Contains(ArtistCredits.StandalonePrefix + ArtistCredits.Key(a)) != true)
+                {
+                    reason = "check";
+                }
+                else if (a.Contains('/', StringComparison.Ordinal) && tagCount(path) > 1)
+                {
+                    reason = "slash";
+                }
+
+                if (reason is null)
+                {
+                    continue;
+                }
+
+                if (!groups.TryGetValue(a, out var g))
+                {
+                    groups[a] = g = (reason, new List<string>());
+                }
+
+                g.Items.Add(path[(root.Length + 1)..].Replace('\\', '/'));
+            }
+        }
+
+        return groups.Select(kv => new UnsplitArtist(kv.Key, kv.Value.Reason, kv.Value.Items.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList()))
+            .OrderByDescending(g => g.Items.Count)
+            .ThenBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(MaxGroups)
+            .ToList();
+    }
+}
