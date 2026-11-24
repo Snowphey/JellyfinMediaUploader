@@ -778,7 +778,7 @@
 
     function refresh() {
       var any = Object.keys(st.dirty).some(function (k) { return st.dirty[k]; });
-      if (!any && !reorg.checked) { preview.textContent = ''; go.disabled = true; return; }
+      if (!any && !reorg.checked && !opts.splitArtists) { preview.textContent = ''; go.disabled = true; return; }
       api('POST', 'Library/Tags/Apply', request(true)).then(function (res) {
         if (res.status !== 200 || !res.body) { preview.textContent = ''; preview.appendChild(h('div', { class: 'bad', text: errText(res) })); go.disabled = true; return; }
         var d = res.body, rows = list(pick(d, 'Rows'));
@@ -839,9 +839,14 @@
         grid.appendChild(h('label', { text: def[1] }));
         grid.appendChild(h('div', {}, [input, h('datalist', { id: listId }, values.map(function (v) { return h('option', { value: pick(v, 'Value'), label: pick(v, 'Count') + ' morceau(x)' }); }))]));
       });
-      body.appendChild(grid);
+      if (opts.keepPlace) {
+        body.appendChild(h('div', { class: 'muted', text: 'Seuls les artistes de chaque morceau changent (tableau ci-dessous, modifiable) : titre, album, artiste de l\'album et emplacement restent tels quels.' }));
+      } else {
+        body.appendChild(grid);
+      }
       // Fusion : l'album et l'artiste de l'album les plus fréquents sont proposés d'office.
-      if (opts.merge || list(pick(f, 'Album')).length > 1) {
+      // « Séparer » (artistes non séparés dans Santé) : chaque morceau garde son album et son artiste d'album, rien n'est fusionné.
+      if (!opts.keepPlace && (opts.merge || list(pick(f, 'Album')).length > 1)) {
         var topAlbum = list(pick(f, 'Album'))[0], topArtist = list(pick(f, 'AlbumArtist'))[0];
         if (opts.album) { st.fields.Album.value = opts.album; st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
         else if (topAlbum && opts.merge) { st.fields.Album.value = pick(topAlbum, 'Value'); st.dirty.Album = true; st.fields.Album.className = 'dirty'; }
@@ -854,7 +859,7 @@
           ? 'Les artistes de chaque morceau (invités compris) restent dans ses tags, écrits un par un (« A; B ») pour que Jellyfin crée une fiche par artiste.'
           : 'Seul « Artiste de l\'album » change : les artistes de chaque morceau (invités compris) restent dans ses tags.' }));
       }
-      body.appendChild(h('div', { class: 'row' }, [h('label', {}, [reorg, ' Ranger les fichiers dans le dossier « Artiste/Album » d\'après leurs tags, et supprimer les dossiers vidés (nécessaire pour fusionner des albums coupés en deux) ; en cas de conflit : ']), policy]));
+      if (!opts.keepPlace) body.appendChild(h('div', { class: 'row' }, [h('label', {}, [reorg, ' Ranger les fichiers dans le dossier « Artiste/Album » d\'après leurs tags, et supprimer les dossiers vidés (nécessaire pour fusionner des albums coupés en deux) ; en cas de conflit : ']), policy]));
       body.appendChild(h('div', { class: 'muted', text: 'Les tags sont écrits dans les fichiers eux-mêmes. Jellyfin met sa médiathèque à jour ensuite (quelques secondes à quelques minutes selon sa taille) ; les listes de lecture suivent les morceaux déplacés.' }));
       refresh();
     }).catch(function (e) { body.textContent = ''; body.appendChild(h('div', { class: 'bad', text: e.message })); });
