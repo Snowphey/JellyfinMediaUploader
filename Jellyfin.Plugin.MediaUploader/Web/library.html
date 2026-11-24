@@ -46,6 +46,13 @@
   .overlay { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 30; padding: 1em; }
   .dialog { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 1em 1.2em; width: min(46em, 100%); max-height: 92vh; overflow: auto; }
   .dialog.wide { width: min(70em, 100%); }
+  .dialog.xwide { width: min(110em, 100%); }
+  table.ptable input[type=text], table.ptable input[type=number], table.ptable select { width: 100%; box-sizing: border-box; font-size: .95em; }
+  table.ptable input.dirty, table.ptable select.dirty { border-color: #00a4dc; }
+  table.ptable tr.off td { opacity: .45; }
+  .toast button { margin-left: .8em; }
+  .src { font-size: .78em; padding: .05em .45em; border-radius: 99px; background: #2a2a2a; color: #bbb; white-space: nowrap; }
+  .src.mb { background: #1f2d38; color: #7cc4e8; } .src.wait { background: #403517; color: #f2c94c; }
   .dialog h3 { margin-top: 0; }
   .dlist { max-height: 16em; overflow: auto; border: 1px solid #2c2c2c; border-radius: 6px; padding: .3em .6em; margin: .5em 0; font-size: .9em; }
   .dlist div { padding: .15em 0; word-break: break-all; }
@@ -222,14 +229,27 @@
   var L = { caps: null, view: null, path: '', entries: [], sel: {}, showHidden: false, hits: null, sizes: {}, sort: { key: 'name', dir: 1 }, trash: null, health: null };
   var toastTimer = null, sizeRun = 0, renderTimer = null;
 
-  function toast(text, bad) {
+  function toast(text, bad, action) {
     var t = $('toast');
     t.textContent = text;
     t.className = 'toast' + (bad ? ' error' : '');
+    if (action) { t.appendChild(h('button', { type: 'button', class: 'small secondary', text: action.label, onclick: function () { t.style.display = 'none'; action.fn(); } })); }
     t.style.display = '';
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.style.display = 'none'; }, bad ? 9000 : 5000);
+    toastTimer = setTimeout(function () { t.style.display = 'none'; }, action ? 20000 : bad ? 9000 : 5000);
   }
+
+  // ---------- Annulation d'une correction ----------
+  function undoNow(id) {
+    return api('POST', 'Library/Undo', { id: id }).then(function (res) {
+      if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+      var d = res.body, problems = list(pick(d, 'Problems'));
+      toast('Annulé : ' + plural(pick(d, 'Restored'), 'fichier remis en place', 'fichiers remis en place') + (pick(d, 'FromTrash') ? ', ' + plural(pick(d, 'FromTrash'), 'élément sorti de la corbeille', 'éléments sortis de la corbeille') : '') + '.' + (problems.length ? ' ' + plural(problems.length, 'problème', 'problèmes') + ' : ' + problems.slice(0, 3).join(' ; ') : ''), problems.length > 0);
+      L.sel = {}; L.sizes = {};
+      if (L.view === 'health') { openHealth(); } else if (isRoot(L.view)) { loadList(); }
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  function undoAction(id) { return id ? { label: 'Annuler', fn: function () { undoNow(id); } } : null; }
   function showWarn(text) { var w = $('warn'); w.textContent = text || ''; w.style.display = text ? '' : 'none'; }
 
   function rootLabel(key) {
@@ -705,7 +725,7 @@
   function tagsDialog(items, opts) {
     opts = opts || {};
     var root = 'music';
-    var st = { fields: {}, dirty: {} };
+    var st = { fields: {}, dirty: {}, ov: {} };
     var body = h('div', {}, [h('div', { class: 'muted', text: 'Lecture des tags…' })]);
     var preview = h('div', {});
     var reorg = h('input', { type: 'checkbox', checked: true });
@@ -719,7 +739,30 @@
       ['Year', 'Track', 'Disc'].forEach(function (k) { if (st.dirty[k]) { var v = parseInt(st.fields[k].value, 10); c[k.charAt(0).toLowerCase() + k.slice(1)] = isNaN(v) ? 0 : v; } });
       return c;
     }
-    function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry, splitArtists: !!opts.splitArtists }; }
+    function overrides() { return Object.keys(st.ov).map(function (p) { var o = st.ov[p]; return { path: p, artist: o.artist, skip: !!o.skip }; }); }
+    function request(dry) { return { root: root, items: items, changes: changes(), reorganize: reorg.checked, policy: policy.value, dryRun: dry, splitArtists: !!opts.splitArtists, overrides: overrides() }; }
+    function setOv(path, key, value) { st.ov[path] = st.ov[path] || {}; st.ov[path][key] = value; later(); }
+
+    // Aperçu de « Ranger » / « Regrouper » : chaque morceau, ses artistes (modifiables) et sa destination ; un morceau décoché reste tel quel.
+    function editableTable(rows) {
+      var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['', 'Morceau', 'Artistes (« ; » entre deux)', 'Artiste de l\'album', 'Destination'].map(function (t) { return h('th', { text: t }); }))])]);
+      var tb = h('tbody', {});
+      rows.forEach(function (r) {
+        var path = pick(r, 'Path'), b = pick(r, 'Before') || {}, a = pick(r, 'After') || {}, skipped = pick(r, 'Status') === 'skipped', ov = st.ov[path] || {};
+        var artist = h('input', { type: 'text', value: ov.artist !== undefined ? ov.artist : (pick(a, 'Artist') || pick(b, 'Artist') || ''), title: 'Avant : ' + (pick(b, 'Artist') || '∅'), class: ov.artist !== undefined ? 'dirty' : '', disabled: skipped });
+        artist.addEventListener('change', function () { setOv(path, 'artist', artist.value); });
+        var split = (pick(a, 'Artist') || '') !== (pick(b, 'Artist') || '');
+        tb.appendChild(h('tr', { class: skipped ? 'off' : '' }, [
+          h('td', {}, [h('input', { type: 'checkbox', checked: !skipped, title: 'Décocher : laisser ce morceau tel quel', onchange: function (e) { setOv(path, 'skip', !e.target.checked); } })]),
+          h('td', { class: pick(r, 'Status') === 'error' ? 'bad' : '', text: baseName(path) + (pick(r, 'Message') && !skipped ? ' — ' + pick(r, 'Message') : '') }),
+          h('td', {}, [artist, split || ov.artist !== undefined ? null : h('div', { class: 'muted', style: 'font-size:.85em', text: 'inchangé' })]),
+          h('td', { text: pick(a, 'AlbumArtist') || '∅' }),
+          h('td', { class: pick(r, 'Conflict') ? 'mid' : 'muted', text: skipped ? 'laissé tel quel' : pick(r, 'Target') ? parentOf(pick(r, 'Target')) + (pick(r, 'Conflict') ? ' (conflit)' : '') : 'reste sur place' })
+        ]));
+      });
+      tbl.appendChild(tb);
+      return tbl;
+    }
 
     function refresh() {
       var any = Object.keys(st.dirty).some(function (k) { return st.dirty[k]; });
@@ -727,7 +770,14 @@
       api('POST', 'Library/Tags/Apply', request(true)).then(function (res) {
         if (res.status !== 200 || !res.body) { preview.textContent = ''; preview.appendChild(h('div', { class: 'bad', text: errText(res) })); go.disabled = true; return; }
         var d = res.body, rows = list(pick(d, 'Rows'));
+        var skippedCount = rows.filter(function (r) { return pick(r, 'Status') === 'skipped'; }).length;
         preview.textContent = '';
+        if (opts.splitArtists) {
+          preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'morceau', 'morceaux') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (skippedCount ? ' · ' + plural(skippedCount, 'laissé tel quel', 'laissés tels quels') : '') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + '. Vérifiez les artistes de chaque morceau : corrigez-les à la main (« Bigflo & Oli » reste entier, « A; B » sépare), ou décochez un morceau pour ne pas y toucher. Tout reste annulable après coup.' }));
+          preview.appendChild(editableTable(rows));
+          go.disabled = pick(d, 'Files') === pick(d, 'Errors') + skippedCount;
+          return;
+        }
         preview.appendChild(h('div', { class: 'muted', text: plural(pick(d, 'Files'), 'fichier concerné', 'fichiers concernés') + ' · ' + plural(pick(d, 'Moves'), 'sera rangé', 'seront rangés') + (pick(d, 'Conflicts') ? ' · ' + plural(pick(d, 'Conflicts'), 'conflit de nom', 'conflits de nom') : '') + (pick(d, 'Errors') ? ' · ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') }));
         var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['Fichier', 'Album', 'Artiste', 'Destination'].map(function (t) { return h('th', { text: t }); }))])]);
         var tb = h('tbody', {});
@@ -793,12 +843,101 @@
         if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
         var d = res.body;
         closeDialog();
-        toast(plural(pick(d, 'Done'), 'fichier mis à jour', 'fichiers mis à jour') + (pick(d, 'Errors') ? ', ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + (pick(d, 'Skipped') ? ', ' + plural(pick(d, 'Skipped'), 'non rangé (nom déjà pris)', 'non rangés (nom déjà pris)') : '') + '.', pick(d, 'Done') === 0);
+        toast(plural(pick(d, 'Done'), 'fichier mis à jour', 'fichiers mis à jour') + (pick(d, 'Errors') ? ', ' + plural(pick(d, 'Errors'), 'erreur', 'erreurs') : '') + (pick(d, 'Skipped') ? ', ' + plural(pick(d, 'Skipped'), 'non rangé (nom déjà pris)', 'non rangés (nom déjà pris)') : '') + '.', pick(d, 'Done') === 0, undoAction(pick(d, 'UndoId')));
         L.sel = {}; L.sizes = {};
         if (isRoot(L.view)) { loadList(); } else if (L.view === 'health') { openHealth(); }
       }).catch(function (e) { go.disabled = false; toast(e.message, true); });
     });
-    openDialog('Tags et fusion — ' + plural(items.length, 'élément', 'éléments'), [body, preview], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go], true);
+    var dlg = openDialog((opts.splitArtists ? 'Aperçu — ' : 'Tags et fusion — ') + plural(items.length, 'élément', 'éléments'), [body, preview], [h('button', { type: 'button', class: 'secondary', text: 'Annuler', onclick: closeDialog }), go], true);
+    if (opts.splitArtists) { dlg.classList.add('xwide'); }
+  }
+
+  // ---------- Dossier créé par l'import d'une liste de lecture : répartir dans la bibliothèque ----------
+  function playlistFolderDialog(folder, playlist) {
+    var st = { rows: [], edits: {}, pending: 0, mb: true };
+    var summary = h('div', { class: 'muted' });
+    var table = h('div', {});
+    var go = h('button', { type: 'button', text: 'Répartir', disabled: true });
+    var dlg;
+
+    function val(r, k) { var e = st.edits[pick(r, 'Path')]; return e && e[k] !== undefined ? e[k] : pick(r, k); }
+    function edit(r, k, v) { var p = pick(r, 'Path'); st.edits[p] = st.edits[p] || {}; st.edits[p][k] = v; renderRows(); }
+    function actionOf(r) { return val(r, 'Action'); }
+
+    function renderRows() {
+      var counts = { move: 0, keep: 0, leave: 0 };
+      st.rows.forEach(function (r) { counts[actionOf(r)] = (counts[actionOf(r)] || 0) + 1; });
+      summary.textContent = plural(st.rows.length, 'morceau', 'morceaux') + ' : ' + plural(counts.keep, 'doublon retiré', 'doublons retirés') + ' (copie déjà rangée gardée), ' + plural(counts.move, 'morceau rangé', 'morceaux rangés') + ', ' + plural(counts.leave, 'laissé', 'laissés') + ' ici.'
+        + (st.pending ? ' MusicBrainz : ' + plural(st.pending, 'morceau', 'morceaux') + ' en cours de vérification (environ une seconde chacun) ; en attendant, ils sont proposés comme singles.' : '')
+        + ' La liste de lecture « ' + playlist + ' » garde tous ses morceaux, dans le même ordre ; les doublons vont à la corbeille et tout est annulable.';
+      go.textContent = 'Répartir (' + counts.move + ' rangés, ' + counts.keep + ' doublons retirés)';
+      go.disabled = counts.move + counts.keep === 0;
+      var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['Morceau', 'Que faire', 'Artistes (« ; » entre deux)', 'Artiste de l\'album', 'Album', 'Piste', 'Source'].map(function (t) { return h('th', { text: t }); }))])]);
+      var tb = h('tbody', {});
+      st.rows.forEach(function (r) {
+        var copies = list(pick(r, 'Copies')), act = actionOf(r), keepIdx = val(r, 'KeepIndex') || 0;
+        var sel = h('select', { class: (st.edits[pick(r, 'Path')] || {}).Action !== undefined ? 'dirty' : '' });
+        copies.forEach(function (c, i) { sel.appendChild(h('option', { value: 'keep:' + i, text: 'Garder ' + c, selected: act === 'keep' && keepIdx === i })); });
+        sel.appendChild(h('option', { value: 'move', text: 'Ranger dans Artiste/Album', selected: act === 'move' }));
+        sel.appendChild(h('option', { value: 'leave', text: 'Laisser ici', selected: act === 'leave' }));
+        sel.addEventListener('change', function () {
+          var v = sel.value, p = pick(r, 'Path');
+          st.edits[p] = st.edits[p] || {};
+          if (v.indexOf('keep:') === 0) { st.edits[p].Action = 'keep'; st.edits[p].KeepIndex = parseInt(v.slice(5), 10); } else { st.edits[p].Action = v; }
+          renderRows();
+        });
+        function field(k, type) {
+          var inp = h('input', { type: type || 'text', value: String(val(r, k) === null || val(r, k) === undefined ? '' : val(r, k)), class: (st.edits[pick(r, 'Path')] || {})[k] !== undefined ? 'dirty' : '', disabled: act !== 'move' });
+          inp.addEventListener('change', function () { edit(r, k, type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value); });
+          return inp;
+        }
+        var src = pick(r, 'Source');
+        tb.appendChild(h('tr', { class: act === 'leave' ? 'off' : '' }, [
+          h('td', {}, [h('div', { text: (pick(r, 'Credit') || '?') + ' — ' + pick(r, 'Title') }), h('div', { class: 'muted', style: 'font-size:.85em', text: baseName(pick(r, 'Path')) })]),
+          h('td', {}, [sel]),
+          h('td', {}, [field('Artists')]),
+          h('td', {}, [field('AlbumArtist')]),
+          h('td', {}, [field('Album')]),
+          h('td', { style: 'width:4.5em' }, [field('Track', 'number')]),
+          h('td', {}, [act === 'keep' ? h('span', { class: 'src', text: 'doublon' }) : h('span', { class: 'src' + (src === 'musicbrainz' ? ' mb' : src === 'pending' ? ' wait' : ''), text: src === 'musicbrainz' ? 'MusicBrainz' : src === 'pending' ? 'vérification…' : 'single' })])
+        ]));
+      });
+      tbl.appendChild(tb);
+      table.textContent = '';
+      table.appendChild(tbl);
+    }
+
+    function load(lookup) {
+      return api('POST', 'Library/PlaylistFolder/Plan', { root: 'music', folder: folder, lookup: !!lookup }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        st.rows = list(pick(res.body, 'Rows'));
+        st.pending = pick(res.body, 'Pending') || 0;
+        // Pendant la saisie, on ne redessine pas le tableau (le texte tapé serait perdu) : on réessaie un peu plus tard.
+        if (!(dlg && dlg.contains(document.activeElement) && document.activeElement.tagName === 'INPUT')) { renderRows(); }
+        if (st.pending && dlg && dlg.isConnected) { setTimeout(function () { if (dlg.isConnected) { load(false); } }, 3000); }
+      }).catch(function (e) { table.textContent = ''; table.appendChild(h('div', { class: 'bad', text: e.message })); });
+    }
+
+    go.addEventListener('click', function () {
+      var rows = st.rows.map(function (r) {
+        var copies = list(pick(r, 'Copies')), k = val(r, 'KeepIndex') || 0;
+        if (actionOf(r) === 'keep') { copies = [copies[k]].concat(copies.filter(function (c, i) { return i !== k; })); }
+        return { path: pick(r, 'Path'), title: pick(r, 'Title'), action: actionOf(r), copies: copies, artists: val(r, 'Artists'), albumArtist: val(r, 'AlbumArtist'), album: val(r, 'Album'), track: val(r, 'Track') || 0, disc: val(r, 'Disc') || 0, year: val(r, 'Year') || 0 };
+      });
+      go.disabled = true;
+      api('POST', 'Library/PlaylistFolder/Apply', { root: 'music', folder: folder, rows: rows }).then(function (res) {
+        if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
+        var d = res.body, problems = list(pick(d, 'Problems'));
+        closeDialog();
+        toast(plural(pick(d, 'Moved'), 'morceau rangé', 'morceaux rangés') + ', ' + plural(pick(d, 'Removed'), 'doublon retiré', 'doublons retirés') + '. La liste de lecture suit (quelques secondes après l\'actualisation de Jellyfin).' + (problems.length ? ' ' + plural(problems.length, 'problème', 'problèmes') + ' : ' + problems.slice(0, 3).join(' ; ') : ''), problems.length > 0, undoAction(pick(d, 'UndoId')));
+        openHealth();
+      }).catch(function (e) { go.disabled = false; toast(e.message, true); });
+    });
+
+    table.appendChild(h('div', { class: 'muted', text: 'Lecture des morceaux et recherche des doublons…' }));
+    dlg = openDialog('Répartir « ' + folder + ' »', [summary, table], [h('button', { type: 'button', class: 'secondary', text: 'Fermer', onclick: closeDialog }), go], true);
+    dlg.classList.add('xwide');
+    load(true);
   }
 
   // ---------- Pochette d'un album : recherche en ligne ou image de l'ordinateur ----------
@@ -952,7 +1091,10 @@
       L.health = list(pick(res.body, 'Reports'));
       L.ignored = list(pick(res.body, 'Ignored'));
       L.delimiter = pick(res.body, 'ArtistDelimiter') || null;
-      renderHealth();
+      L.playlistFolders = list(pick(res.body, 'PlaylistFolders'));
+      return api('GET', 'Library/Undo').then(function (u) { L.undo = u.status === 200 && u.body ? list(pick(u.body, 'Entries')) : []; });
+    }).then(function () {
+      if (L.view === 'health' && L.health) { renderHealth(); }
     }).catch(function (e) { $('main').textContent = ''; showWarn(e.message); });
   }
 
@@ -963,6 +1105,25 @@
     var cDel = can('CanDelete'), cMove = can('CanMove');
     main.appendChild(h('div', { class: 'bar' }, [h('strong', { text: 'Santé des bibliothèques' }), h('button', { type: 'button', class: 'secondary small', text: 'Réanalyser', onclick: openHealth })]));
     var total = 0;
+
+    // Dernières corrections : chacune peut être annulée (fichiers remis en place avec leurs tags d'origine, corbeille vidée de ce qu'elle a reçu).
+    var recent = list(L.undo).slice(0, 8);
+    if (recent.length) {
+      var uBox = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Dernières corrections' }), h('div', { class: 'muted', text: 'Annuler remet les fichiers à leur place avec leurs tags d\'origine et ressort de la corbeille ce qui y a été mis ; les listes de lecture suivent les morceaux remis en place.' })]);
+      recent.forEach(function (e) {
+        var when = new Date(pick(e, 'At'));
+        uBox.appendChild(h('div', { class: 'bar' }, [
+          h('div', { class: 'grow' }, [h('div', { text: pick(e, 'Label') }), h('span', { class: 'muted', text: when.toLocaleString() + ' · ' + plural(pick(e, 'Files'), 'fichier', 'fichiers') + (pick(e, 'Trashed') ? ' · ' + plural(pick(e, 'Trashed'), 'élément à la corbeille', 'éléments à la corbeille') : '') })]),
+          pick(e, 'Undone') ? h('span', { class: 'muted', text: 'annulée' }) : cMove ? h('button', { type: 'button', class: 'secondary small', text: 'Annuler…', onclick: function () {
+            var ok = h('button', { type: 'button', text: 'Annuler cette correction' });
+            openDialog('Annuler une correction', [h('div', { text: pick(e, 'Label') }), h('div', { class: 'muted', text: 'Les fichiers reprennent leur place et leurs tags d\'origine ; ce qui a été mis à la corbeille en ressort. Un fichier modifié depuis par autre chose peut ne pas être remis.' })],
+              [h('button', { type: 'button', class: 'secondary', text: 'Fermer', onclick: closeDialog }), ok]);
+            ok.addEventListener('click', function () { ok.disabled = true; closeDialog(); undoNow(pick(e, 'Id')); });
+          } }) : null
+        ]));
+      });
+      main.appendChild(uBox);
+    }
 
     // Éléments écartés (« ce n'est pas un problème ») : identifiés par le contrôle et les chemins concernés ; si ceux-ci changent, l'élément revient.
     var ignored = {}, hidden = 0;
@@ -1032,6 +1193,22 @@
       main.appendChild(dBox);
     }
 
+    // Dossiers créés par l'import d'une liste de lecture (« Various Artists/Nom de la liste ») : à répartir dans la bibliothèque.
+    var pfs = list(L.playlistFolders).filter(function (f) { return visible(hkey('playlistfolder', [pick(f, 'Folder')])); });
+    if (L.health.some(function (r) { return pick(r, 'Key') === 'music'; })) {
+      total += pfs.length;
+      var pfBox = h('div', { class: 'box healthlist' }, [h('strong', { text: 'Dossiers créés par l\'import d\'une liste de lecture (' + pfs.length + ')' }),
+        h('div', { class: 'muted', text: 'Une liste de lecture importée « tout dans un album » range ses morceaux sous « Various Artists/Nom de la liste », numérotés d\'après leur place dans la liste ; beaucoup doublent des morceaux déjà rangés. Répartir retire ces doublons (la copie déjà rangée est gardée) et range les autres dans « Artiste/Album » d\'après MusicBrainz, avec un aperçu modifiable. La liste de lecture garde tous ses morceaux, dans le même ordre ; tout est annulable.' })]);
+      if (!pfs.length) { pfBox.appendChild(h('div', { class: 'ok', text: '✓ Rien à signaler.' })); }
+      pfs.forEach(function (f) {
+        pfBox.appendChild(h('div', { class: 'bar' }, [
+          h('div', { class: 'grow' }, [h('a', { text: '📁 ' + pick(f, 'Folder'), onclick: function () { openRoot('music', pick(f, 'Folder')); } }), h('span', { class: 'muted', text: '  liste de lecture « ' + pick(f, 'Playlist') + ' » · ' + plural(pick(f, 'Files'), 'morceau', 'morceaux') })]),
+          h('div', {}, [cMove ? h('button', { type: 'button', class: 'small', text: 'Répartir dans la bibliothèque…', onclick: function () { playlistFolderDialog(pick(f, 'Folder'), pick(f, 'Playlist')); } }) : null, ignoreBtn(hkey('playlistfolder', [pick(f, 'Folder')]))])
+        ]));
+      });
+      main.appendChild(pfBox);
+    }
+
     if (music) {
       var link = function (p) { return h('div', { style: 'margin-left:1em' }, [h('a', { text: '📁 ' + p, onclick: function () { openRoot('music', p); } })]); };
       var groupBox = function (title, hint, groups, button, kind) {
@@ -1089,7 +1266,7 @@
               if (res.status !== 200 || !res.body) { throw new Error(errText(res)); }
               closeDialog();
               var n = pick(res.body, 'Playlists');
-              toast(plural(pick(res.body, 'Removed'), 'copie retirée', 'copies retirées') + (n ? ' · ' + plural(n, 'entrée de liste de lecture redirigée', 'entrées de listes de lecture redirigées') : '') + '.');
+              toast(plural(pick(res.body, 'Removed'), 'copie retirée', 'copies retirées') + (n ? ' · ' + plural(n, 'entrée de liste de lecture redirigée', 'entrées de listes de lecture redirigées') : '') + '.', false, undoAction(pick(res.body, 'UndoId')));
               openHealth();
             }).catch(function (e) { ok.disabled = false; toast(e.message, true); });
           });

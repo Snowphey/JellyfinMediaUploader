@@ -14,7 +14,9 @@ public sealed record CreditSplit(IReadOnlyList<string> Artists, string Source)
 /// <summary>
 /// Découpe une mention d'artistes (« K/DA, Madison Beer, i-dle », « Freeze Corleone feat. ASHE 22 ») en artistes distincts, sans réseau.
 /// Les noms qui contiennent eux-mêmes une virgule (« Tyler, The Creator », « Earth, Wind &amp; Fire ») sont protégés : liste intégrée
-/// et noms confirmés par l'utilisateur (MusicBrainz, s'il est consulté, connaît les autres). « &amp; » ne sépare jamais (« Bigflo &amp; Oli »).
+/// et noms confirmés par l'utilisateur (MusicBrainz, s'il est consulté, connaît les autres).
+/// « &amp; », « x », « et », « and », « with » ne séparent qu'avec une preuve : les deux noms sont déjà des artistes de la bibliothèque
+/// (« Kalash Criminel &amp; Damso »), ou « &amp; » termine une liste à virgules (« Gradur, Ninho &amp; Damso ») ; sinon le nom reste entier (« Bigflo &amp; Oli »).
 /// </summary>
 public static class ArtistCredits
 {
@@ -29,6 +31,9 @@ public static class ArtistCredits
     };
 
     private static readonly Regex Separators = new(@"\s*[;,]\s*|\s+(?:feat\.?|ft\.?|featuring)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private const string StandalonePrefix = "=";
+    private static readonly Regex Joiners = new(@"\s+(?:&|x|et|and|with)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex Ampersand = new(@"\s+&\s+", RegexOptions.Compiled);
     private static readonly Regex Cast = new(@"(^|[\s-])cast$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
@@ -37,6 +42,43 @@ public static class ArtistCredits
     /// <param name="credit">Mention.</param>
     /// <returns>Résultat.</returns>
     public static bool IsMultiple(string? credit) => !string.IsNullOrWhiteSpace(credit) && Separators.IsMatch(credit);
+
+    /// <summary>
+    /// Vrai si la mention cite peut-être plusieurs artistes, mots de liaison compris (« A &amp; B », « A x B ») : à faire trancher par MusicBrainz.
+    /// </summary>
+    /// <param name="credit">Mention.</param>
+    /// <returns>Résultat.</returns>
+    public static bool IsAmbiguous(string? credit) => IsMultiple(credit) || (!string.IsNullOrWhiteSpace(credit) && Joiners.IsMatch(credit));
+
+    /// <summary>
+    /// Tous les noms possibles d'une mention, en coupant partout (« A, B &amp; C » : A, B, C) : pour interroger MusicBrainz, jamais pour écrire des tags.
+    /// </summary>
+    /// <param name="credit">Mention.</param>
+    /// <returns>Noms.</returns>
+    public static IReadOnlyList<string> Candidates(string credit) =>
+        Separators.Split(credit).SelectMany(t => Joiners.Split(t)).Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
+
+    /// <summary>
+    /// Clés des artistes cités par des mentions (virgules, « ; », « feat. » ; les mots de liaison ne sont pas coupés) : les artistes que la bibliothèque connaît.
+    /// </summary>
+    /// <param name="credits">Mentions (tags, noms de dossiers).</param>
+    /// <returns>Clés.</returns>
+    public static HashSet<string> KnownKeys(IEnumerable<string?> credits)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var credit in credits.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c!.Trim()))
+        {
+            keys.UnionWith(Separators.Split(credit).Select(t => Key(t.Trim())).Where(k => k.Length > 0));
+
+            // Nom cité seul (dossier, morceau d'un seul artiste) : « Bigflo & Oli » est alors un artiste à part entière.
+            if (!Separators.IsMatch(credit))
+            {
+                keys.Add(StandalonePrefix + Key(credit));
+            }
+        }
+
+        return keys;
+    }
 
     /// <summary>
     /// Vrai si la mention contient des lettres autres que latines (japonais, coréen, cyrillique…).
@@ -57,11 +99,12 @@ public static class ArtistCredits
     /// </summary>
     /// <param name="credit">Mention lue dans les tags.</param>
     /// <param name="knownNames">Noms à garder entiers (confirmés par l'utilisateur), comparés sans casse ni ponctuation ; null : liste intégrée seulement.</param>
+    /// <param name="libraryArtists">Clés des artistes déjà présents dans la bibliothèque (<see cref="KnownKeys"/>) : « A &amp; B » n'est coupé que si A et B y sont.</param>
     /// <returns>Artistes.</returns>
-    public static CreditSplit Split(string credit, ICollection<string>? knownNames = null)
+    public static CreditSplit Split(string credit, ICollection<string>? knownNames = null, ISet<string>? libraryArtists = null)
     {
         var text = credit.Trim();
-        if (!IsMultiple(text))
+        if (!IsAmbiguous(text))
         {
             return new CreditSplit(new[] { text }, "single");
         }
@@ -93,8 +136,31 @@ public static class ArtistCredits
                 }
             }
 
-            artists.Add(string.Join(", ", tokens.Skip(i).Take(taken)));
+            var token = string.Join(", ", tokens.Skip(i).Take(taken));
             i += taken - 1;
+
+            // Mots de liaison : coupés seulement avec une preuve (voir la classe) ; un nom protégé reste entier.
+            if (taken == 1 && !IsName(token, known) && Joiners.IsMatch(token))
+            {
+                var parts = Joiners.Split(token).Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
+                var allKnown = libraryArtists is not null && parts.Count > 1 && parts.All(p => libraryArtists.Contains(Key(p)));
+                // « A, B & C » : le « & » final sépare, sauf si la liste est faite de duos (« Mcfly & Carlito, Bigflo & Oli ») ou si la bibliothèque connaît déjà « B & C » comme un artiste cité seul.
+                var listEnd = tokens.Count > 1 && i == tokens.Count - 1 && Ampersand.IsMatch(token) && !Joiners.IsMatch(Ampersand.Replace(token, " ", 1))
+                    && !tokens.Take(tokens.Count - 1).Any(t => Joiners.IsMatch(t)) && libraryArtists?.Contains(StandalonePrefix + Key(token)) != true;
+                if (allKnown)
+                {
+                    artists.AddRange(parts);
+                    continue;
+                }
+
+                if (listEnd)
+                {
+                    artists.AddRange(Ampersand.Split(token).Select(t => t.Trim()).Where(t => t.Length > 0));
+                    continue;
+                }
+            }
+
+            artists.Add(token);
         }
 
         var distinct = artists.GroupBy(Key, StringComparer.Ordinal).Select(g => g.First()).Where(a => a.Length > 0).ToList();

@@ -57,6 +57,31 @@ public static class LibraryMusicIndex
         return all.Where(e => e.Path.StartsWith(root, StringComparison.Ordinal)).ToList();
     }
 
+    /// <summary>
+    /// Clés des artistes présents dans un dossier musique : artistes des morceaux connus de Jellyfin et dossiers d'artiste.
+    /// </summary>
+    /// <param name="root">Dossier musique.</param>
+    /// <returns>Clés (<see cref="ArtistCredits.KnownKeys"/>).</returns>
+    public static HashSet<string> ArtistKeys(string root)
+    {
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        IEnumerable<string?> dirs;
+        try
+        {
+            dirs = Directory.Exists(root) ? Directory.EnumerateDirectories(root).Select(Path.GetFileName).ToList() : new List<string?>();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            dirs = new List<string?>();
+        }
+
+        return ArtistCredits.KnownKeys(Under(root).Select(e => e.Tags.Artist).Concat(dirs));
+    }
+
     private static List<(string Path, TagInfo Tags)> Snapshot()
     {
         lock (Gate)

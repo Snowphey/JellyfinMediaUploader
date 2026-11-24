@@ -200,6 +200,9 @@ public sealed class PlannerOptions
 
     /// <summary>Gets or sets les noms d'artistes contenant une virgule confirmés par l'utilisateur (gardés entiers).</summary>
     public ICollection<string>? ArtistNames { get; set; }
+
+    /// <summary>Gets or sets les clés des artistes déjà présents dans la bibliothèque (« A & B » n'est coupé que si A et B y sont).</summary>
+    public ISet<string>? LibraryArtists { get; set; }
 }
 
 /// <summary>

@@ -937,7 +937,17 @@ Check("découpage : « & » ne sépare pas", Arts("Mcfly & Carlito, Bigflo & Oli
 Check("découpage : répétitions retirées", Arts("Yoshimasa Terui;Yoshimasa Terui;Yoshimasa Terui"), "Yoshimasa Terui");
 Check("nom à virgule connu : entier", (Arts("Tyler, The Creator"), ArtistCredits.Split("Earth, Wind & Fire").Source), ("Tyler, The Creator", "name"));
 Check("nom à virgule connu dans une liste", Arts("Kali Uchis, Tyler, The Creator, Bootsy Collins"), "Kali Uchis | Tyler, The Creator | Bootsy Collins");
-Check("pas de règle de forme : vraie collaboration", Arts("Damso, Hamza & SCH"), "Damso | Hamza & SCH");
+Check("« & » final d'une liste : sépare", Arts("Damso, Hamza & SCH"), "Damso | Hamza | SCH");
+Check("« & » final : l'écran FREE CONGO", Arts("Gradur, Ninho, Damso, Josman, Youssoupha & Kalash Criminel"), "Gradur | Ninho | Damso | Josman | Youssoupha | Kalash Criminel");
+var libArtists = ArtistCredits.KnownKeys(new[] { "Kalash Criminel", "Damso; Hamza", "Bigflo & Oli", "Gazo" });
+Check("« A & B » seul, deux artistes connus : séparés", string.Join(" | ", ArtistCredits.Split("Kalash Criminel & Damso", null, libArtists).Artists), "Kalash Criminel | Damso");
+Check("« A & B » seul, inconnus : entier", (string.Join(" | ", ArtistCredits.Split("Bigflo & Oli", null, libArtists).Artists), ArtistCredits.Split("Simon & Garfunkel", null, libArtists).Source), ("Bigflo & Oli", "single"));
+Check("« A x B » : séparés si connus", string.Join(" | ", ArtistCredits.Split("Gazo x Damso", null, libArtists).Artists), "Gazo | Damso");
+Check("« & » final, duo connu de la bibliothèque : entier", string.Join(" | ", ArtistCredits.Split("Vald, Bigflo & Oli", null, libArtists).Artists), "Vald | Bigflo & Oli");
+Check("« & » final : la mention elle-même ne protège pas la paire", string.Join(" | ", ArtistCredits.Split("Gradur, Ninho, Youssoupha & Kalash Criminel", null, ArtistCredits.KnownKeys(new[] { "Gradur, Ninho, Youssoupha & Kalash Criminel" })).Artists), "Gradur | Ninho | Youssoupha | Kalash Criminel");
+Check("« and » dans une liste : jamais coupé sans preuve", Arts("Alan Braxe, Fred Falke and Friends"), "Alan Braxe | Fred Falke and Friends");
+True("« & » : à vérifier sur MusicBrainz", ArtistCredits.IsAmbiguous("Kalash Criminel & Damso") && !ArtistCredits.IsMultiple("Kalash Criminel & Damso") && !ArtistCredits.IsAmbiguous("Lil Nas X"));
+Check("noms candidats pour MusicBrainz", string.Join(" | ", ArtistCredits.Candidates("Bigflo & Oli, Damso feat. Gazo")), "Bigflo | Oli | Damso | Gazo");
 Check("pas de règle de forme : « , The Weeknd »", Arts("Kendrick Lamar, The Weeknd"), "Kendrick Lamar | The Weeknd");
 Check("nom confirmé par l'utilisateur", Arts("Coda, くまのきよみ", new[] { "coda, くまのきよみ" }), "Coda, くまのきよみ");
 Check("un seul artiste : rien à découper", ArtistCredits.Split("Bigflo & Oli").Source, "single");
@@ -986,6 +996,43 @@ var mbJjk = MusicBrainzCredits.ParseRecordings(Fixture("rec_jujutsu"), "Jujutsu 
 Check("MusicBrainz : nom japonais retrouvé", mbJjk?.Artists.FirstOrDefault().Name, "照井順政");
 Check("MusicBrainz : alias latin", MusicBrainzCredits.ParseLatinAlias(Fixture("artist_terui")), "Yoshimasa Terui");
 Check("MusicBrainz : titre différent refusé", MusicBrainzCredits.ParseRecordings(Fixture("rec_surface"), "Dos Oruguitas", "Jessica Darrow", "Encanto"), null);
+Check("MusicBrainz : dossier = artiste principal si la sortie est créditée aux interprètes, sinon l'artiste de la sortie",
+    (new MbCredit(new[] { "disiz", "Theodora" }, "disiz & Theodora", "melodrama").FolderArtist, new MbCredit(new[] { "Jessica Darrow" }, "Lin‐Manuel Miranda, Germaine Franco & Encanto - Cast", "Encanto").FolderArtist, new MbCredit(new[] { "A" }, "Various Artists", "X").FolderArtist),
+    ("disiz", "Lin‐Manuel Miranda, Germaine Franco & Encanto - Cast", "A"));
+Check("MusicBrainz : piste, disque et année de la sortie retenue", (mbSurface?.Track, mbSurface?.Disc, mbSurface?.Year), ((int?)3, (int?)1, (int?)2021));
+
+// ---------- Dossiers créés par l'import d'une liste de lecture ----------
+var pfRoot = Path.Combine(Path.GetTempPath(), "mu-pf-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(Path.Combine(pfRoot, "Various Artists", "BINGO Pouzzz"));
+Directory.CreateDirectory(Path.Combine(pfRoot, "Various Artists", "Now 2020"));
+File.WriteAllText(Path.Combine(pfRoot, "Various Artists", "BINGO Pouzzz", "73 - BIG BOSS LADY.m4a"), "x");
+File.WriteAllText(Path.Combine(pfRoot, "Various Artists", "Now 2020", "01 - X.m4a"), "x");
+var pfFound = PlaylistFolders.Find(pfRoot, new[] { "BINGO Pouzzz", "Autre" }, f => f.EndsWith(".m4a", StringComparison.Ordinal));
+Check("liste de lecture : dossier du même nom repéré (pas une vraie compilation)", string.Join(" | ", pfFound.Select(f => f.Folder + " = " + f.Playlist + " (" + f.Files + ")")), "Various Artists/BINGO Pouzzz = BINGO Pouzzz (1)");
+Directory.Delete(pfRoot, true);
+var pfDir = "/m/Various Artists/BINGO Pouzzz/";
+var pfFiles = new List<(string, string, TagSnapshot)>
+{
+    ("Various Artists/BINGO Pouzzz/73 - BIG BOSS LADY.m4a", pfDir + "73 - BIG BOSS LADY.m4a", new TagSnapshot("BIG BOSS LADY", "Theodora & Jahlys", "Various Artists", "BINGO Pouzzz", 0, 73, 0, null, true)),
+    ("Various Artists/BINGO Pouzzz/21 - Iron.m4a", pfDir + "21 - Iron.m4a", new TagSnapshot("Iron", "Woodkid", "Various Artists", "BINGO Pouzzz", 0, 21, 0, null, true)),
+    ("Various Artists/BINGO Pouzzz/52 - Kongolese.m4a", pfDir + "52 - Kongolese.m4a", new TagSnapshot("Kongolese", "Gradur & Damso", "Various Artists", "BINGO Pouzzz", 2019, 52, 0, null, true)),
+};
+var pfLibrary = new List<(string, TagInfo)>
+{
+    ("/m/Theodora/BAD BOY LOVESTORY/10 - BIG BOSS LADY.m4a", new TagInfo("Theodora, Jahlys", "BAD BOY LOVESTORY", "BIG BOSS LADY")),
+    ("/m/Theodora/MEGA BBL/21 - BIG BOSS LADY.flac", new TagInfo("Theodora, Jahlys", "MEGA BBL", "BIG BOSS LADY")),
+    (pfDir + "73 - BIG BOSS LADY.m4a", new TagInfo("Theodora & Jahlys", "BINGO Pouzzz", "BIG BOSS LADY")),
+    ("/m/Gradur/X/01 - Y.m4a", new TagInfo("Gradur", "X", "Y")),
+    ("/m/Damso/X/01 - Z.m4a", new TagInfo("Damso", "X", "Z")),
+};
+var pfPlan = PlaylistFolders.Plan("/m", pfFiles, pfLibrary, _ => true, p => p.EndsWith(".flac", StringComparison.Ordinal) ? 30 : 3,
+    (title, credit) => title == "Iron" ? (true, new MbCredit(new[] { "Woodkid" }, "Woodkid", "Iron EP") { Track = 1, Year = 2011 }) : (false, null),
+    null, ArtistCredits.KnownKeys(new[] { "Gradur", "Damso", "Theodora" }));
+Check("liste de lecture : doublon, copie sans perte conseillée", (pfPlan[0].Action, string.Join(" | ", pfPlan[0].Copies)), ("keep", "Theodora/MEGA BBL/21 - BIG BOSS LADY.flac | Theodora/BAD BOY LOVESTORY/10 - BIG BOSS LADY.m4a"));
+Check("liste de lecture : album d'origine d'après MusicBrainz", (pfPlan[1].Action, pfPlan[1].AlbumArtist, pfPlan[1].Album, pfPlan[1].Track, pfPlan[1].Year, pfPlan[1].Source), ("move", "Woodkid", "Iron EP", 1, 2011, "musicbrainz"));
+Check("liste de lecture : en attente de MusicBrainz, single en attendant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("Gradur; Damso", "Gradur", "Kongolese", 1, 2019, "pending"));
+var restore = TagChanges.Restore(new TagSnapshot(null, "A; B", null, "Alb", 2020, 3, 0, null, false));
+Check("annulation : tags d'origine, champs vides effacés", (restore.Title, restore.Artist, restore.AlbumArtist, restore.Album, restore.Year, restore.Track, restore.Disc), ("", "A; B", "", "Alb", (uint?)2020, (uint?)3, (uint?)0));
 
 // ---------- Santé de la bibliothèque musique : artistes et albums répartis, morceaux en double ----------
 Check("artiste principal", (MusicHealth.Lead("K DA, Madison Beer, i-dle"), MusicHealth.Lead("Freeze Corleone feat. ASHE 22"), MusicHealth.Lead("Bigflo & Oli"), MusicHealth.Lead("Mcfly & Carlito, Bigflo & Oli")), ("K DA", "Freeze Corleone", "Bigflo & Oli", "Mcfly & Carlito"));

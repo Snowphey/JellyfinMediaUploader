@@ -66,7 +66,8 @@ public static class PlanFactory
             MaxFileBytes = c.MaxFileSizeMb > 0 ? c.MaxFileSizeMb * 1024L * 1024L : 0,
             RenameSubtitles = c.RenameSubtitles,
             CreditLookup = c.MusicBrainzArtists ? (title, credit, album) => Import.MusicBrainzCredits.TryGetCached(title, credit, album, out var hit) ? hit : null : null,
-            ArtistNames = c.ArtistNames ?? new List<string>()
+            ArtistNames = c.ArtistNames ?? new List<string>(),
+            LibraryArtists = Library.LibraryMusicIndex.ArtistKeys(c.MusicPath?.Trim() ?? string.Empty)
         };
     }
 

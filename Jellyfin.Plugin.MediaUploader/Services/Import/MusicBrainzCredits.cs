@@ -9,6 +9,33 @@ namespace Jellyfin.Plugin.MediaUploader.Services.Import;
 /// <param name="Release">Titre de la sortie retenue.</param>
 public sealed record MbCredit(IReadOnlyList<string> Artists, string? AlbumArtist, string? Release)
 {
+    /// <summary>Gets le numéro de piste sur la sortie retenue (0 : inconnu).</summary>
+    public int Track { get; init; }
+
+    /// <summary>Gets le numéro de disque sur la sortie retenue (0 : inconnu).</summary>
+    public int Disc { get; init; }
+
+    /// <summary>Gets l'année de la sortie retenue (0 : inconnue).</summary>
+    public int Year { get; init; }
+
+    /// <summary>
+    /// Gets l'artiste du dossier : celui de la sortie quand elle est créditée à d'autres (compositeurs d'une bande originale),
+    /// l'artiste principal quand elle l'est aux interprètes eux-mêmes (« disiz &amp; Theodora » : « disiz »).
+    /// </summary>
+    public string FolderArtist
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(AlbumArtist) || AlbumArtist == ArtistCredits.VariousArtists)
+            {
+                return ArtistCredits.FolderArtist(Artists);
+            }
+
+            var mine = Artists.Concat(OriginalNames).Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
+            return ArtistCredits.Candidates(AlbumArtist).All(a => mine.Contains(ArtistCredits.Key(a))) ? ArtistCredits.FolderArtist(Artists) : AlbumArtist;
+        }
+    }
+
     /// <summary>Gets les noms tels qu'écrits sur MusicBrainz (avant conversion en écriture latine), pour reconnaître ceux des tags.</summary>
     public IReadOnlyList<string> OriginalNames { get; init; } = Array.Empty<string>();
 }
@@ -17,7 +44,17 @@ public sealed record MbCredit(IReadOnlyList<string> Artists, string? AlbumArtist
 /// <param name="Artists">Interprètes : nom et identifiant MusicBrainz.</param>
 /// <param name="AlbumCredit">Artistes de la sortie : nom, identifiant et liaison (« &amp; », « , »).</param>
 /// <param name="Release">Titre de la sortie.</param>
-public sealed record MbMatch(IReadOnlyList<(string Name, string? Id)> Artists, IReadOnlyList<(string Name, string? Id, string Join)> AlbumCredit, string? Release);
+public sealed record MbMatch(IReadOnlyList<(string Name, string? Id)> Artists, IReadOnlyList<(string Name, string? Id, string Join)> AlbumCredit, string? Release)
+{
+    /// <summary>Gets le numéro de piste sur la sortie (0 : inconnu).</summary>
+    public int Track { get; init; }
+
+    /// <summary>Gets le numéro de disque (0 : inconnu).</summary>
+    public int Disc { get; init; }
+
+    /// <summary>Gets l'année de la sortie (0 : inconnue).</summary>
+    public int Year { get; init; }
+}
 
 /// <summary>
 /// Demande à MusicBrainz qui interprète un morceau, et à qui est l'album. Une réponse n'est retenue que si elle est sûre :
@@ -73,7 +110,7 @@ public static class MusicBrainzCredits
             return cached;
         }
 
-        var lead = ArtistCredits.Split(credit).Lead;
+        var lead = ArtistCredits.Candidates(credit).FirstOrDefault() ?? credit;
         var query = $"recording:\"{MusicBrainzClient.EscapeLucene(title)}\" AND artist:\"{MusicBrainzClient.EscapeLucene(lead)}\"";
         var json = await MusicBrainzClient.GetJsonAsync($"recording?query={Uri.EscapeDataString(query)}&fmt=json&limit=15", ct).ConfigureAwait(false);
         var match = ParseRecordings(json, title, credit, album);
@@ -127,7 +164,7 @@ public static class MusicBrainzCredits
                 albumArtist = sb.ToString().Trim();
             }
 
-            result = artists.Count > 0 ? new MbCredit(artists, albumArtist, match.Release) { OriginalNames = match.Artists.Select(a => a.Name).ToList() } : null;
+            result = artists.Count > 0 ? new MbCredit(artists, albumArtist, match.Release) { OriginalNames = match.Artists.Select(a => a.Name).ToList(), Track = match.Track, Disc = match.Disc, Year = match.Year } : null;
         }
 
         Cache[CacheKey(title, credit, album)] = (DateTime.UtcNow, result);
@@ -156,7 +193,8 @@ public static class MusicBrainzCredits
             return null;
         }
 
-        var creditKeys = ArtistCredits.Split(credit).Artists.Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
+        // Noms coupés partout (« A & B » : A, B) en plus du découpage prudent : MusicBrainz tranche ensuite.
+        var creditKeys = ArtistCredits.Split(credit).Artists.Concat(ArtistCredits.Candidates(credit)).Select(ArtistCredits.Key).ToHashSet(StringComparer.Ordinal);
         var albumKey = AlbumKey(album);
 
         // Tous les enregistrements qui correspondent (titre, un artiste en commun) sont comparés : le même morceau figure souvent
@@ -205,7 +243,11 @@ public static class MusicBrainzCredits
             }
 
             var albumCredit = release?["artist-credit"] is JsonArray rc ? CreditWithJoins(rc) : CreditWithJoins(rec["artist-credit"] as JsonArray);
-            best = new MbMatch(names.Select(n => (n.Name, n.Id)).ToList(), albumCredit, release?["title"]?.GetValue<string>());
+            var medium = (release?["media"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault();
+            var trackNo = int.TryParse((medium?["track"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault()?["number"]?.GetValue<string>(), out var tn) ? tn : 0;
+            var discNo = medium?["position"] is JsonValue pos && pos.TryGetValue<int>(out var dn) ? dn : 0;
+            var year = int.TryParse((release?["date"]?.GetValue<string>() ?? string.Empty).Split('-')[0], out var y) ? y : 0;
+            best = new MbMatch(names.Select(n => (n.Name, n.Id)).ToList(), albumCredit, release?["title"]?.GetValue<string>()) { Track = trackNo, Disc = discNo, Year = year };
             bestScore = score;
         }
 

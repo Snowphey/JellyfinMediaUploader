@@ -63,10 +63,10 @@ public static class CreditEnricher
                 .ToList();
 
             // Un album dont un morceau est ambigu est vérifié en entier : tous ses morceaux auront le même artiste d'album (Encanto : les compositeurs).
-            var ambiguous = songs.Where(t => ArtistCredits.IsMultiple(t.Credit) || ArtistCredits.HasNonLatin(t.Credit)).ToList();
+            var ambiguous = songs.Where(t => ArtistCredits.IsAmbiguous(t.Credit) || ArtistCredits.HasNonLatin(t.Credit)).ToList();
             var albums = ambiguous.Select(t => NameTools.TitleKey(t.Album)).Where(k => k.Length > 0).ToHashSet(StringComparer.Ordinal);
             return songs
-                .Where(t => ArtistCredits.IsMultiple(t.Credit) || ArtistCredits.HasNonLatin(t.Credit) || albums.Contains(NameTools.TitleKey(t.Album)))
+                .Where(t => ArtistCredits.IsAmbiguous(t.Credit) || ArtistCredits.HasNonLatin(t.Credit) || albums.Contains(NameTools.TitleKey(t.Album)))
                 .Where(t => !MusicBrainzCredits.TryGetCached(t.Title, t.Credit, t.Album, out _))
                 .GroupBy(t => MusicBrainzCredits.CacheKey(t.Title, t.Credit, t.Album))
                 .Select(g => (g.First().Title, g.First().Credit!, g.First().Album))

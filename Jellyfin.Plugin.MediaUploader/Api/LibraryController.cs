@@ -162,6 +162,51 @@ public class LibraryTagsRequest
 
     /// <summary>Gets or sets a value indicating whether seul l'aperçu est demandé.</summary>
     public bool DryRun { get; set; }
+
+    /// <summary>Gets or sets les corrections à la main, fichier par fichier (elles l'emportent sur les modifications communes).</summary>
+    public List<TagOverride>? Overrides { get; set; }
+}
+
+/// <summary>Correction à la main d'un fichier dans l'aperçu.</summary>
+public class TagOverride
+{
+    /// <summary>Gets or sets le fichier (chemin relatif).</summary>
+    public string? Path { get; set; }
+
+    /// <summary>Gets or sets les artistes (« A; B »).</summary>
+    public string? Artist { get; set; }
+
+    /// <summary>Gets or sets l'artiste de l'album.</summary>
+    public string? AlbumArtist { get; set; }
+
+    /// <summary>Gets or sets l'album.</summary>
+    public string? Album { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether ce fichier est laissé tel quel.</summary>
+    public bool Skip { get; set; }
+}
+
+/// <summary>Dossier créé par l'import d'une liste de lecture : plan ou répartition.</summary>
+public class PlaylistFolderRequest
+{
+    /// <summary>Gets or sets la bibliothèque (musique).</summary>
+    public string? Root { get; set; }
+
+    /// <summary>Gets or sets le dossier (relatif).</summary>
+    public string? Folder { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether la vérification sur MusicBrainz est lancée (plan).</summary>
+    public bool Lookup { get; set; }
+
+    /// <summary>Gets or sets le plan, corrigé à la main (répartition).</summary>
+    public List<PlaylistFolderRow>? Rows { get; set; }
+}
+
+/// <summary>Annulation d'une correction.</summary>
+public class LibraryUndoRequest
+{
+    /// <summary>Gets or sets l'identifiant de la correction.</summary>
+    public string? Id { get; set; }
 }
 
 /// <summary>
@@ -810,7 +855,22 @@ public class LibraryController : MediaUploaderControllerBase
             Report = LibraryFs.Health(r, kindOf, IsBusy, DateTime.UtcNow, r.Key == "music", r.Key == "music" ? LibraryTags.HasCover : null),
             Music = r.Key == "music" ? MusicHealth.Analyze(r.Path, LibraryMusicIndex.Under(r.Path), System.IO.File.Exists, FileSize, Config.ArtistNames) : null
         }).ToList();
-        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>(), ArtistDelimiter = DelimiterStatus() });
+        var music = Roots().FirstOrDefault(r => r.Key == "music");
+        List<PlaylistFolder> playlistFolders = new();
+        if (music is not null)
+        {
+            try
+            {
+                var names = _userManager.GetUsersIds().SelectMany(id => _playlistManager.GetPlaylists(id)).Select(p => p.Name).Distinct(StringComparer.Ordinal).ToList();
+                playlistFolders = PlaylistFolders.Find(music.Path, names, f => kindOf(Path.GetExtension(f).ToLowerInvariant()) == "audio");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "MediaUploader: listes de lecture illisibles");
+            }
+        }
+
+        return Ok(new { Reports = reports, Ignored = Config.HealthIgnored ?? new List<string>(), ArtistDelimiter = DelimiterStatus(), PlaylistFolders = playlistFolders });
     }
 
     /// <summary>
@@ -953,6 +1013,7 @@ public class LibraryController : MediaUploaderControllerBase
         var mode = Config.LibraryDeleteMode == "permanent" ? "permanent" : "trash";
         var results = LibraryFs.Delete(r!, remove, mode, CurrentUserName, dryRun: false, IsBusy, DateTime.UtcNow);
         var done = results.Where(x => x.Status is "trashed" or "deleted").ToList();
+        string? undoId = null;
         if (done.Count == 0)
         {
             relinked = 0;
@@ -973,9 +1034,12 @@ public class LibraryController : MediaUploaderControllerBase
                 $"gardé : {keep}",
                 string.Join("\n", done.Select(d => d.Source)));
             AfterChange(r!, remove.Where(doneSet.Contains), Array.Empty<string>());
+            var journal = new UndoEntry { User = CurrentUserName, Root = r!.Key, Label = $"{CurrentUserName} a retiré {done.Count} doublon(s) de « {keep} »" };
+            journal.Trashed.AddRange(done.Where(d => d.TrashId is not null).Select(d => new UndoTrash { TrashId = d.TrashId!, Path = d.Source }));
+            undoId = UndoJournal.Add(journal);
         }
 
-        return Ok(new { Mode = mode, Removed = done.Count, Playlists = relinked, Results = results });
+        return Ok(new { UndoId = undoId, Mode = mode, Removed = done.Count, Playlists = relinked, Results = results });
     }
 
     /// <summary>
@@ -1075,7 +1139,9 @@ public class LibraryController : MediaUploaderControllerBase
         }
 
         var policy = request.Policy == "rename" ? "rename" : "skip";
-        var splitArtist = new Dictionary<TagRow, string>();
+        var perRow = new Dictionary<TagRow, TagChanges>();
+        var overrides = (request.Overrides ?? new List<TagOverride>()).Where(o => !string.IsNullOrWhiteSpace(o.Path)).GroupBy(o => o.Path!.Trim(), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Last(), StringComparer.Ordinal);
+        var libraryArtists = request.SplitArtists ? LibraryMusicIndex.ArtistKeys(r.Path) : null;
         var rows = new List<TagRow>();
         foreach (var file in files)
         {
@@ -1098,16 +1164,36 @@ public class LibraryController : MediaUploaderControllerBase
                 continue;
             }
 
-            row.After = Merge(before, changes);
-            if (request.SplitArtists && changes.Artist is null && !string.IsNullOrWhiteSpace(row.After.Artist))
+            overrides.TryGetValue(file, out var ov);
+            if (ov?.Skip == true)
             {
-                var split = ArtistCredits.Split(NameTools.DedupeArtists(row.After.Artist) ?? row.After.Artist, Config.ArtistNames);
+                row.Status = "skipped";
+                row.Message = "Laissé tel quel.";
+                rows.Add(row);
+                continue;
+            }
+
+            // Modifications propres à ce fichier : artistes séparés d'après sa mention, puis corrections à la main.
+            var rc = changes.Copy();
+            var merged = Merge(before, rc);
+            if (request.SplitArtists && changes.Artist is null && !string.IsNullOrWhiteSpace(merged.Artist))
+            {
+                var split = ArtistCredits.Split(NameTools.DedupeArtists(merged.Artist) ?? merged.Artist, Config.ArtistNames, libraryArtists);
                 if (split.Artists.Count > 1)
                 {
-                    row.After = row.After with { Artist = string.Join("; ", split.Artists) };
-                    splitArtist[row] = row.After.Artist!;
+                    rc.Artist = string.Join("; ", split.Artists);
                 }
             }
+
+            if (ov is not null)
+            {
+                rc.Artist = ov.Artist?.Trim() ?? rc.Artist;
+                rc.AlbumArtist = ov.AlbumArtist?.Trim() ?? rc.AlbumArtist;
+                rc.Album = ov.Album?.Trim() ?? rc.Album;
+            }
+
+            row.After = Merge(before, rc);
+            perRow[row] = rc;
 
             if (request.Reorganize)
             {
@@ -1136,7 +1222,7 @@ public class LibraryController : MediaUploaderControllerBase
                 Errors = rows.Count(x => x.Status == "error"),
                 Moves = rows.Count(x => x.TargetRelative is not null),
                 Conflicts = rows.Count(x => x.Conflict),
-                Rows = rows.Take(150).Select(x => new { x.Path, x.Status, x.Message, x.Conflict, Target = x.TargetRelative, Before = Brief(x.Before), After = Brief(x.After) }).ToList()
+                Rows = rows.Take(request.SplitArtists || overrides.Count > 0 ? 1000 : 150).Select(x => new { x.Path, x.Status, x.Message, x.Conflict, Target = x.TargetRelative, Before = Brief(x.Before), After = Brief(x.After), Edited = overrides.ContainsKey(x.Path) }).ToList()
             });
         }
 
@@ -1147,12 +1233,8 @@ public class LibraryController : MediaUploaderControllerBase
         var touched = new List<string>();
         foreach (var row in rows.Where(x => x.Status == "ok"))
         {
-            // Artistes séparés : propres à chaque morceau (sa mention à lui).
-            var rowChanges = changes;
-            if (splitArtist.TryGetValue(row, out var separated))
-            {
-                rowChanges = new TagChanges { Title = changes.Title, Artist = separated, AlbumArtist = changes.AlbumArtist, Album = changes.Album, Genre = changes.Genre, Year = changes.Year, Track = changes.Track, Disc = changes.Disc };
-            }
+            // Modifications propres à chaque morceau (artistes séparés d'après sa mention, corrections à la main).
+            var rowChanges = perRow.TryGetValue(row, out var own) ? own : changes;
 
             if (!rowChanges.IsEmpty)
             {
@@ -1199,12 +1281,14 @@ public class LibraryController : MediaUploaderControllerBase
             }
         }
 
+        var sidecars = new List<UndoFile>();
         if (request.Reorganize)
         {
-            CleanupAfterReorganize(r, rows, touchedDirs, removed, touched);
+            CleanupAfterReorganize(r, rows, touchedDirs, removed, touched, sidecars);
         }
 
         var ok = rows.Count(x => x.Status is "tagged" or "moved");
+        string? undoId = null;
         if (ok > 0)
         {
             SizeCache.Clear();
@@ -1245,10 +1329,449 @@ public class LibraryController : MediaUploaderControllerBase
             var name = $"{CurrentUserName} a modifié les tags de {ok} fichier{(ok > 1 ? "s" : string.Empty)}" + (movedCount > 0 ? $" et en a rangé {movedCount}" : string.Empty) + $" ({r.Label})";
             var lines = rows.Where(x => x.Status is "tagged" or "moved").Select(x => $"{x.Path}" + (x.Before is null || x.After is null ? string.Empty : " : " + Diff(x.Before, x.After)) + (x.Moved ? $" → {x.TargetRelative}" : string.Empty)).ToList();
             PluginActivity.Log(name, "MediaUploaderLibrary", CurrentUserId, string.Join(", ", summary), ActivityText.LibraryDetail(lines, MaxActivityLines));
-            AfterChange(r, removed, touched, tagsChanged: !changes.IsEmpty);
+            AfterChange(r, removed, touched, tagsChanged: true);
+
+            // De quoi annuler : chemin et tags d'origine de chaque fichier touché, fichiers annexes déplacés.
+            var journal = new UndoEntry { User = CurrentUserName, Label = name, Root = r.Key };
+            foreach (var x in rows.Where(x => x.Status is "tagged" or "moved"))
+            {
+                var wrote = perRow.TryGetValue(x, out var c) ? !c.IsEmpty : !changes.IsEmpty;
+                journal.Files.Add(new UndoFile { From = x.Path, To = x.Moved && x.TargetRelative is not null ? x.TargetRelative : x.Path, Before = wrote ? x.Before : null });
+            }
+
+            journal.Files.AddRange(sidecars);
+            undoId = UndoJournal.Add(journal);
         }
 
-        return Ok(new { Files = rows.Count, Done = ok, Errors = rows.Count(x => x.Status == "error"), Skipped = rows.Count(x => x.Status == "tagged" && x.TargetRelative is not null), Rows = rows.Take(150).Select(x => new { x.Path, x.Status, x.Message, Target = x.TargetRelative }).ToList() });
+        return Ok(new { UndoId = undoId, Files = rows.Count, Done = ok, Errors = rows.Count(x => x.Status == "error"), Skipped = rows.Count(x => x.Status == "tagged" && x.TargetRelative is not null), Rows = rows.Take(150).Select(x => new { x.Path, x.Status, x.Message, Target = x.TargetRelative }).ToList() });
+    }
+
+    /// <summary>
+    /// Dernières corrections (tags, rangements, doublons, dossiers de liste de lecture), avec de quoi les annuler.
+    /// </summary>
+    /// <returns>Corrections, les plus récentes d'abord.</returns>
+    [HttpGet("Library/Undo")]
+    public ActionResult UndoList()
+    {
+        if (!CanView)
+        {
+            return Forbid();
+        }
+
+        return Ok(new
+        {
+            Entries = UndoJournal.List().Take(15).Select(e => new { e.Id, e.At, e.User, e.Label, e.Root, e.Undone, Files = e.Files.Count(f => f.Before is not null || f.From != f.To), Trashed = e.Trashed.Count }).ToList()
+        });
+    }
+
+    /// <summary>
+    /// Annule une correction : les fichiers reprennent leur place et leurs tags d'origine, les éléments mis à la corbeille en ressortent.
+    /// Les listes de lecture suivent les fichiers remis en place.
+    /// </summary>
+    /// <param name="request">Correction.</param>
+    /// <returns>Résultat.</returns>
+    [HttpPost("Library/Undo")]
+    public ActionResult Undo([FromBody] LibraryUndoRequest request)
+    {
+        var entry = UndoJournal.Get(request.Id?.Trim() ?? string.Empty);
+        if (entry is null)
+        {
+            return NotFound(new { error = "Correction introuvable (seules les 30 dernières sont gardées)." });
+        }
+
+        if (!Gate(entry.Root, out var r, out var denied))
+        {
+            return denied!;
+        }
+
+        if (!CanMove || (entry.Trashed.Count > 0 && !CanDelete))
+        {
+            return Forbid();
+        }
+
+        if (entry.Undone)
+        {
+            return BadRequest(new { error = "Cette correction a déjà été annulée." });
+        }
+
+        // Médias aux chemins actuels : les listes de lecture les retrouveront à leur ancienne place.
+        var moved = entry.Files.Where(f => f.From != f.To).ToList();
+        var captured = CaptureItems(r!, moved.Select(f => f.To));
+        var back = new Dictionary<string, string>(StringComparer.Ordinal);
+        var problems = new List<string>();
+        var restored = 0;
+        var touched = new List<string>();
+        var removed = new List<string>();
+        var emptied = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var f in Enumerable.Reverse(entry.Files))
+        {
+            if (!LibraryFs.TryResolve(r!, f.To, out var toFull, out _) || !LibraryFs.TryResolve(r!, f.From, out var fromFull, out _))
+            {
+                continue;
+            }
+
+            if (!System.IO.File.Exists(toFull))
+            {
+                problems.Add($"{f.To} : introuvable");
+                continue;
+            }
+
+            if (IsBusy(toFull))
+            {
+                problems.Add($"{f.To} : envoi ou import en cours");
+                continue;
+            }
+
+            try
+            {
+                if (f.From != f.To)
+                {
+                    if (System.IO.File.Exists(fromFull))
+                    {
+                        problems.Add($"{f.From} : un fichier occupe déjà cette place");
+                        continue;
+                    }
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(fromFull)!);
+                    System.IO.File.Move(toFull, fromFull);
+                    back[toFull] = fromFull;
+                    emptied.Add(Path.GetDirectoryName(toFull)!);
+                    removed.Add(f.To);
+                }
+
+                if (f.Before is not null && LibraryTags.Apply(fromFull, TagChanges.Restore(f.Before)) is { } error)
+                {
+                    problems.Add($"{f.From} : tags non restaurés ({error})");
+                }
+
+                touched.Add(f.From);
+                restored++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problems.Add($"{f.To} : {ex.Message}");
+            }
+        }
+
+        // Dossiers vidés par l'annulation : supprimés en remontant, sans toucher à la racine.
+        foreach (var dir in emptied.OrderByDescending(d => d.Length))
+        {
+            var current = dir;
+            try
+            {
+                while (!string.Equals(current, r!.Path.TrimEnd('/', '\\'), StringComparison.Ordinal) && Directory.Exists(current) && !new DirectoryInfo(current).EnumerateFileSystemInfos().Any())
+                {
+                    Directory.Delete(current);
+                    current = Path.GetDirectoryName(current)!;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogDebug(ex, "MediaUploader: dossier {Dir} non supprimé", current);
+            }
+        }
+
+        var fromTrash = 0;
+        if (entry.Trashed.Count > 0)
+        {
+            var results = LibraryFs.Restore(r!, entry.Trashed.Select(t => t.TrashId).ToList());
+            foreach (var x in results)
+            {
+                if (x.Status is "moved" or "renamed")
+                {
+                    fromTrash++;
+                    if (x.Target is not null)
+                    {
+                        touched.Add(x.Target);
+                    }
+                }
+                else
+                {
+                    problems.Add($"{x.Source} : {x.Message ?? "pas dans la corbeille"}");
+                }
+            }
+        }
+
+        SizeCache.Clear();
+        Relink(captured, old => back.TryGetValue(old, out var to) ? to : null);
+        UndoJournal.MarkUndone(entry);
+        PluginActivity.Log(
+            $"{CurrentUserName} a annulé : {entry.Label}",
+            "MediaUploaderLibrary",
+            CurrentUserId,
+            $"{restored} fichier(s) remis, {fromTrash} élément(s) sorti(s) de la corbeille",
+            ActivityText.LibraryDetail(problems, MaxActivityLines));
+        AfterChange(r!, removed, touched, tagsChanged: true);
+        return Ok(new { Restored = restored, FromTrash = fromTrash, Problems = problems });
+    }
+
+    /// <summary>
+    /// Ce qui est prévu pour les morceaux d'un dossier créé par l'import d'une liste de lecture (« Various Artists/Nom de la liste ») :
+    /// copie déjà présente ailleurs (retirer celle-ci), ou rangement dans « Artiste/Album » d'après MusicBrainz (vérification en arrière-plan).
+    /// </summary>
+    /// <param name="request">Dossier, et s'il faut lancer la vérification sur MusicBrainz.</param>
+    /// <returns>Plan par morceau.</returns>
+    [HttpPost("Library/PlaylistFolder/Plan")]
+    public ActionResult PlaylistFolderPlan([FromBody] PlaylistFolderRequest request)
+    {
+        if (!Gate(request.Root ?? "music", out var r, out var denied))
+        {
+            return denied!;
+        }
+
+        if (r!.Key != "music")
+        {
+            return BadRequest(new { error = "Réservé à la bibliothèque musique." });
+        }
+
+        var folder = Clean(new List<string> { request.Folder ?? string.Empty }).FirstOrDefault();
+        if (folder is null || !LibraryFs.TryResolve(r, folder, out var folderFull, out _) || !Directory.Exists(folderFull))
+        {
+            return BadRequest(new { error = "Dossier introuvable." });
+        }
+
+        var files = new List<(string, string, TagSnapshot)>();
+        foreach (var rel in LibraryFs.AudioFiles(r, new[] { folder }, KindOf(), MaxTagFiles, out _))
+        {
+            if (LibraryFs.TryResolve(r, rel, out var full, out _) && LibraryTags.Read(full) is { } tags)
+            {
+                files.Add((rel, full, tags));
+            }
+        }
+
+        var useMb = Config.MusicBrainzArtists;
+        var key = "pf|" + folderFull;
+        if (useMb && request.Lookup)
+        {
+            var todo = files.Select(f => (Title: string.IsNullOrWhiteSpace(f.Item3.Title) ? Path.GetFileNameWithoutExtension(f.Item2) : f.Item3.Title!, Credit: NameTools.DedupeArtists(f.Item3.Artist) ?? f.Item3.Artist ?? string.Empty))
+                .Where(t => t.Credit.Length > 0 && !Services.Import.MusicBrainzCredits.TryGetCached(t.Title, t.Credit, null, out _))
+                .ToList();
+            PlaylistFolderLookups.Ensure(key, todo, _logger);
+        }
+
+        var running = PlaylistFolderLookups.IsRunning(key);
+        var rows = PlaylistFolders.Plan(
+            r.Path,
+            files,
+            LibraryMusicIndex.Under(r.Path),
+            System.IO.File.Exists,
+            FileSize,
+            useMb ? (title, credit) => Services.Import.MusicBrainzCredits.TryGetCached(title, credit, null, out var hit) ? (true, hit) : (!running, null) : null,
+            Config.ArtistNames,
+            LibraryMusicIndex.ArtistKeys(r.Path));
+        return Ok(new { Folder = folder, Pending = rows.Count(x => x.Source == "pending"), MusicBrainz = useMb, Rows = rows });
+    }
+
+    /// <summary>
+    /// Répartit un dossier de liste de lecture dans la bibliothèque, d'après le plan (corrigé à la main) : les doublons vont à la corbeille
+    /// au profit de la copie gardée, les autres morceaux sont retagués et rangés. La liste de lecture garde ses morceaux, à la même place.
+    /// </summary>
+    /// <param name="request">Dossier et plan.</param>
+    /// <returns>Résultat.</returns>
+    [HttpPost("Library/PlaylistFolder/Apply")]
+    public ActionResult PlaylistFolderApply([FromBody] PlaylistFolderRequest request)
+    {
+        if (!Gate(request.Root ?? "music", out var r, out var denied))
+        {
+            return denied!;
+        }
+
+        var rows = request.Rows ?? new List<PlaylistFolderRow>();
+        if (r!.Key != "music" || !CanMove || (rows.Any(x => x.Action == "keep") && !CanDelete))
+        {
+            return Forbid();
+        }
+
+        var folder = Clean(new List<string> { request.Folder ?? string.Empty }).FirstOrDefault();
+        if (folder is null || !LibraryFs.TryResolve(r, folder, out var folderFull, out _) || !Directory.Exists(folderFull))
+        {
+            return BadRequest(new { error = "Dossier introuvable." });
+        }
+
+        // Chaque ligne doit désigner un morceau de ce dossier, et chaque copie gardée un fichier existant hors du dossier.
+        var plan = new List<(PlaylistFolderRow Row, string Full, string? KeepFull)>();
+        foreach (var row in rows.Where(x => x.Action is "move" or "keep"))
+        {
+            if (!LibraryFs.TryResolve(r, row.Path, out var full, out _) || !System.IO.File.Exists(full) || !string.Equals(Path.GetDirectoryName(full), folderFull.TrimEnd('/', '\\'), StringComparison.Ordinal))
+            {
+                return BadRequest(new { error = $"« {row.Path} » n'est pas un morceau de ce dossier." });
+            }
+
+            string? keepFull = null;
+            if (row.Action == "keep")
+            {
+                var keep = row.Copies.FirstOrDefault();
+                if (keep is null || !LibraryFs.TryResolve(r, keep, out var kf, out _) || !System.IO.File.Exists(kf) || kf.StartsWith(folderFull, StringComparison.Ordinal))
+                {
+                    return BadRequest(new { error = $"Copie à garder introuvable pour « {row.Title} »." });
+                }
+
+                keepFull = kf;
+            }
+            else if (string.IsNullOrWhiteSpace(row.AlbumArtist) || string.IsNullOrWhiteSpace(row.Album))
+            {
+                return BadRequest(new { error = $"Artiste de l'album et album requis pour « {row.Title} »." });
+            }
+
+            if (IsBusy(full))
+            {
+                return BadRequest(new { error = $"« {row.Title} » est en cours d'envoi ou d'import." });
+            }
+
+            plan.Add((row, full, keepFull));
+        }
+
+        if (plan.Count == 0)
+        {
+            return BadRequest(new { error = "Rien à faire." });
+        }
+
+        // Entrées des listes de lecture relevées avant tout changement ; elles suivront le morceau rangé ou la copie gardée.
+        // La réparation attend la fin de la répartition pour connaître la nouvelle place de chaque morceau.
+        var newPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        var captured = CaptureItems(r, plan.Select(p => p.Row.Path));
+        using var finished = new ManualResetEventSlim(false);
+        var finishedRef = finished;
+        Relink(captured, old =>
+        {
+            try
+            {
+                finishedRef.Wait(TimeSpan.FromMinutes(10));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Répartition terminée.
+            }
+
+            lock (newPath)
+            {
+                return newPath.TryGetValue(old, out var to) ? to : null;
+            }
+        });
+
+        var journal = new UndoEntry { User = CurrentUserName, Root = r.Key };
+        var lines = new List<string>();
+        var problems = new List<string>();
+        var touched = new List<string>();
+        var removed = new List<string>();
+        var mode = Config.LibraryDeleteMode == "permanent" ? "permanent" : "trash";
+
+        // Doublons : à la corbeille, la liste de lecture renvoie vers la copie gardée.
+        var dups = plan.Where(p => p.KeepFull is not null).ToList();
+        if (dups.Count > 0)
+        {
+            var results = LibraryFs.Delete(r, dups.Select(p => p.Row.Path).ToList(), mode, CurrentUserName, dryRun: false, IsBusy, DateTime.UtcNow);
+            foreach (var x in results)
+            {
+                var p = dups.First(d => d.Row.Path == x.Source);
+                if (x.Status is "trashed" or "deleted")
+                {
+                    lock (newPath)
+                    {
+                        newPath[p.Full] = p.KeepFull!;
+                    }
+
+                    if (x.TrashId is not null)
+                    {
+                        journal.Trashed.Add(new UndoTrash { TrashId = x.TrashId, Path = x.Source });
+                    }
+
+                    removed.Add(x.Source);
+                    lines.Add($"{x.Source} : doublon de {LibraryFs.Relative(r, p.KeepFull!)}, retiré");
+                }
+                else
+                {
+                    problems.Add($"{x.Source} : {x.Message}");
+                }
+            }
+        }
+
+        // Les autres : tags d'après le plan, puis rangement dans « Artiste/Album ».
+        foreach (var (row, full, _) in plan.Where(p => p.KeepFull is null))
+        {
+            var before = LibraryTags.Read(full);
+            var changes = new TagChanges
+            {
+                Artist = row.Artists.Trim(),
+                AlbumArtist = row.AlbumArtist.Trim(),
+                Album = row.Album.Trim(),
+                Track = (uint)Math.Max(0, row.Track),
+                Disc = (uint)Math.Max(0, row.Disc),
+                Year = row.Year > 0 ? (uint)row.Year : null
+            };
+            if (LibraryTags.Apply(full, changes) is { } error)
+            {
+                problems.Add($"{row.Path} : {error}");
+                continue;
+            }
+
+            var dir = PathBuilder.MusicDir(r.Path, row.AlbumArtist.Trim(), row.Album.Trim());
+            var target = Path.Combine(dir, Services.Import.TrackNaming.FileName(row.Disc > 1 ? row.Disc : null, row.Track > 0 ? row.Track : null, string.IsNullOrWhiteSpace(before?.Title) ? row.Title : before!.Title!, Path.GetExtension(full)));
+            try
+            {
+                Directory.CreateDirectory(dir);
+                if (System.IO.File.Exists(target))
+                {
+                    target = UniqueName(target);
+                }
+
+                System.IO.File.Move(full, target);
+                lock (newPath)
+                {
+                    newPath[full] = target;
+                }
+
+                var to = LibraryFs.Relative(r, target);
+                journal.Files.Add(new UndoFile { From = row.Path, To = to, Before = before });
+                removed.Add(row.Path);
+                touched.Add(to);
+                lines.Add($"{row.Path} → {to}");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Tags écrits mais fichier resté sur place : on les remet.
+                if (before is not null)
+                {
+                    LibraryTags.Apply(full, TagChanges.Restore(before));
+                }
+
+                problems.Add($"{row.Path} : {ex.Message}");
+            }
+        }
+
+        // Dossier sans morceau restant : ce qui y reste (pochette de la liste…) va à la corbeille avec lui.
+        try
+        {
+            var kindOf = KindOf();
+            if (Directory.Exists(folderFull) && !Directory.EnumerateFiles(folderFull).Any(f => kindOf(Path.GetExtension(f).ToLowerInvariant()) == "audio"))
+            {
+                if (!Directory.EnumerateFileSystemEntries(folderFull).Any())
+                {
+                    Directory.Delete(folderFull);
+                }
+                else if (LibraryFs.Delete(r, new[] { folder }, "trash", CurrentUserName, dryRun: false, IsBusy, DateTime.UtcNow).FirstOrDefault() is { Status: "trashed", TrashId: { } id })
+                {
+                    journal.Trashed.Add(new UndoTrash { TrashId = id, Path = folder });
+                }
+
+                removed.Add(folder);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogDebug(ex, "MediaUploader: dossier {Dir} non nettoyé", folderFull);
+        }
+
+        finished.Set();
+        var movedCount = journal.Files.Count;
+        var name = $"{CurrentUserName} a réparti le dossier « {folder} » : {movedCount} morceau(x) rangé(s), {dups.Count(d => newPath.ContainsKey(d.Full))} doublon(s) retiré(s) ({r.Label})";
+        journal.Label = name;
+        var undoId = UndoJournal.Add(journal);
+        SizeCache.Clear();
+        LibraryMusicIndex.Invalidate();
+        PluginActivity.Log(name, "MediaUploaderLibrary", CurrentUserId, problems.Count > 0 ? $"{problems.Count} problème(s)" : null, ActivityText.LibraryDetail(lines.Concat(problems).ToList(), MaxActivityLines));
+        AfterChange(r, removed, touched, tagsChanged: true);
+        return Ok(new { UndoId = undoId, Moved = movedCount, Removed = dups.Count(d => newPath.ContainsKey(d.Full)), Playlists = captured.Count, Problems = problems });
     }
 
     private sealed class TagRow
@@ -1486,7 +2009,7 @@ public class LibraryController : MediaUploaderControllerBase
     }
 
     // Après avoir rangé des morceaux : les fichiers annexes (pochette, paroles…) du dossier d'origine suivent, et les dossiers vidés disparaissent.
-    private void CleanupAfterReorganize(LibraryRoot root, List<TagRow> rows, HashSet<string> sourceDirs, List<string> removed, List<string> touched)
+    private void CleanupAfterReorganize(LibraryRoot root, List<TagRow> rows, HashSet<string> sourceDirs, List<string> removed, List<string> touched, List<UndoFile>? journal = null)
     {
         var kindOf = KindOf();
         foreach (var dir in sourceDirs.OrderByDescending(d => d.Length))
@@ -1511,8 +2034,10 @@ public class LibraryController : MediaUploaderControllerBase
                             var destination = Path.Combine(targets[0], sidecar.Name);
                             if (!System.IO.File.Exists(destination))
                             {
+                                var from = LibraryFs.Relative(root, sidecar.FullName);
                                 sidecar.MoveTo(destination);
-                                removed.Add(LibraryFs.Relative(root, sidecar.FullName));
+                                journal?.Add(new UndoFile { From = from, To = LibraryFs.Relative(root, destination) });
+                                removed.Add(from);
                                 touched.Add(LibraryFs.Relative(root, destination));
                             }
                         }

@@ -19,6 +19,8 @@
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\LibraryModels.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\CoverSearch.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\MusicHealth.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\TagModels.cs" />
+    <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Library\PlaylistFolders.cs" />
     <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Detection\*.cs" />
     <Compile Include="..\Jellyfin.Plugin.MediaUploader\Services\Planner\*.cs" />

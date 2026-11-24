@@ -774,7 +774,7 @@ public static class Planner
             var tags = w.File.Tags;
             var credit = NameTools.DedupeArtists(tags?.Performers ?? tags?.Artist) ?? w.Det!.Artist!;
             var mb = o.CreditLookup?.Invoke(tags?.Title, tags?.Performers ?? tags?.Artist, tags?.Album);
-            var split = ArtistCredits.Split(credit, o.ArtistNames);
+            var split = ArtistCredits.Split(credit, o.ArtistNames, o.LibraryArtists);
             if (mb is not null)
             {
                 // MusicBrainz ne cite parfois que l'artiste principal (« Feel Good Inc. » : Gorillaz) : les autres artistes des tags sont gardés à la suite.
@@ -797,7 +797,7 @@ public static class Planner
 
             // L'artiste de l'album écrit dans les tags l'emporte ; sinon MusicBrainz, sinon l'artiste principal (« Various Artists » pour une distribution de film).
             var albumArtistTag = tags?.Performers is not null && tags.Artist is not null && ArtistCredits.Key(tags.Artist) != ArtistCredits.Key(tags.Performers);
-            var folder = albumArtistTag ? w.Det!.Artist! : mb?.AlbumArtist ?? ArtistCredits.FolderArtist(split.Artists);
+            var folder = albumArtistTag ? w.Det!.Artist! : mb?.FolderArtist ?? ArtistCredits.FolderArtist(split.Artists);
             if (!string.Equals(folder, w.Det!.Artist, StringComparison.Ordinal))
             {
                 w.Det.Artist = folder;

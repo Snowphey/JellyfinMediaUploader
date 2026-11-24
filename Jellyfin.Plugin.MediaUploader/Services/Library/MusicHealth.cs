@@ -117,10 +117,11 @@ public static class MusicHealth
 
         // Dossier unique au nom de plusieurs artistes (un artiste réparti sur plusieurs dossiers est déjà signalé à part).
         var grouped = artists.SelectMany(g => g.Items).ToHashSet(StringComparer.Ordinal);
+        var libraryArtists = ArtistCredits.KnownKeys(knownList.Select(k => k.Tags.Artist).Concat(artistDirs));
         var multi = new List<ScatteredGroup>();
         foreach (var dir in artistDirs.Where(d => !grouped.Contains(d)).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
-            var split = ArtistCredits.Split(dir, artistNames);
+            var split = ArtistCredits.Split(dir, artistNames, libraryArtists);
             if (split.Artists.Count < 2)
             {
                 continue;
@@ -135,7 +136,7 @@ public static class MusicHealth
             // Orthographe des tags pour l'artiste principal (« K/DA » plutôt que le nom de dossier « K DA »).
             var lead = ArtistCredits.FolderArtist(split.Artists);
             var spelled = knownList.Where(k => k.Path.StartsWith(Path.Combine(rootPath, dir) + Path.DirectorySeparatorChar, StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(k.Tags.Artist))
-                .Select(k => ArtistCredits.Split(NameTools.DedupeArtists(k.Tags.Artist) ?? k.Tags.Artist!, artistNames).Lead)
+                .Select(k => ArtistCredits.Split(NameTools.DedupeArtists(k.Tags.Artist) ?? k.Tags.Artist!, artistNames, libraryArtists).Lead)
                 .FirstOrDefault(l => ArtistKey(l) == ArtistKey(lead));
             multi.Add(new ScatteredGroup(dir, new[] { dir }, spelled ?? lead, null));
         }
