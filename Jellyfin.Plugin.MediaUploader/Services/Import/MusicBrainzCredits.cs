@@ -253,6 +253,8 @@ public static class MusicBrainzCredits
             }
 
             var releases = (rec["releases"] as JsonArray)?.OfType<JsonObject>().ToList() ?? new List<JsonObject>();
+            // Année de première sortie de l'enregistrement : un album d'une autre année ne l'a repris qu'en bonus (réédition) ou en compilation.
+            var firstYear = rec["first-release-date"]?.GetValue<string>() is { Length: >= 4 } fr ? fr[..4] : string.Empty;
             bool Matches(JsonObject r)
             {
                 var t = AlbumKey(r["title"]?.GetValue<string>());
@@ -273,7 +275,8 @@ public static class MusicBrainzCredits
 
                 // Album inconnu : une bande originale (film, jeu) passe après l'album de l'artiste.
                 var soundtrack = albumKey.Length == 0 && secondary.Contains("Soundtrack", StringComparer.OrdinalIgnoreCase) ? -15 : 0;
-                return (Matches(r) ? (comp ? 25 : 100) : 0) + (exact && !comp ? 5 : 0) + (comp ? 0 : 30) + (notOriginal ? -40 : 0) + primary + soundtrack
+                var era = albumKey.Length == 0 && firstYear.Length == 4 && DateOf(r).StartsWith(firstYear, StringComparison.Ordinal) ? 8 : 0;
+                return (Matches(r) ? (comp ? 25 : 100) : 0) + (exact && !comp ? 5 : 0) + (comp ? 0 : 30) + (notOriginal ? -40 : 0) + primary + soundtrack + era
                     + (r["status"]?.GetValue<string>() switch { null or "Official" => 1, "Bootleg" when albumKey.Length == 0 => -20, _ => 0 });
             }
 

@@ -9,6 +9,7 @@ namespace Jellyfin.Plugin.MediaUploader.Services.Library;
 /// </summary>
 public static class PlaylistFolderLookups
 {
+    private const int Rounds = 4;
     private static readonly ConcurrentDictionary<string, Task> Running = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -26,29 +27,42 @@ public static class PlaylistFolderLookups
 
         Running[key] = Task.Run(async () =>
         {
-            var failures = 0;
             try
             {
-                foreach (var (title, credit) in songs)
+                // MusicBrainz est souvent surchargé : un morceau sans réponse est repris au tour suivant (4 tours, espacés de 15, 30 puis 45 s),
+                // et une série d'échecs ralentit la cadence au lieu d'arrêter la vérification.
+                var left = songs.ToList();
+                for (var round = 0; round < Rounds && left.Count > 0; round++)
                 {
-                    for (var attempt = 0; ; attempt++)
+                    if (round > 0)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(15 * round)).ConfigureAwait(false);
+                    }
+
+                    var failed = new List<(string Title, string Credit)>();
+                    var streak = 0;
+                    foreach (var song in left)
                     {
                         try
                         {
-                            await MusicBrainzCredits.LookupAsync(title, credit, null, CancellationToken.None).ConfigureAwait(false);
-                            failures = 0;
-                            break;
+                            await MusicBrainzCredits.LookupAsync(song.Title, song.Credit, null, CancellationToken.None).ConfigureAwait(false);
+                            streak = 0;
                         }
-                        catch (ImportException) when (attempt < 2)
+                        catch (ImportException ex)
                         {
-                            await Task.Delay(TimeSpan.FromSeconds(5 * (attempt + 1))).ConfigureAwait(false);
-                        }
-                        catch (ImportException ex) when (++failures < 3)
-                        {
-                            logger.LogDebug("MediaUploader: MusicBrainz sans réponse pour {Title} : {Message}", title, ex.Message);
-                            break;
+                            failed.Add(song);
+                            streak++;
+                            logger.LogDebug("MediaUploader: MusicBrainz sans réponse pour {Title} (tour {Round}) : {Message}", song.Title, round + 1, ex.Message);
+                            await Task.Delay(TimeSpan.FromSeconds(3 * Math.Min(streak, 5))).ConfigureAwait(false);
                         }
                     }
+
+                    left = failed;
+                }
+
+                if (left.Count > 0)
+                {
+                    logger.LogInformation("MediaUploader: MusicBrainz sans réponse pour {Count} morceau(x) après {Rounds} tours", left.Count, Rounds);
                 }
             }
             catch (Exception ex)

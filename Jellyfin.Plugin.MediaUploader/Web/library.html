@@ -864,14 +864,20 @@
     function edit(r, k, v) { var p = pick(r, 'Path'); st.edits[p] = st.edits[p] || {}; st.edits[p][k] = v; renderRows(); }
     function actionOf(r) { return val(r, 'Action'); }
 
+    // « Répartir » attend la fin de la vérification sur MusicBrainz : sinon les morceaux pas encore vérifiés seraient rangés comme singles.
+    function goState(counts) {
+      if (!counts) { counts = { move: 0, keep: 0 }; st.rows.forEach(function (r) { counts[actionOf(r)] = (counts[actionOf(r)] || 0) + 1; }); }
+      go.textContent = st.pending ? 'Vérification sur MusicBrainz… (' + st.pending + ' restant' + (st.pending > 1 ? 's' : '') + ')' : 'Répartir (' + counts.move + ' rangés, ' + counts.keep + ' doublons retirés)';
+      go.disabled = st.pending > 0 || counts.move + counts.keep === 0;
+    }
+
     function renderRows() {
       var counts = { move: 0, keep: 0, leave: 0 };
       st.rows.forEach(function (r) { counts[actionOf(r)] = (counts[actionOf(r)] || 0) + 1; });
       summary.textContent = plural(st.rows.length, 'morceau', 'morceaux') + ' : ' + plural(counts.keep, 'doublon retiré', 'doublons retirés') + ' (copie déjà rangée gardée), ' + plural(counts.move, 'morceau rangé', 'morceaux rangés') + ', ' + plural(counts.leave, 'laissé', 'laissés') + ' ici.'
-        + (st.pending ? ' MusicBrainz : ' + plural(st.pending, 'morceau', 'morceaux') + ' en cours de vérification (environ une seconde chacun) ; en attendant, ils sont proposés comme singles.' : '')
+        + (st.pending ? ' MusicBrainz : ' + plural(st.pending, 'morceau', 'morceaux') + ' en cours de vérification (une requête toutes les une à cinq secondes selon sa charge, nouvel essai automatique en cas d’échec) ; « Répartir » attend la fin. Vous pouvez fermer et revenir plus tard : la vérification continue.' : '')
         + ' La liste de lecture « ' + playlist + ' » garde tous ses morceaux, dans le même ordre ; les doublons vont à la corbeille et tout est annulable.';
-      go.textContent = 'Répartir (' + counts.move + ' rangés, ' + counts.keep + ' doublons retirés)';
-      go.disabled = counts.move + counts.keep === 0;
+      goState(counts);
       var tbl = h('table', { class: 'ptable' }, [h('thead', {}, [h('tr', {}, ['Morceau', 'Que faire', 'Artistes (« ; » entre deux)', 'Artiste de l\'album', 'Album', 'Piste', 'Source'].map(function (t) { return h('th', { text: t }); }))])]);
       var tb = h('tbody', {});
       st.rows.forEach(function (r) {
@@ -913,12 +919,13 @@
         st.rows = list(pick(res.body, 'Rows'));
         st.pending = pick(res.body, 'Pending') || 0;
         // Pendant la saisie, on ne redessine pas le tableau (le texte tapé serait perdu) : on réessaie un peu plus tard.
-        if (!(dlg && dlg.contains(document.activeElement) && document.activeElement.tagName === 'INPUT')) { renderRows(); }
+        if (!(dlg && dlg.contains(document.activeElement) && document.activeElement.tagName === 'INPUT')) { renderRows(); } else { goState(); }
         if (st.pending && dlg && dlg.isConnected) { setTimeout(function () { if (dlg.isConnected) { load(false); } }, 3000); }
       }).catch(function (e) { table.textContent = ''; table.appendChild(h('div', { class: 'bad', text: e.message })); });
     }
 
     go.addEventListener('click', function () {
+      if (st.pending) { return; }
       var rows = st.rows.map(function (r) {
         var copies = list(pick(r, 'Copies')), k = val(r, 'KeepIndex') || 0;
         if (actionOf(r) === 'keep') { copies = [copies[k]].concat(copies.filter(function (c, i) { return i !== k; })); }

@@ -46,6 +46,11 @@ public static class MusicBrainzClient
     private static readonly HttpClient Http = CreateClient();
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static DateTime _last = DateTime.MinValue;
+
+    // Écart entre deux requêtes : 1,1 s, allongé d'une seconde (jusqu'à 5 s) à chaque « surchargé » de MusicBrainz, puis réduit dès qu'il répond.
+    private static readonly TimeSpan MinSpacing = TimeSpan.FromMilliseconds(1100);
+    private static readonly TimeSpan MaxSpacing = TimeSpan.FromSeconds(5);
+    private static TimeSpan _spacing = MinSpacing;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, (DateTime At, int Count)> TrackCounts = new();
 
     /// <summary>
@@ -508,7 +513,8 @@ public static class MusicBrainzClient
         return client;
     }
 
-    // MusicBrainz demande au plus une requête par seconde : toutes passent par une file qui espace les appels.
+    // MusicBrainz demande au plus une requête par seconde : toutes passent par une file qui espace les appels,
+    // davantage quand il répond « surchargé » (503, 429), et qui attend le délai qu'il demande (Retry-After).
     private static async Task<string> GetAsync(string relative, CancellationToken ct)
     {
         await Gate.WaitAsync(ct).ConfigureAwait(false);
@@ -516,7 +522,7 @@ public static class MusicBrainzClient
         {
             for (var attempt = 0; ; attempt++)
             {
-                var wait = _last + TimeSpan.FromMilliseconds(1100) - DateTime.UtcNow;
+                var wait = _last + _spacing - DateTime.UtcNow;
                 if (wait > TimeSpan.Zero)
                 {
                     await Task.Delay(wait, ct).ConfigureAwait(false);
@@ -529,7 +535,13 @@ public static class MusicBrainzClient
                 }
                 catch (HttpRequestException ex)
                 {
+                    SlowDown(null);
                     throw new ImportException("MusicBrainz est injoignable : " + ex.Message);
+                }
+                catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    SlowDown(null);
+                    throw new ImportException("MusicBrainz n'a pas répondu à temps.");
                 }
                 finally
                 {
@@ -538,10 +550,17 @@ public static class MusicBrainzClient
 
                 using (response)
                 {
-                    if (response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.TooManyRequests && attempt < 2)
+                    if (response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.TooManyRequests)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(2 + attempt * 2), ct).ConfigureAwait(false);
-                        continue;
+                        SlowDown(response.Headers.RetryAfter?.Delta);
+                        if (attempt < 4)
+                        {
+                            continue;
+                        }
+                    }
+                    else if (response.IsSuccessStatusCode)
+                    {
+                        _spacing = TimeSpan.FromTicks(Math.Max(MinSpacing.Ticks, (long)(_spacing.Ticks * 0.7)));
                     }
 
                     if (!response.IsSuccessStatusCode)
@@ -557,6 +576,12 @@ public static class MusicBrainzClient
         {
             Gate.Release();
         }
+    }
+
+    private static void SlowDown(TimeSpan? retryAfter)
+    {
+        var longer = TimeSpan.FromTicks(Math.Min(MaxSpacing.Ticks, _spacing.Ticks + TimeSpan.TicksPerSecond));
+        _spacing = retryAfter is { } r && r > longer ? TimeSpan.FromTicks(Math.Min(r.Ticks, TimeSpan.FromSeconds(30).Ticks)) : longer;
     }
 
     private static async Task<bool> CoverExistsAsync(string url, CancellationToken ct)

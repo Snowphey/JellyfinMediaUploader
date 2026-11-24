@@ -1013,6 +1013,8 @@ var studio = MusicBrainzCredits.ParseRecordings("{\"recordings\":[" + Rec("", Re
 Check("MusicBrainz sans album connu : album studio d'origine (pas live, compilation, single), piste « A1 » = 1", (studio?.Release, studio?.Track, studio?.Year), ("Blackout", (int?)1, (int?)2007));
 var mbOtis = MusicBrainzCredits.ParseRecordings(Fixture("rec_otis"), MusicBrainzCredits.SearchTitle("(Sittin' On) the Dock of the Bay - Mono"), "Otis Redding", null);
 Check("MusicBrainz : album inconnu et seulement des compilations : artiste trouvé, pas d'album", (mbOtis is null ? null : string.Join(" | ", mbOtis.Artists.Select(x => x.Name)), mbOtis?.Release, mbOtis?.Year), ("Otis Redding", (string?)null, (int?)0));
+var bonus = MusicBrainzCredits.ParseRecordings("{\"recordings\":[" + Rec("", Rel2("Gimme More", "2007-08-31", "Single", "", "1"), Rel2("In the Zone (2011 reissue)", "2003-11-12", "Album", "", "13")).Replace("\"releases\"", "\"first-release-date\":\"2007-08-31\",\"releases\"") + "]}", "Gimme More", "Britney Spears", null);
+Check("MusicBrainz : un album d'une autre année (bonus d'une réédition) perd face au single d'origine", (bonus?.Release, bonus?.Track), ("Gimme More", (int?)1));
 var mbNight = MusicBrainzCredits.ParseRecordings(Fixture("rec_because"), "Because the Night", "Patti Smith", null);
 Check("MusicBrainz : l'original au-delà des 50 premiers résultats, pas un bootleg (« Ask the Angels »)", (mbNight?.Release, mbNight?.Track, mbNight?.Year), ("Easter", (int?)3, (int?)1978));
 // ---------- Dossiers créés par l'import d'une liste de lecture ----------
@@ -1030,6 +1032,8 @@ var pfFiles = new List<(string, string, TagSnapshot)>
     ("Various Artists/BINGO Pouzzz/73 - BIG BOSS LADY.m4a", pfDir + "73 - BIG BOSS LADY.m4a", new TagSnapshot("BIG BOSS LADY", "Theodora & Jahlys", "Various Artists", "BINGO Pouzzz", 0, 73, 0, null, true)),
     ("Various Artists/BINGO Pouzzz/21 - Iron.m4a", pfDir + "21 - Iron.m4a", new TagSnapshot("Iron", "Woodkid", "Various Artists", "BINGO Pouzzz", 0, 21, 0, null, true)),
     ("Various Artists/BINGO Pouzzz/52 - Kongolese.m4a", pfDir + "52 - Kongolese.m4a", new TagSnapshot("Kongolese (feat. Damso)", "Gradur & Damso", "Various Artists", "BINGO Pouzzz", 2019, 52, 0, null, true)),
+    ("Various Artists/BINGO Pouzzz/07 - PA' TOUCH - A COLORS SHOW.m4a", pfDir + "07 - PA' TOUCH - A COLORS SHOW.m4a", new TagSnapshot("PA' TOUCH - A COLORS SHOW", "Ino Casablanca, COLORS", "Various Artists", "BINGO Pouzzz", 0, 7, 0, null, true)),
+    ("Various Artists/BINGO Pouzzz/33 - Dracula.m4a", pfDir + "33 - Dracula.m4a", new TagSnapshot("Dracula (with JENNIE)", "Tame Impala, JENNIE", "Various Artists", "BINGO Pouzzz", 0, 33, 0, null, true)),
 };
 var pfLibrary = new List<(string, TagInfo)>
 {
@@ -1045,6 +1049,7 @@ var pfPlan = PlaylistFolders.Plan("/m", pfFiles, pfLibrary, _ => true, p => p.En
 Check("liste de lecture : doublon, copie sans perte conseillée", (pfPlan[0].Action, string.Join(" | ", pfPlan[0].Copies)), ("keep", "Theodora/MEGA BBL/21 - BIG BOSS LADY.flac | Theodora/BAD BOY LOVESTORY/10 - BIG BOSS LADY.m4a"));
 Check("liste de lecture : album d'origine d'après MusicBrainz", (pfPlan[1].Action, pfPlan[1].AlbumArtist, pfPlan[1].Album, pfPlan[1].Track, pfPlan[1].Year, pfPlan[1].Source), ("move", "Woodkid", "Iron EP", 1, 2011, "musicbrainz"));
 Check("liste de lecture : en attente de MusicBrainz, single en attendant ; orthographe du dossier existant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("GRADUR; Damso", "GRADUR", "Kongolese", 1, 2019, "pending"));
+Check("liste de lecture : la chaîne nommée dans le titre n'est pas un artiste, l'invité « (with …) » si", (pfPlan[3].Artists, pfPlan[4].Artists), ("Ino Casablanca", "Tame Impala; JENNIE"));
 var restore = TagChanges.Restore(new TagSnapshot(null, "A; B", null, "Alb", 2020, 3, 0, null, false));
 Check("annulation : tags d'origine, champs vides effacés", (restore.Title, restore.Artist, restore.AlbumArtist, restore.Album, restore.Year, restore.Track, restore.Disc), ("", "A; B", "", "Alb", (uint?)2020, (uint?)3, (uint?)0));
 

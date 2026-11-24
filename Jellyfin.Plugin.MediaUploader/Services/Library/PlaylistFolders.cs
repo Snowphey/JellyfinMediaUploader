@@ -196,8 +196,12 @@ public static class PlaylistFolders
                 row.Source = done ? "rules" : "pending";
             }
 
+            // Une chaîne nommée dans le titre n'est pas un artiste (« Ino Casablanca, COLORS — PA' TOUCH - A COLORS SHOW »).
+            var titleKey = ArtistCredits.Key(MusicBrainzCredits.SearchTitle(title));
+            var names = row.Artists.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            names = names.Where((a, i) => i == 0 || ArtistCredits.Key(a).Length < 3 || !titleKey.Contains(ArtistCredits.Key(a), StringComparison.Ordinal)).ToList();
             row.AlbumArtist = Spell(row.AlbumArtist);
-            row.Artists = string.Join("; ", row.Artists.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Spell));
+            row.Artists = string.Join("; ", names.Select(Spell));
             rows.Add(row);
         }
 
