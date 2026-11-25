@@ -869,12 +869,49 @@ public class LibraryController : MediaUploaderControllerBase
             // Artistes que Jellyfin a lus d'un bloc (« Alpha Wann & Freeze Corleone », « Bigflo & Oli; Black M ») : à séparer dans les tags, ou à faire relire.
             try
             {
+                var keys = LibraryMusicIndex.ArtistKeys(music.Path);
                 unsplit = UnsplitArtists.Find(
                     music.Path,
                     LibraryMusicIndex.ArtistLists(music.Path),
                     p => LibraryTags.Read(p)?.Artist?.Split(';', StringSplitOptions.RemoveEmptyEntries).Length ?? 0,
                     Config.ArtistNames,
-                    LibraryMusicIndex.ArtistKeys(music.Path));
+                    keys);
+
+                // Artiste de l'album à plusieurs noms (« OrelSan feat. Damso ») : la page « Artistes » de Jellyfin le montre aussi.
+                var byName = unsplit.ToDictionary(g => g.Name, StringComparer.Ordinal);
+                foreach (var g in UnsplitArtists.Find(
+                    music.Path,
+                    LibraryMusicIndex.ArtistLists(music.Path, albumArtists: true),
+                    p => LibraryTags.Read(p)?.AlbumArtist?.Split(';', StringSplitOptions.RemoveEmptyEntries).Length ?? 0,
+                    Config.ArtistNames,
+                    keys))
+                {
+                    byName[g.Name] = byName.TryGetValue(g.Name, out var known)
+                        ? known with { Items = known.Items.Union(g.Items, StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList() }
+                        : g with { Reason = "album" };
+                }
+
+                // Album dont Jellyfin garde l'ancienne liste d'artistes alors que ses morceaux sont corrigés (« 2001 » : « Dr. Dre featuring Snoop Dogg ») :
+                // le dossier de l'album est proposé, ses morceaux seront relus avec lui.
+                var albums = _libraryManager.GetItemList(new MediaBrowser.Controller.Entities.InternalItemsQuery { IncludeItemTypes = new[] { Jellyfin.Data.Enums.BaseItemKind.MusicAlbum }, Recursive = true, IsVirtualItem = false })
+                    .OfType<MediaBrowser.Controller.Entities.Audio.MusicAlbum>()
+                    .Where(x => !string.IsNullOrEmpty(x.Path) && x.Path.StartsWith(music.Path, StringComparison.Ordinal) && Directory.Exists(x.Path) && x.Artists is { Count: > 0 })
+                    .Select(x => (x.Path, (IReadOnlyList<string>)x.Artists.ToList()))
+                    .ToList();
+                int FirstTagCount(string dir)
+                {
+                    var first = Directory.EnumerateFiles(dir).FirstOrDefault(f => kindOf(Path.GetExtension(f).ToLowerInvariant()) == "audio");
+                    return first is null ? 0 : LibraryTags.Read(first)?.Artist?.Split(';', StringSplitOptions.RemoveEmptyEntries).Length ?? 0;
+                }
+
+                foreach (var g in UnsplitArtists.Find(music.Path, albums, FirstTagCount, Config.ArtistNames, keys).Where(g => byName.ContainsKey(g.Name) || !g.Items.Any(i => byName.Values.Any(k => k.Items.Any(x => x.StartsWith(i + "/", StringComparison.Ordinal))))))
+                {
+                    byName[g.Name] = byName.TryGetValue(g.Name, out var known)
+                        ? known
+                        : g with { Reason = "reread" };
+                }
+
+                unsplit = byName.Values.OrderByDescending(g => g.Items.Count).ThenBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -1233,6 +1270,16 @@ public class LibraryController : MediaUploaderControllerBase
                 if (artists.Count > 1 || !string.Equals(artists.FirstOrDefault(), merged.Artist, StringComparison.Ordinal))
                 {
                     rc.Artist = string.Join("; ", artists);
+                }
+            }
+
+            // Artiste de l'album à plusieurs noms (« OrelSan feat. Damso », « Erik Satie; Philippe Entremont ») : l'artiste principal.
+            if (request.SplitArtists && changes.AlbumArtist is null && !string.IsNullOrWhiteSpace(merged.AlbumArtist) && merged.AlbumArtist != ArtistCredits.VariousArtists)
+            {
+                var albumSplit = ArtistCredits.Split(NameTools.DedupeArtists(merged.AlbumArtist) ?? merged.AlbumArtist, Config.ArtistNames, libraryArtists);
+                if (albumSplit.Artists.Count > 1)
+                {
+                    rc.AlbumArtist = ArtistCredits.FolderArtist(albumSplit.Artists);
                 }
             }
 
@@ -1945,6 +1992,9 @@ public class LibraryController : MediaUploaderControllerBase
         return ranked[0] == full ? new List<string>() : ranked.Where(p => p != full).Select(p => p[(index.Root.Length + 1)..].Replace('\\', '/')).ToList();
     }
 
+    private static int _scanPending;
+    private static DateTime _lastTagChange;
+
     private sealed class TagRow
     {
         public string Path { get; set; } = string.Empty;
@@ -2489,10 +2539,13 @@ public class LibraryController : MediaUploaderControllerBase
         }
     }
 
-    // Relit en entier (tags compris) les morceaux donnés, déjà connus de Jellyfin.
+    // Relit en entier (tags compris) les morceaux donnés, déjà connus de Jellyfin. Leur album est relu avec eux : c'est lui qui garde la liste
+    // des artistes de ses morceaux (sinon la fiche « Dr. Dre featuring Snoop Dogg » reste). Une analyse de la bibliothèque suit, un peu plus tard,
+    // pour que Jellyfin supprime les fiches d'artistes qui ne renvoient plus à rien.
     private int ReadTagsAgain(LibraryRoot root, IEnumerable<string> relatives)
     {
         var count = 0;
+        var albums = new HashSet<Guid>();
         foreach (var relative in relatives.Distinct(StringComparer.Ordinal).Take(5000))
         {
             if (!LibraryFs.TryResolve(root, relative, out var full, out _) || !System.IO.File.Exists(full) || _libraryManager.FindByPath(full, false) is not { } item)
@@ -2500,18 +2553,63 @@ public class LibraryController : MediaUploaderControllerBase
                 continue;
             }
 
-            var options = new MetadataRefreshOptions(new DirectoryService(_fileSystem))
+            _providerManager.QueueRefresh(item.Id, FullRead(), RefreshPriority.High);
+            if (item.GetParent() is MediaBrowser.Controller.Entities.Audio.MusicAlbum album)
             {
-                MetadataRefreshMode = MetadataRefreshMode.FullRefresh,
-                ImageRefreshMode = MetadataRefreshMode.None,
-                ReplaceAllMetadata = true,
-                ReplaceAllImages = false
-            };
-            _providerManager.QueueRefresh(item.Id, options, RefreshPriority.High);
+                albums.Add(album.Id);
+            }
+
             count++;
         }
 
+        foreach (var id in albums)
+        {
+            _providerManager.QueueRefresh(id, FullRead(), RefreshPriority.Normal);
+        }
+
+        if (count > 0)
+        {
+            ScanLaterForDeadArtists();
+        }
+
         return count;
+    }
+
+    private MetadataRefreshOptions FullRead() => new(new DirectoryService(_fileSystem))
+    {
+        MetadataRefreshMode = MetadataRefreshMode.FullRefresh,
+        ImageRefreshMode = MetadataRefreshMode.None,
+        ReplaceAllMetadata = true,
+        ReplaceAllImages = false
+    };
+
+    // Une seule analyse programmée à la fois, deux minutes après la dernière correction (le temps que les morceaux et albums soient relus).
+    private void ScanLaterForDeadArtists()
+    {
+        var at = DateTime.UtcNow;
+        _lastTagChange = at;
+        if (Interlocked.Exchange(ref _scanPending, 1) == 1)
+        {
+            return;
+        }
+
+        var libraryManager = _libraryManager;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (DateTime.UtcNow - _lastTagChange < TimeSpan.FromMinutes(2))
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+                }
+
+                libraryManager.QueueLibraryScan();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _scanPending, 0);
+            }
+        });
     }
 
     // Actualise le dossier racine d'une bibliothèque dans Jellyfin, sans images : seuls les fichiers nouveaux ou modifiés sont examinés.

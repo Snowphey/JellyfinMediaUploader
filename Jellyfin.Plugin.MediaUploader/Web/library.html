@@ -1269,7 +1269,7 @@
         list(pick(music, 'MultiArtistFolders')),
         function (g) { return h('button', { type: 'button', class: 'small', text: 'Ranger sous « ' + pick(g, 'Artist') + ' »…', onclick: function () { tagsDialog(list(pick(g, 'Items')), { albumArtist: pick(g, 'Artist'), splitArtists: true }); } }); }, 'multi'));
       // Artistes lus d'un bloc par Jellyfin : « Alpha Wann & Freeze Corleone », « Dr. Dre featuring Snoop Dogg », « Bigflo & Oli; Black M ».
-      var why = { reread: 'déjà séparé dans les tags, Jellyfin doit le relire', split: '« feat. » ou virgule', check: '« & » ou « x » : vérifié sur MusicBrainz (duo ou deux artistes)', slash: '« / » d\'un mp3' };
+      var why = { reread: 'déjà séparé dans les tags, Jellyfin doit le relire', split: '« feat. » ou virgule', check: '« & » ou « x » : vérifié sur MusicBrainz (duo ou deux artistes)', slash: '« / » d\'un mp3', album: 'artiste de l\'album à plusieurs noms : l\'artiste principal le remplace' };
       var uns = list(L.unsplit).filter(function (g) { return visible(hkey('unsplit', [pick(g, 'Name')])); });
       total += uns.length;
       var unsCount = uns.reduce(function (n, g) { return n + list(pick(g, 'Items')).length; }, 0);
