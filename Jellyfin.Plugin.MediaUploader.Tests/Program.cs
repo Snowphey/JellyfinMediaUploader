@@ -1075,6 +1075,9 @@ Check("liste de lecture : doublon, copie sans perte conseillée", (pfPlan[0].Act
 Check("liste de lecture : album d'origine d'après MusicBrainz", (pfPlan[1].Action, pfPlan[1].AlbumArtist, pfPlan[1].Album, pfPlan[1].Track, pfPlan[1].Year, pfPlan[1].Source), ("move", "Woodkid", "Iron EP", 1, 2011, "musicbrainz"));
 Check("liste de lecture : en attente de MusicBrainz, single en attendant ; orthographe du dossier existant", (pfPlan[2].Artists, pfPlan[2].AlbumArtist, pfPlan[2].Album, pfPlan[2].Track, pfPlan[2].Year, pfPlan[2].Source), ("GRADUR; Damso", "GRADUR", "Kongolese", 1, 2019, "pending"));
 Check("liste de lecture : la chaîne nommée dans le titre n'est pas un artiste, l'invité « (with …) » si", (pfPlan[3].Artists, pfPlan[4].Artists), ("Ino Casablanca", "Tame Impala; JENNIE"));
+var leadKeys = ArtistCredits.KnownKeys(new[] { "Theodora", "Vald", "Bigflo", "Joan Jett", "Joan Jett & the Blackhearts" });
+Check("« & » : premier nom connu, pas de dossier à ce nom entier : deux artistes", (string.Join(" | ", ArtistCredits.Split("Theodora & Jul", null, leadKeys).Artists), string.Join(" | ", ArtistCredits.Split("Vald & Heuss l'enfoiré", null, leadKeys).Artists)), ("Theodora | Jul", "Vald | Heuss l'enfoiré"));
+Check("« & » : mention qui a son propre dossier, ou premier nom inconnu : entière", (ArtistCredits.Split("Joan Jett & the Blackhearts", null, leadKeys).Artists.Count, ArtistCredits.Split("Royal & the Serpent", null, leadKeys).Artists.Count, ArtistCredits.Split("Bigflo & Oli", null, ArtistCredits.KnownKeys(new[] { "Bigflo & Oli" })).Artists.Count), (1, 1, 1));
 var unsplit = UnsplitArtists.Find("/m", new List<(string, IReadOnlyList<string>)>
 {
     ("/m/Alpha Wann/A/01 - X.m4a", new[] { "Alpha Wann & Freeze Corleone" }),
@@ -1085,7 +1088,7 @@ var unsplit = UnsplitArtists.Find("/m", new List<(string, IReadOnlyList<string>)
     ("/m/AC DC/E/01 - H.mp3", new[] { "AC/DC" }),
     ("/m/Alpha Wann/A/02 - V.m4a", new[] { "Alpha Wann", "Freeze Corleone" }),
 }, p => p.Contains("Satie") ? 2 : 1, null, ArtistCredits.KnownKeys(new[] { "Bigflo & Oli", "Alpha Wann" }));
-Check("artistes lus d'un bloc par Jellyfin : à séparer", string.Join(" | ", unsplit.OrderBy(g => g.Name).Select(g => g.Name + ":" + g.Reason)), "Alpha Wann & Freeze Corleone:check | Bigflo & Oli; Black M; Soprano:reread | Dr. Dre featuring Snoop Dogg:split | Erik Satie/Philippe Entremont:slash");
+Check("artistes lus d'un bloc par Jellyfin : à séparer", string.Join(" | ", unsplit.OrderBy(g => g.Name).Select(g => g.Name + ":" + g.Reason)), "Alpha Wann & Freeze Corleone:split | Bigflo & Oli; Black M; Soprano:reread | Dr. Dre featuring Snoop Dogg:split | Erik Satie/Philippe Entremont:slash");
 var restore = TagChanges.Restore(new TagSnapshot(null, "A; B", null, "Alb", 2020, 3, 0, null, false));
 Check("annulation : tags d'origine, champs vides effacés", (restore.Title, restore.Artist, restore.AlbumArtist, restore.Album, restore.Year, restore.Track, restore.Disc), ("", "A; B", "", "Alb", (uint?)2020, (uint?)3, (uint?)0));
 

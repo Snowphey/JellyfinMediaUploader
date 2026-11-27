@@ -153,10 +153,14 @@ public static class ArtistCredits
             {
                 var parts = Joiners.Split(token).Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
                 var allKnown = libraryArtists is not null && parts.Count > 1 && parts.All(p => libraryArtists.Contains(Key(p)));
+
+                // « Theodora & Jul », « Vald & Heuss l'enfoiré » : le premier nom est déjà un artiste de la bibliothèque, et la mention entière n'a pas
+                // son propre dossier (« Bigflo & Oli », « Joan Jett & the Blackhearts » en ont un) : deux artistes.
+                var leadKnown = libraryArtists is not null && parts.Count == 2 && libraryArtists.Contains(Key(parts[0])) && !libraryArtists.Contains(StandalonePrefix + Key(token));
                 // « A, B & C » : le « & » final sépare, sauf si la liste est faite de duos (« Mcfly & Carlito, Bigflo & Oli ») ou si la bibliothèque connaît déjà « B & C » comme un artiste cité seul.
                 var listEnd = tokens.Count > 1 && i == tokens.Count - 1 && Ampersand.IsMatch(token) && !Joiners.IsMatch(Ampersand.Replace(token, " ", 1))
                     && !tokens.Take(tokens.Count - 1).Any(t => Joiners.IsMatch(t)) && libraryArtists?.Contains(StandalonePrefix + Key(token)) != true;
-                if (allKnown)
+                if (allKnown || leadKnown)
                 {
                     artists.AddRange(parts);
                     continue;

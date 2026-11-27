@@ -81,7 +81,11 @@ public static class LibraryMusicIndex
             dirs = new List<string?>();
         }
 
-        return ArtistCredits.KnownKeys(Under(root).Select(e => e.Tags.Artist).Concat(dirs));
+        // Un nom « A & B » ne compte comme artiste à part entière que s'il a son dossier : une fiche de Jellyfin « Theodora & Jul »
+        // vient justement d'une mention à séparer.
+        var keys = new HashSet<string>(ArtistCredits.KnownKeys(Under(root).Select(e => e.Tags.Artist)).Where(k => !k.StartsWith(ArtistCredits.StandalonePrefix, StringComparison.Ordinal)), StringComparer.Ordinal);
+        keys.UnionWith(ArtistCredits.KnownKeys(dirs));
+        return keys;
     }
 
     private static List<(string Path, TagInfo Tags)> Snapshot()
